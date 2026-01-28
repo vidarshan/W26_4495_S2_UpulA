@@ -1,0 +1,2 @@
+2026-01-27 4:30pm-6:30pm Setup authentication with next js
+2026-01-27 8:30pm-10:30pm Implemented user get,edit,delete,create functions on the API
