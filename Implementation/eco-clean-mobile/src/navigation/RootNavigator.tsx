@@ -1,20 +1,16 @@
 import { NavigationContainer } from "@react-navigation/native";
 // import { useAuth } from "@/hooks/useAuth";
-import AuthNavigator from "../src/navigation/AuthNavigator";
-import AdminNavigator from "../src/navigation/AdminNavigator";
-import CleanerNavigator from "../src/navigation/CleanerNavigation";
-import CustomerNavigator from "../src/navigation/CustomerNavigation";
+import AuthNavigator from "../navigation/AuthNavigator";
+import AdminNavigator from "../navigation/AdminNavigator";
+import CleanerNavigator from "../navigation/CleanerNavigation";
+import CustomerNavigator from "../navigation/CustomerNavigation";
 import { ActivityIndicator, View } from "react-native";
-
-interface User {
-  role: string;
-}
 
 export default function RootNavigator() {
   //   const { user, loading } = useAuth();
   const loading = false;
   const user = {
-    role: "AUTH",
+    role: "ADMIN",
   };
 
   if (loading) {
@@ -25,7 +21,7 @@ export default function RootNavigator() {
     );
   }
 
-  if (user.role === "AUTH") {
+  if (!user) {
     return <AuthNavigator />;
   }
 

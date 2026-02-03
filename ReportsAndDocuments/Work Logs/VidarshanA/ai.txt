@@ -1,0 +1,7 @@
+AI	                Prompt	                        Value Addition
+ChatGPT, 5.2 Plus   RN global style system	        to reduce styling repitition
+ChatGPT, 5.2 Plus   styling form controls           to ensure platform consistency
+ChatGPT, 5.2 Plus   RN reusable button component    -
+ChatGPT, 5.2 Plus   RN Spacer component             to avoid manual spacing props
+ChatGPT, 5.2 Plus   RN title component              to avoid redundant styling
+ChatGPT, 5.2 Plus   Expo navigation stack           to navigate between screens
