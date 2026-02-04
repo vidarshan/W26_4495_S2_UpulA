@@ -1,28 +1,45 @@
-import axios from "axios";
-import * as SecureStore from "expo-secure-store";
+import { API_BASE_URL } from "@/config/env";
 
-// 👉 Change this to your backend URL
-const API_BASE_URL = "https://your-backend-url.com/api";
+type ApiOptions = Omit<RequestInit, "body"> & {
+  body?: any;
+};
 
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
-  timeout: 10000,
-});
+export async function apiFetch(endpoint: string, options: ApiOptions = {}) {
+  if (!API_BASE_URL) {
+    throw new ApiError("API_BASE_URL is undefined", 0);
+  }
 
-api.interceptors.request.use(
-  async (config) => {
-    const token = await SecureStore.getItemAsync("auth_token");
+  const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+    method: options.method ?? "GET",
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+    body: options.body ? JSON.stringify(options.body) : undefined,
+  });
 
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+  const text = await res.text();
+  const data = text ? JSON.parse(text) : null;
 
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+  if (!res.ok) {
+    throw new ApiError(
+      data?.error || data?.message || "Request failed",
+      res.status,
+      data,
+    );
+  }
 
-export default api;
+  return data;
+}
+
+export class ApiError extends Error {
+  status: number;
+  data?: any;
+
+  constructor(message: string, status: number, data?: any) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.data = data;
+  }
+}

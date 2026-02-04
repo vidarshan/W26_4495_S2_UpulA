@@ -5,3 +5,5 @@ ChatGPT, 5.2 Plus   RN reusable button component    -
 ChatGPT, 5.2 Plus   RN Spacer component             to avoid manual spacing props
 ChatGPT, 5.2 Plus   RN title component              to avoid redundant styling
 ChatGPT, 5.2 Plus   Expo navigation stack           to navigate between screens
+ChatGPT, 5.2 Plus   RN resuable alert component     to match the web app's alerts
+ChatGPT, 5.2 Plus   TS type for api error object    -

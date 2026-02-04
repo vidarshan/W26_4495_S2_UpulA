@@ -1,9 +1,25 @@
-import api from "./api";
+import { saveToken } from "@/storage/auth.storage";
+import { apiFetch } from "./api";
 
-export const login = async (email: string, password: string) => {
-  const { data } = await api.post("/auth/login", {
-    email,
-    password,
-  });
-  return data; // { token, user }
+type LoginResponse = {
+  token: string;
+  user: {
+    id: string;
+    email: string;
+    role: string;
+  };
 };
+
+export async function login(email: string, password: string) {
+  const data: LoginResponse = await apiFetch("/api/mobile/login", {
+    method: "POST",
+    body: {
+      email,
+      password,
+    },
+  });
+
+  await saveToken(data.token);
+
+  return data.user;
+}

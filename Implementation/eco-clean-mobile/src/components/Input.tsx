@@ -29,6 +29,7 @@ export function Input({
         onChangeText={onChangeText}
         textContentType="password"
         autoCapitalize="none"
+        secureTextEntry={textContentType === "password"}
         autoCorrect={false}
         style={[
           styles.base,
