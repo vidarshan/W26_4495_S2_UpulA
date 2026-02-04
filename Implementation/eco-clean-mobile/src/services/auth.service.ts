@@ -10,7 +10,11 @@ type LoginResponse = {
   };
 };
 
-export async function login(email: string, password: string) {
+export async function login(
+  email: string,
+  password: string,
+  signIn: (arg: string) => void,
+) {
   const data: LoginResponse = await apiFetch("/api/mobile/login", {
     method: "POST",
     body: {
@@ -20,6 +24,6 @@ export async function login(email: string, password: string) {
   });
 
   await saveToken(data.token);
-
+  await signIn(data.token);
   return data.user;
 }

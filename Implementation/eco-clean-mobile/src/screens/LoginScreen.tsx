@@ -5,6 +5,7 @@ import { Input } from "@/components/Input";
 import { Loader } from "@/components/Loader";
 import Spacer from "@/components/Spacer";
 import { Title } from "@/components/Title";
+import { useAuth } from "@/context/AuthContext";
 import { RootStackParamList } from "@/navigation/types";
 import { ApiError } from "@/services/api";
 import { login } from "@/services/auth.service";
@@ -15,6 +16,7 @@ import { View } from "react-native";
 type Props = NativeStackScreenProps<RootStackParamList, "Login">;
 
 const LoginScreen = () => {
+  const { signIn } = useAuth();
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<null | string>(null);
   const [email, setEmail] = useState<string>("admin@ecoclean.com");
@@ -24,7 +26,7 @@ const LoginScreen = () => {
     setError(null);
     setLoading(true);
     try {
-      await login(email, password);
+      await login(email, password, signIn);
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);

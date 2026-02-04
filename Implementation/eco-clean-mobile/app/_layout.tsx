@@ -3,21 +3,13 @@ import { Loader } from "@/components/Loader";
 import { Stack } from "expo-router";
 
 function RootNavigator() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isLoading } = useAuth();
 
   if (isLoading) {
     return <Loader fullscreen />;
   }
 
-  return (
-    <Stack screenOptions={{ headerShown: false }}>
-      {isAuthenticated ? (
-        <Stack.Screen name="tasks" />
-      ) : (
-        <Stack.Screen name="index" />
-      )}
-    </Stack>
-  );
+  return <Stack screenOptions={{ headerShown: false }} />;
 }
 
 export default function Layout() {

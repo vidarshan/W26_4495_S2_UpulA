@@ -8,7 +8,8 @@ export default function Profile() {
   return (
     <Container>
       <Text>Profile screen</Text>
-      <Button title="Logout" onPress={signOut} />
+
+      <Button title="Logout" onPress={() => signOut()} />
     </Container>
   );
 }

@@ -10,4 +10,10 @@ ChatGPT, 5.2 Plus   TS type for api error object                    -
 ChatGPT, 5.2 Plus   RN loader component                             -
 ChatGPT, 5.2 Plus   Expo and RN router differences                  Establish one routing system
 ChatGPT, 5.2 Plus   Is it necessary to have _layout and index.tsx   Cleaning the app structure
+ChatGPT, 5.2 Plus   Tab bars RN for authenticated users             - 
+ChatGPT, 5.2 Plus   Preserve login tokens in storage                persisting login status in the device
+ChatGPT, 5.2 Plus   Bottom sheets for RN Expo with gestures         -
+ChatGPT, 5.2 Plus   Avoid infinite loop on provider useEffect       app crash fix
+
+
 
