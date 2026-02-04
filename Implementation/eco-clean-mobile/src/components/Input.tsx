@@ -52,6 +52,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.text,
     backgroundColor: colors.background,
+    fontFamily: "ComicNeue-Regular",
   },
   disabled: {
     opacity: 0.5,

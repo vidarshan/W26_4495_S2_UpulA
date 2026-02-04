@@ -14,6 +14,12 @@ ChatGPT, 5.2 Plus   Tab bars RN for authenticated users             -
 ChatGPT, 5.2 Plus   Preserve login tokens in storage                persisting login status in the device
 ChatGPT, 5.2 Plus   Bottom sheets for RN Expo with gestures         -
 ChatGPT, 5.2 Plus   Avoid infinite loop on provider useEffect       app crash fix
+ChatGPT, 5.2 Plus   upgrade to sdk 55 expo                          app crash fix
+ChatGPT, 5.2 Plus   react native expo list                          rendering tasks
+ChatGPT, 5.2 Plus   configure font expo                             Adapt client's typogrpahy
+ChatGPT, 5.2 Plus   app bar ios 26                                  Getting the app to the latest UI guidelines
+
+
 
 
 

@@ -1,2 +1,6 @@
 2026-01-27 4:30pm-6:30pm Setup authentication with next js
 2026-01-27 8:30pm-10:30pm Implemented user get,edit,delete,create functions on the API
+2026-02-03 10:30pm-1:30pm Connect mobile app to the web API
+2026-02-03 1:30-2:30pm Meeting with client to discuss the requirements
+2026-02-03 4:00-6:45pm Presisting logged in status on React Native
+2026-02-03 8:30-11:30pm Implemented authenticated navigation flow and rectify navigation control issues

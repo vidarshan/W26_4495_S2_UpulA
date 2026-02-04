@@ -55,6 +55,7 @@ const styles = StyleSheet.create({
   text: {
     fontSize: 16,
     fontWeight: "600",
+    fontFamily: "ComicNeue-Regular",
   },
   primaryText: {
     color: colors.primaryText,
