@@ -1,12 +1,14 @@
-import React from "react";
-import { Text, View } from "react-native";
+import LoginScreen from "@/screens/LoginScreen";
+import { useAuth } from "@/context/AuthContext";
+import { Redirect } from "expo-router";
 
-const index = () => {
-  return (
-    <View>
-      <Text>Entry?</Text>
-    </View>
-  );
-};
+export default function Index() {
+  const { isAuthenticated } = useAuth();
+  console.log(isAuthenticated);
 
-export default index;
+  if (isAuthenticated) {
+    return <Redirect href="/tasks" />;
+  }
+
+  return <LoginScreen />;
+}

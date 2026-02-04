@@ -1,41 +1,29 @@
-import { NavigationContainer } from "@react-navigation/native";
-// import { useAuth } from "@/hooks/useAuth";
-import AuthNavigator from "../src/navigation/AuthNavigator";
-import AdminNavigator from "../src/navigation/AdminNavigator";
-import CleanerNavigator from "../src/navigation/CleanerNavigation";
-import CustomerNavigator from "../src/navigation/CustomerNavigation";
-import { ActivityIndicator, View } from "react-native";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { Loader } from "@/components/Loader";
+import { Stack } from "expo-router";
 
-interface User {
-  role: string;
+function RootNavigator() {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <Loader fullscreen />;
+  }
+
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      {isAuthenticated ? (
+        <Stack.Screen name="tasks" />
+      ) : (
+        <Stack.Screen name="index" />
+      )}
+    </Stack>
+  );
 }
 
-export default function RootNavigator() {
-  //   const { user, loading } = useAuth();
-  const loading = false;
-  const user = {
-    role: "AUTH",
-  };
-
-  if (loading) {
-    return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" />
-      </View>
-    );
-  }
-
-  if (user.role === "AUTH") {
-    return <AuthNavigator />;
-  }
-
-  if (user.role === "ADMIN") {
-    return <AdminNavigator />;
-  }
-
-  if (user.role === "CLEANER") {
-    return <CleanerNavigator />;
-  }
-
-  return <CustomerNavigator />;
+export default function Layout() {
+  return (
+    <AuthProvider>
+      <RootNavigator />
+    </AuthProvider>
+  );
 }

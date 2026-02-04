@@ -14,7 +14,7 @@ import { View } from "react-native";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Login">;
 
-const LoginScreen = ({ navigation }: Props) => {
+const LoginScreen = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<null | string>(null);
   const [email, setEmail] = useState<string>("admin@ecoclean.com");
