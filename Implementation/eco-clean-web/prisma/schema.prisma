@@ -37,6 +37,11 @@ model Appointment {
   client    User @relation("ClientAppointments", fields: [clientId], references: [id])
   staff     User @relation("StaffAppointments", fields: [staffId], references: [id])
 
+  reminder5dSent  Boolean  @default(false)
+  reminder1dSent  Boolean  @default(false)
+  completionSent  Boolean  @default(false)
+  price           Float?
+
   notes     VisitNote[]
   createdAt DateTime @default(now())
 }
