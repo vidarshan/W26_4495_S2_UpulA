@@ -4,3 +4,6 @@
 2026-02-03 1:30-2:30pm Meeting with client to discuss the requirements
 2026-02-03 4:00-6:45pm Presisting logged in status on React Native
 2026-02-03 8:30-11:30pm Implemented authenticated navigation flow and rectify navigation control issues
+2026-02-04 4:30-6:30pm Implemented auppointments endpoint
+2026-02-04 8:30-10:30pm Send emails through cron jobs
+2026-02-05 4:30-7:00pm Implementing dashboard UI

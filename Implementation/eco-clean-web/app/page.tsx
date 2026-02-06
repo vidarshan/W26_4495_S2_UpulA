@@ -4,7 +4,6 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import DashboardClient from "./dashboard/dashboard-client";
 
-
 export default async function Home() {
   const session = await getServerSession(authOptions);
 
@@ -13,7 +12,7 @@ export default async function Home() {
   }
 
   return (
-    <Container>
+    <Container size="xl">
       <DashboardClient role={session.user.role} />
     </Container>
   );

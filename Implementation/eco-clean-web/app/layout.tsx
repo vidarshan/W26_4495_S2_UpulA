@@ -1,9 +1,20 @@
 import type { Metadata } from "next";
 import Providers from "./providers/providers";
 import "@mantine/core/styles.css";
-import { MantineProvider } from "@mantine/core";
+import "@mantine/dates/styles.css";
+import {
+  ActionIcon,
+  Box,
+  Group,
+  Image,
+  MantineProvider,
+  Text,
+} from "@mantine/core";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { IoMenu } from "react-icons/io5";
+import { useDisclosure } from "@mantine/hooks";
+import Navbar from "./components/Navbar";
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -27,9 +38,10 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <MantineProvider
-          theme={{ defaultRadius: "md", primaryColor: "green" }}
+          theme={{ defaultRadius: "xl", primaryColor: "green" }}
           defaultColorScheme="light"
         >
+          <Navbar />
           <Providers>{children}</Providers>
         </MantineProvider>
       </body>

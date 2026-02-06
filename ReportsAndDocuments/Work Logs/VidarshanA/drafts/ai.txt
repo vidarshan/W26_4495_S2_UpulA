@@ -1,0 +1,171 @@
+AI: ChatGPT 5.2 Plus
+Prompt: RN global style system
+Value Addition: Reduced styling repetition across the app
+
+AI: ChatGPT 5.2 Plus
+Prompt: Styling form controls in React Native
+Value Addition: Ensured consistent UI across iOS and Android
+
+AI: ChatGPT 5.2 Plus
+Prompt: RN reusable button component
+Value Addition: Standardized button behavior and styling
+
+AI: ChatGPT 5.2 Plus
+Prompt: RN Spacer component
+Value Addition: Avoided manual margin and padding usage
+
+AI: ChatGPT 5.2 Plus
+Prompt: RN title / text components
+Value Addition: Removed redundant typography styling
+
+AI: ChatGPT 5.2 Plus
+Prompt: Expo navigation stack setup
+Value Addition: Enabled navigation between screens
+
+AI: ChatGPT 5.2 Plus
+Prompt: Expo Router vs React Navigation
+Value Addition: Established a single routing system
+
+AI: ChatGPT 5.2 Plus
+Prompt: Is it necessary to have _layout.tsx and index.tsx
+Value Addition: Simplified and cleaned application structure
+
+AI: ChatGPT 5.2 Plus
+Prompt: Tab bar navigation for authenticated users
+Value Addition: Controlled navigation based on authentication state
+
+AI: ChatGPT 5.2 Plus
+Prompt: Preserve login tokens in storage
+Value Addition: Persisted login state across app restarts
+
+AI: ChatGPT 5.2 Plus
+Prompt: Bottom sheets for React Native Expo with gestures
+Value Addition: Improved mobile user experience
+
+AI: ChatGPT 5.2 Plus
+Prompt: Avoid infinite loop in provider useEffect
+Value Addition: Fixed application crash
+
+AI: ChatGPT 5.2 Plus
+Prompt: Upgrade Expo SDK to 55
+Value Addition: Resolved runtime crashes and compatibility issues
+
+AI: ChatGPT 5.2 Plus
+Prompt: React Native list rendering
+Value Addition: Improved performance when rendering task lists
+
+AI: ChatGPT 5.2 Plus
+Prompt: Configure fonts in Expo
+Value Addition: Adapted typography to client branding
+
+AI: ChatGPT 5.2 Plus
+Prompt: iOS 26 app bar guidelines
+Value Addition: Updated UI to match latest platform standards
+
+AI: ChatGPT 5.2 Plus
+Prompt: RN reusable alert component
+Value Addition: Matched alert behavior between web and mobile apps
+
+AI: ChatGPT 5.2 Plus
+Prompt: RN loader / loading indicator component
+Value Addition: Standardized loading states across screens
+
+AI: ChatGPT 5.2 Plus
+Prompt: TypeScript type for API error object
+Value Addition: Improved error handling consistency
+
+AI: ChatGPT 5.2 Plus
+Prompt: Prisma schema design for appointments
+Value Addition: Structured appointment lifecycle data
+
+AI: ChatGPT 5.2 Plus
+Prompt: Prisma migration to add multiple columns
+Value Addition: Safely evolved database schema
+
+AI: ChatGPT 5.2 Plus
+Prompt: Prisma migration drift resolution
+Value Addition: Fixed schema and migration mismatch
+
+AI: ChatGPT 5.2 Plus
+Prompt: Viewing PostgreSQL tables using psql
+Value Addition: Verified database state and migrations
+
+AI: ChatGPT 5.2 Plus
+Prompt: Decimal vs number handling in Prisma
+Value Addition: Prevented precision loss and type errors
+
+AI: ChatGPT 5.2 Plus
+Prompt: TIMESTAMPTZ vs TIMESTAMP in PostgreSQL
+Value Addition: Ensured timezone-safe date storage
+
+AI: ChatGPT 5.2 Plus
+Prompt: UTC date storage strategy
+Value Addition: Prevented timezone and DST-related bugs
+
+AI: ChatGPT 5.2 Plus
+Prompt: Create appointment API endpoint in Next.js
+Value Addition: Implemented clean appointment creation logic
+
+AI: ChatGPT 5.2 Plus
+Prompt: Appointment rescheduling logic
+Value Addition: Correctly reset reminder states on changes
+
+AI: ChatGPT 5.2 Plus
+Prompt: Appointment completion workflow
+Value Addition: Triggered post-appointment email logic
+
+AI: ChatGPT 5.2 Plus
+Prompt: Cron-based appointment reminder system
+Value Addition: Automated reminder email delivery
+
+AI: ChatGPT 5.2 Plus
+Prompt: Day-based reminder window logic
+Value Addition: Prevented missed reminders due to timing mismatch
+
+AI: ChatGPT 5.2 Plus
+Prompt: Idempotent cron job design
+Value Addition: Avoided duplicate emails on repeated runs
+
+AI: ChatGPT 5.2 Plus
+Prompt: Reminder flag architecture
+Value Addition: Enabled safe retries and fault tolerance
+
+AI: ChatGPT 5.2 Plus
+Prompt: Cron setup in Next.js App Router
+Value Addition: Enabled background automation in a serverless environment
+
+AI: ChatGPT 5.2 Plus
+Prompt: Vercel cron configuration
+Value Addition: Enabled scheduled execution in production
+
+AI: ChatGPT 5.2 Plus
+Prompt: Testing cron jobs with fake dates
+Value Addition: Allowed fast local testing without waiting real days
+
+AI: ChatGPT 5.2 Plus
+Prompt: Email service comparison for transactional emails
+Value Addition: Selected Resend for reliable email delivery
+
+AI: ChatGPT 5.2 Plus
+Prompt: HTML email template design
+Value Addition: Created branded and client-facing reminder emails
+
+AI: ChatGPT 5.2 Plus
+Prompt: Handling Resend domain verification errors
+Value Addition: Identified correct approach for email sender setup
+
+AI: ChatGPT 5.2 Plus
+Prompt: Sending emails without a domain during development
+Value Addition: Enabled continued development without production domain
+
+AI: ChatGPT 5.2 Plus
+Prompt: End-to-end appointment reminder testing
+Value Addition: Validated full automation pipeline
+
+AI: ChatGPT 5.2 Plus
+Prompt: Appointment and reminder system architecture explanation
+Value Addition: Designed a stateless, scalable, and maintainable system
+
+AI: ChatGPT 5.2 Plus
+Prompt: Step-by-step implementation plan for appointment reminders
+Value Addition: Reduced integration errors and development time

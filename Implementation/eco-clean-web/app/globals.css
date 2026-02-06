@@ -1,6 +1,11 @@
-@import url('https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,100..900;1,100..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap');
 
 html, button, p, h2{
-  
-    font-family: "Raleway", sans-serif !important;
+  font-family: "Geist", sans-serif !important;
+  font-style: normal !important;
+}
+
+.fc {
+  font-family: "Geist", sans-serif !important;
+  font-style: normal !important;
 }
