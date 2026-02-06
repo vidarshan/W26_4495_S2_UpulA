@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Weekly Scheduler</title>
+    <style>
+        /* 1. Basic Setup */
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden; /* Stop whole page scrolling */
+        }
+
+        /* 2. The Main Container */
+        .scheduler-container {
+            width: 95%;
+            height: 90vh;
+            background: white;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            margin-top: 20px;
+        }
+
+        /* 3. The Header (Days of Week) */
+        .header-row {
+            display: grid;
+            grid-template-columns: 60px repeat(7, 1fr); /* Time column + 7 days */
+            background: #fff;
+            border-bottom: 1px solid #ddd;
+            padding-right: 17px; /* Compensate for scrollbar width */
+        }
+
+        .day-header {
+            text-align: center;
+            padding: 15px 0;
+            font-weight: bold;
+            color: #555;
+            border-left: 1px solid #f0f0f0;
+        }
+
+        /* 4. The Scrollable Area */
+        .scrollable-grid {
+            overflow-y: auto; /* Adds the scrollbar */
+            flex-grow: 1;
+            display: grid;
+            grid-template-columns: 60px repeat(7, 1fr);
+        }
+
+        /* 5. The Time Column (Left Sidebar) */
+        .time-column {
+            background: #fdfdfd;
+            border-right: 1px solid #ddd;
+        }
+
+        .time-label {
+            height: 120px; /* 6 slots * 20px = 1 hour height */
+            box-sizing: border-box;
+            text-align: right;
+            padding-right: 10px;
+            color: #888;
+            font-size: 0.8rem;
+            transform: translateY(-10px); /* Nudge text up to align with line */
+        }
+
+        /* 6. The Daily Columns */
+        .day-column {
+            border-left: 1px solid #e0e0e0;
+            position: relative;
+        }
+
+        /* 7. The 10-Minute Slots */
+        .slot {
+            height: 20px; /* HEIGHT OF 10 MINS */
+            box-sizing: border-box;
+            border-bottom: 1px dotted #f0f0f0; /* Faint line for 10 mins */
+            cursor: pointer;
+            transition: background 0.1s;
+        }
+
+        /* Darker line every hour (every 6th slot) */
+        .slot.hour-marker {
+            border-bottom: 1px solid #ddd; 
+        }
+
+        .slot:hover {
+            background-color: #e8f0fe; /* Light blue on hover */
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="scheduler-container">
+    <div class="header-row">
+        <div class="day-header"></div>
+        <div class="day-header">Mon</div>
+        <div class="day-header">Tue</div>
+        <div class="day-header">Wed</div>
+        <div class="day-header">Thu</div>
+        <div class="day-header">Fri</div>
+        <div class="day-header">Sat</div>
+        <div class="day-header">Sun</div>
+    </div>
+
+    <div class="scrollable-grid" id="gridBody">
+        </div>
+</div>
+
+<script>
+    const gridBody = document.getElementById('gridBody');
+
+    // CONFIGURATION
+    const startHour = 0;
+    const endHour = 24;
+    const slotDuration = 15; // minutes
+    const slotsPerHour = 60 / slotDuration; // 6 slots
+    const totalSlots = (endHour - startHour) * slotsPerHour; // 144 slots
+
+    function initScheduler() {
+        // 1. Create the Time Label Column (Left side)
+        const timeCol = document.createElement('div');
+        timeCol.classList.add('time-column');
+        
+        for (let h = startHour; h < endHour; h++) {
+            const timeDiv = document.createElement('div');
+            timeDiv.classList.add('time-label');
+            // Format time as "9:00 AM" or "09:00"
+            timeDiv.innerText = `${h}:00`; 
+            timeCol.appendChild(timeDiv);
+        }
+        gridBody.appendChild(timeCol);
+
+        // 2. Create 7 Columns for the Days
+        const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        
+        days.forEach(dayName => {
+            const dayCol = document.createElement('div');
+            dayCol.classList.add('day-column');
+
+            // 3. Create the slots for this day
+            for (let i = 0; i < totalSlots; i++) {
+                const slot = document.createElement('div');
+                slot.classList.add('slot');
+
+                // Mark every hour (every 6th slot) for visual separation
+                if ((i + 1) % slotsPerHour === 0) {
+                    slot.classList.add('hour-marker');
+                }
+
+                // Calculate actual time for this slot
+                const hour = Math.floor(i / slotsPerHour) + startHour;
+                const minutes = (i % slotsPerHour) * slotDuration;
+                // Format minutes to always be two digits (e.g., "00", "10")
+                const timeString = `${hour}:${minutes.toString().padStart(2, '0')}`;
+
+                // 4. Add Click Event
+                slot.addEventListener('click', () => {
+                    // Logic: What happens when you click?
+                    const userConfirmed = confirm(`Book slot on ${dayName} at ${timeString}?`);
+                    if (userConfirmed) {
+                        slot.style.backgroundColor = '#1a73e8'; // Mark as booked (Blue)
+                        slot.title = "Booked"; // Tooltip
+                    }
+                });
+
+                dayCol.appendChild(slot);
+            }
+            gridBody.appendChild(dayCol);
+        });
+    }
+
+    initScheduler();
+</script>
+
+</body>
+</html>
