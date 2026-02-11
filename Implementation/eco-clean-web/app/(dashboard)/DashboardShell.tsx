@@ -117,7 +117,7 @@ export default function DashboardShell({
               bdrs="md"
               label={opened ? "Clients" : undefined}
               leftSection={<IoPeopleOutline />}
-              active={pathname.startsWith("/users")}
+              active={pathname.startsWith("/clients")}
             />
             <NavLink
               component={Link}
