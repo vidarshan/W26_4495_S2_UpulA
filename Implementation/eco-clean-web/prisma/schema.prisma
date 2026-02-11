@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,46 +7,82 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  name      String
-  email     String   @unique
-  role      Role
-  createdAt DateTime @default(now())
-  password  String
+  id                  String        @id @default(uuid())
+  name                String
+  email               String        @unique
+  role                Role
+  createdAt           DateTime      @default(now())
+  password            String
+  appointmentsAsStaff Appointment[] @relation("StaffAppointments")
+}
 
-  appointmentsAsClient Appointment[] @relation("ClientAppointments")
-  appointmentsAsStaff  Appointment[] @relation("StaffAppointments")
+model Client {
+  id               String        @id @default(uuid())
+  title            String?
+  firstName        String
+  lastName         String
+  companyName      String?
+  email            String
+  phone            String
+  preferredContact String
+  leadSource       String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  addresses        Address[]
+  appointments     Appointment[]
+  notes            ClientNote[]
+}
+
+model ClientNote {
+  id        String   @id @default(uuid())
+  clientId  String
+  content   String
+  createdAt DateTime @default(now())
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+model Address {
+  id           String        @id @default(uuid())
+  clientId     String
+  street1      String
+  street2      String?
+  city         String
+  province     String
+  postalCode   String
+  country      String
+  isPrimary    Boolean       @default(false)
+  isBilling    Boolean       @default(false)
+  createdAt    DateTime      @default(now())
+  client       Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  appointments Appointment[]
 }
 
 model Appointment {
-  id        String   @id @default(uuid())
-  startTime DateTime @db.Timestamptz
-  endTime   DateTime @db.Timestamptz
-  status    AppointmentStatus
-  address   String
-
-  clientId  String
-  staffId   String
-
-  client    User @relation("ClientAppointments", fields: [clientId], references: [id])
-  staff     User @relation("StaffAppointments", fields: [staffId], references: [id])
-
-  reminder5dSent  Boolean  @default(false)
-  reminder1dSent  Boolean  @default(false)
-  completionSent  Boolean  @default(false)
-  price           Float?
-
-  notes     VisitNote[]
-  createdAt DateTime @default(now()) @db.Timestamptz
+  id             String            @id @default(uuid())
+  startTime      DateTime          @db.Timestamptz(6)
+  endTime        DateTime          @db.Timestamptz(6)
+  status         AppointmentStatus
+  clientId       String
+  staffId        String
+  createdAt      DateTime          @default(now()) @db.Timestamptz(6)
+  completionSent Boolean           @default(false)
+  price          Float?
+  reminder1dSent Boolean           @default(false)
+  reminder5dSent Boolean           @default(false)
+  addressId      String
+  address        Address           @relation(fields: [addressId], references: [id])
+  client         Client            @relation(fields: [clientId], references: [id])
+  staff          User              @relation("StaffAppointments", fields: [staffId], references: [id])
+  notes          VisitNote[]
 }
 
 model VisitNote {
-  id               String   @id @default(uuid())
-  content          String
-  isClientVisible  Boolean  @default(false)
-  appointmentId    String
-  appointment      Appointment @relation(fields: [appointmentId], references: [id])
-  createdAt        DateTime @default(now())
+  id              String      @id @default(uuid())
+  content         String
+  isClientVisible Boolean     @default(false)
+  appointmentId   String
+  createdAt       DateTime    @default(now())
+  appointment     Appointment @relation(fields: [appointmentId], references: [id])
 }
 
 enum Role {
@@ -67,4 +97,3 @@ enum AppointmentStatus {
   CANCELLED
   LATE
 }
-
