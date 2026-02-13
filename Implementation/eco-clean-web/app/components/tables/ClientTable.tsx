@@ -32,6 +32,28 @@ export type Client = {
   createdAt: string;
 };
 
+export type Address = {
+  id: string;
+  clientId: string;
+  street1: string;
+  street2: string;
+  city: string;
+  province: string;
+  postalCode: string;
+  country: string;
+  isPrimary: boolean;
+  isBilling: boolean;
+  createdAt: string;
+};
+
+export type Staff = {
+  id: string;
+  name: string;
+  role: string;
+  email: string;
+  createdAt: string;
+};
+
 export type MetaData = {
   limit: number;
   page: number;

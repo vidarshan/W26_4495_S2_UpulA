@@ -2,21 +2,83 @@ import { prisma } from "@/lib/prisma";
 import { getAuthSession } from "@/lib/session";
 import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
+import { Prisma } from "@prisma/client";
 
-export async function GET() {
+export async function GET(req: Request) {
   const session = await getAuthSession();
 
   if (!session || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const clients = await prisma.client.findMany({
-    select: {
-      id: true,
-    },
-  });
+  try {
+    const { searchParams } = new URL(req.url);
 
-  return NextResponse.json(clients);
+    const q = searchParams.get("q")?.trim() || "";
+    const page = Number(searchParams.get("page") || 1);
+    const limit = Number(searchParams.get("limit") || 20);
+    const sort = searchParams.get("sort") || "newest";
+
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.UserWhereInput = {
+      role: "STAFF",
+      ...(q && {
+        OR: [
+          {
+            name: {
+              contains: q,
+              mode: Prisma.QueryMode.insensitive,
+            },
+          },
+          {
+            email: {
+              contains: q,
+              mode: Prisma.QueryMode.insensitive,
+            },
+          },
+        ],
+      }),
+    };
+
+    const orderBy: Prisma.UserOrderByWithRelationInput =
+      sort === "oldest"
+        ? { createdAt: Prisma.SortOrder.asc }
+        : { createdAt: Prisma.SortOrder.desc };
+
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        orderBy,
+        skip,
+        take: limit,
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          createdAt: true,
+        },
+      }),
+      prisma.user.count({ where }),
+    ]);
+
+    return NextResponse.json({
+      data: users,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
+  } catch (error) {
+    console.error("GET /staff failed:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
+  }
 }
 
 export async function POST(req: Request) {

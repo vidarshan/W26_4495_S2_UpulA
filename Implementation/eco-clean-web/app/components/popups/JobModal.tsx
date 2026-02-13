@@ -5,8 +5,6 @@ import {
   Stack,
   Grid,
   TextInput,
-  Title,
-  Text,
   Button,
   Group,
   Divider,
@@ -18,25 +16,25 @@ import {
   Radio,
   Checkbox,
   Center,
-  Box,
 } from "@mantine/core";
 import useSWR from "swr";
 import { useState } from "react";
-import { Client } from "../tables/ClientTable";
+import { Address, Client, Staff } from "../tables/ClientTable";
 import { DateInput, TimeInput } from "@mantine/dates";
 import { useDebouncedValue } from "@mantine/hooks";
 import {
-  IoCalendarNumberOutline,
   IoCalendarOutline,
-  IoHammerOutline,
   IoPersonOutline,
   IoRadioButtonOffOutline,
   IoReloadOutline,
   IoTextOutline,
   IoTimeOutline,
 } from "react-icons/io5";
-import { Dropzone } from "@mantine/dropzone";
 import { useForm } from "@mantine/form";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { createJob, CreateJobPayload, JobFormValues } from "@/lib/api/jobs";
+import { getClientAddresses, getClients } from "@/lib/api/client";
+import { getStaff } from "@/lib/api/users";
 
 interface Props {
   opened: boolean;
@@ -45,7 +43,8 @@ interface Props {
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export default function NewJobModal({ opened, onClose }: Props) {
-  const form = useForm({
+  const queryClient = useQueryClient();
+  const form = useForm<JobFormValues>({
     initialValues: {
       title: "",
       clientId: "",
@@ -112,31 +111,72 @@ export default function NewJobModal({ opened, onClose }: Props) {
       },
     },
   });
+  const [searchClients, setSearchClients] = useState("");
+  const [debouncedSearchClients] = useDebouncedValue(searchClients, 300);
+  const [searchAssignees, setSearchAssignees] = useState("");
+  const [debouncedSearchAssignees] = useDebouncedValue(searchAssignees, 300);
 
-  const [search, setSearch] = useState("");
-  const [debouncedSearch] = useDebouncedValue(search, 300);
+  const { data: clientsData } = useQuery({
+    queryKey: ["clients", debouncedSearchClients],
+    queryFn: () => getClients(debouncedSearchClients),
+  });
 
-  const { data, isLoading } = useSWR(
-    `/api/clients?q=${debouncedSearch}`,
-    fetcher,
-  );
-  console.log("data", data);
+  const { data: staffData } = useQuery({
+    queryKey: ["staff", debouncedSearchAssignees],
+    queryFn: () => getStaff(),
+  });
+
+  const { data: addressesData } = useQuery({
+    queryKey: ["client-addresses", form.values.clientId],
+    queryFn: () => getClientAddresses(form.values.clientId),
+    enabled: !!form.values.clientId,
+  });
+
+  const mutation = useMutation({
+    mutationFn: createJob,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["jobs"] });
+      onClose();
+      form.reset();
+    },
+    onError: (error) => {
+      console.log(error);
+      alert(error);
+    },
+  });
   return (
     <Modal
       opened={opened}
-      //opened={true}
       onClose={onClose}
       size="90%"
       radius="lg"
       title="New Job"
     >
-      <form onSubmit={form.onSubmit((values) => console.log(values))}>
+      <form
+        onSubmit={form.onSubmit((values) => {
+          console.log("Form values:", values);
+          if (!values.startDate) {
+            form.setFieldError("startDate", "Start date required");
+            return;
+          }
+          const payload: CreateJobPayload = {
+            ...values,
+            startDate: values.startDate,
+          };
+          mutation.mutate(payload);
+        })}
+      >
         <Paper p="sm">
           <Group justify="flex-end">
             <SegmentedControl
               color="green"
               value={form.values.jobType}
-              onChange={(value) => form.setFieldValue("jobType", value)}
+              onChange={(value) =>
+                form.setFieldValue(
+                  "jobType",
+                  value as CreateJobPayload["jobType"],
+                )
+              }
               data={[
                 {
                   label: (
@@ -170,44 +210,54 @@ export default function NewJobModal({ opened, onClose }: Props) {
             <Grid.Col span={6}>
               <Select
                 leftSection={<IoPersonOutline />}
-                searchValue={search}
+                searchValue={searchClients}
                 {...form.getInputProps("clientId")}
                 label="Select a client"
                 placeholder="Choose client"
                 nothingFoundMessage="No clients found"
                 data={
-                  data?.data.map((client: Client) => ({
+                  clientsData?.data.map((client: Client) => ({
                     value: client.id,
                     label:
                       client.companyName ||
                       `${client.firstName} ${client.lastName}`,
                   })) || []
                 }
-                onSearchChange={setSearch}
+                onSearchChange={setSearchClients}
                 searchable
               />
             </Grid.Col>
             <Grid.Col span={6}>
               <Select
                 leftSection={<IoPersonOutline />}
-                searchValue={search}
+                searchValue={searchAssignees}
                 {...form.getInputProps("staffId")}
                 label="Select a assignee"
                 placeholder="Choose staff member"
                 nothingFoundMessage="No staff members found"
                 data={
-                  data?.data.map((client: Client) => ({
-                    value: client.id,
-                    label:
-                      client.companyName ||
-                      `${client.firstName} ${client.lastName}`,
+                  staffData?.data.map((staff: Staff) => ({
+                    value: staff.id,
+                    label: staff.name,
                   })) || []
                 }
-                onSearchChange={setSearch}
+                onSearchChange={setSearchAssignees}
                 searchable
               />
             </Grid.Col>
           </Grid>
+          <Select
+            mt="sm"
+            data={
+              addressesData?.data.map((address: Address) => ({
+                value: address.id,
+                label: `${address.street1}, ${address.city}, ${address.province}`,
+              })) || []
+            }
+            label="Client Address"
+            {...form.getInputProps("addressId")}
+            placeholder="Select Address"
+          />
           <Divider my="md" />
           {form.values.jobType === "ONE_OFF" ? (
             <>
@@ -216,6 +266,7 @@ export default function NewJobModal({ opened, onClose }: Props) {
                 <Grid.Col span={4}>
                   <DateInput
                     label="Start date"
+                    placeholder="Select date"
                     leftSection={<IoCalendarOutline />}
                     {...form.getInputProps("startDate")}
                   />
