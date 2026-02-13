@@ -18,6 +18,14 @@ import {
   Radio,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
+import {
+  IoAttachOutline,
+  IoGlobeOutline,
+  IoMailOpenOutline,
+  IoMegaphoneOutline,
+  IoPhoneLandscapeOutline,
+  IoTextOutline,
+} from "react-icons/io5";
 
 type Props = {
   opened: boolean;
@@ -134,16 +142,17 @@ export default function ClientPropertyModal({ opened, onClose }: Props) {
 
   return (
     <Modal
+      size="xl"
+      centered
       opened={opened}
       onClose={onClose}
       title="Add client"
-      size="xl"
       radius="lg"
     >
       <form onSubmit={form.onSubmit((values) => handleSubmit(values))}>
         <Stack gap="xl">
           <Grid>
-            <Grid.Col span={4}>
+            <Grid.Col span={12}>
               <Title order={5}>Primary contact details</Title>
               <Text size="sm" c="dimmed">
                 Provide the main point of contact to ensure smooth communication
@@ -151,12 +160,12 @@ export default function ClientPropertyModal({ opened, onClose }: Props) {
               </Text>
             </Grid.Col>
 
-            <Grid.Col span={8}>
+            <Grid.Col span={12}>
               <Stack gap="md">
-                {/* Name row */}
                 <Grid>
                   <Grid.Col span={3}>
                     <Select
+                      leftSection={<IoTextOutline />}
                       label="Title"
                       data={["No title", "Mr.", "Mrs.", "Ms.", "Dr."]}
                       {...form.getInputProps("title")}
@@ -165,7 +174,9 @@ export default function ClientPropertyModal({ opened, onClose }: Props) {
 
                   <Grid.Col span={4.5}>
                     <TextInput
+                      leftSection={<IoTextOutline />}
                       label="First name"
+                      placeholder="Enter first name"
                       withAsterisk
                       {...form.getInputProps("firstName")}
                     />
@@ -173,7 +184,9 @@ export default function ClientPropertyModal({ opened, onClose }: Props) {
 
                   <Grid.Col span={4.5}>
                     <TextInput
+                      leftSection={<IoTextOutline />}
                       label="Last name"
+                      placeholder="Enter last name"
                       withAsterisk
                       {...form.getInputProps("lastName")}
                     />
@@ -181,32 +194,43 @@ export default function ClientPropertyModal({ opened, onClose }: Props) {
                 </Grid>
                 <TextInput
                   label="Company name"
+                  leftSection={<IoTextOutline />}
+                  placeholder="Enter company name"
                   {...form.getInputProps("company")}
                 />
+                <Divider />
                 <Title order={6}>Communication</Title>
                 <TextInput
+                  leftSection={<IoMegaphoneOutline />}
                   label="Phone number"
+                  type="tel"
+                  placeholder="Enter phone number"
                   {...form.getInputProps("phone")}
                 />
                 <TextInput
                   label="Email"
+                  leftSection={<IoMailOpenOutline />}
+                  placeholder="Enter email address"
                   withAsterisk
+                  type="email"
                   {...form.getInputProps("email")}
                 />
                 <Radio.Group
                   label="Preferred communication method"
                   {...form.getInputProps("preferredContact")}
                 >
-                  <Group>
+                  <Group mt="xs">
                     <Radio value="call" label="Call" />
                     <Radio value="sms" label="SMS" />
                     <Radio value="email" label="Email" />
                   </Group>
                 </Radio.Group>
-
+                <Divider />
                 <Title order={6}>Lead information</Title>
                 <TextInput
                   label="Lead source"
+                  leftSection={<IoTextOutline />}
+                  placeholder="How did this client hear about us?"
                   {...form.getInputProps("leadSource")}
                 />
               </Stack>
@@ -214,18 +238,14 @@ export default function ClientPropertyModal({ opened, onClose }: Props) {
           </Grid>
           <Divider />
           <Grid>
-            <Grid.Col span={4}>
+            <Grid.Col span={12}>
               <Title order={5}>Property address</Title>
               <Text size="sm" c="dimmed">
                 Enter the primary service address, billing address, or any
                 additional locations where services may take place.
               </Text>
-
-              <Button mt="sm" variant="light">
-                Add another address
-              </Button>
             </Grid.Col>
-            <Grid.Col span={8}>
+            <Grid.Col span={12}>
               <Stack gap="md">
                 {form.values.addresses.map((_, index) => (
                   <Paper key={index} withBorder p="md" radius="md">
@@ -249,11 +269,15 @@ export default function ClientPropertyModal({ opened, onClose }: Props) {
 
                       <TextInput
                         label="Street 1"
+                        leftSection={<IoTextOutline />}
+                        placeholder="Enter address"
                         {...form.getInputProps(`addresses.${index}.street1`)}
                       />
 
                       <TextInput
                         label="Street 2"
+                        leftSection={<IoTextOutline />}
+                        placeholder="Enter address"
                         {...form.getInputProps(`addresses.${index}.street2`)}
                       />
 
@@ -261,6 +285,8 @@ export default function ClientPropertyModal({ opened, onClose }: Props) {
                         <Grid.Col span={6}>
                           <TextInput
                             label="City"
+                            placeholder="Enter city"
+                            leftSection={<IoTextOutline />}
                             {...form.getInputProps(`addresses.${index}.city`)}
                           />
                         </Grid.Col>
@@ -268,6 +294,8 @@ export default function ClientPropertyModal({ opened, onClose }: Props) {
                         <Grid.Col span={6}>
                           <TextInput
                             label="Province"
+                            placeholder="Enter province"
+                            leftSection={<IoTextOutline />}
                             {...form.getInputProps(
                               `addresses.${index}.province`,
                             )}
@@ -279,6 +307,8 @@ export default function ClientPropertyModal({ opened, onClose }: Props) {
                         <Grid.Col span={6}>
                           <TextInput
                             label="Postal code"
+                            leftSection={<IoTextOutline />}
+                            placeholder="Enter postal code"
                             {...form.getInputProps(
                               `addresses.${index}.postalCode`,
                             )}
@@ -288,6 +318,7 @@ export default function ClientPropertyModal({ opened, onClose }: Props) {
                         <Grid.Col span={6}>
                           <Select
                             label="Country"
+                            leftSection={<IoGlobeOutline />}
                             data={["Canada", "United States"]}
                             {...form.getInputProps(
                               `addresses.${index}.country`,
@@ -326,35 +357,27 @@ export default function ClientPropertyModal({ opened, onClose }: Props) {
               </Stack>
             </Grid.Col>
           </Grid>
+          <Grid>
+            <Grid.Col span={12}>
+              <Title order={5}>Add notes</Title>
+              <Text size="sm" c="dimmed">
+                Add any relevant information about the client, such as
+                preferences, special instructions, or important details that can
+                help provide better service and maintain a comprehensive client
+                profile.
+              </Text>
+            </Grid.Col>
+            <Grid.Col span={12}>
+              <Textarea
+                leftSection={<IoAttachOutline />}
+                placeholder="Type your note here..."
+                minRows={4}
+                autosize
+                {...form.getInputProps("note")}
+              />
+            </Grid.Col>
+          </Grid>
 
-          <Accordion variant="contained">
-            <Accordion.Item value="note">
-              <Accordion.Control>Add note</Accordion.Control>
-
-              <Accordion.Panel>
-                <Stack>
-                  <Text size="sm" c="dimmed">
-                    Add internal notes about this property or client. Notes are
-                    visible to your team only.
-                  </Text>
-
-                  <Textarea
-                    placeholder="Type your note here..."
-                    minRows={4}
-                    autosize
-                    {...form.getInputProps("note")}
-                  />
-
-                  <Group justify="flex-end">
-                    <Button variant="default" size="sm">
-                      Cancel
-                    </Button>
-                    <Button size="sm">Save note</Button>
-                  </Group>
-                </Stack>
-              </Accordion.Panel>
-            </Accordion.Item>
-          </Accordion>
           <Group justify="flex-end">
             <Button variant="default" onClick={onClose}>
               Cancel

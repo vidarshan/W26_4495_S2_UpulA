@@ -3,33 +3,26 @@ import {
   ActionIcon,
   AppShell,
   Box,
-  Button,
   Container,
   Divider,
   Flex,
   NavLink,
-  Paper,
   Popover,
   Stack,
   Text,
   Tooltip,
 } from "@mantine/core";
-import { useDisclosure } from "@mantine/hooks";
 import { signOut } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import React, { useState } from "react";
 import { FaPlus } from "react-icons/fa";
 import {
-  IoAddCircleOutline,
-  IoAddOutline,
   IoBriefcaseOutline,
   IoCogOutline,
   IoHammerOutline,
-  IoHandLeftOutline,
   IoHomeOutline,
   IoLogOutOutline,
-  IoMenu,
   IoPeopleOutline,
   IoPersonOutline,
 } from "react-icons/io5";
@@ -51,6 +44,7 @@ export default function DashboardShell({
       padding="md"
       navbar={{
         width: 72,
+        breakpoint: 0,
       }}
     >
       <AppShell.Navbar p="md">
