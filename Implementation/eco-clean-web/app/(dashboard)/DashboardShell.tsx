@@ -19,8 +19,10 @@ import { signOut } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import React, { useState } from "react";
+import { FaPlus } from "react-icons/fa";
 import {
   IoAddCircleOutline,
+  IoAddOutline,
   IoBriefcaseOutline,
   IoCogOutline,
   IoHammerOutline,
@@ -39,7 +41,7 @@ export default function DashboardShell({
 }: {
   children: React.ReactNode;
 }) {
-  // const [opened, { toggle }] = useDisclosure(true);
+  const [opened, setOpened] = useState(true);
   const [clientPopoverOpened, setClientPopoverOpened] = useState(false);
   const [jobPopoverOpened, setJobPopoverOpened] = useState(false);
   const pathname = usePathname();
@@ -49,50 +51,66 @@ export default function DashboardShell({
       padding="md"
       navbar={{
         width: 72,
-        breakpoint: "sm",
       }}
     >
       <AppShell.Navbar p="md">
         <Stack h="100%" justify="space-between">
           <Stack gap="xs">
-            <Flex justify="center">
-              {/* <ActionIcon
-                variant="subtle"
-                onClick={toggle}
-                mb="sm"
-                aria-label="Toggle sidebar"
-              >
-                <IoMenu size={20} />
-              </ActionIcon> */}
-            </Flex>
+            <Flex justify="center"></Flex>
             <Flex align="center" justify="center">
-              <Popover position="right" withArrow shadow="md">
+              <Popover opened={opened} position="right" withArrow shadow="md">
                 <Popover.Target>
                   <ActionIcon
                     variant="filled"
                     mb="sm"
+                    size="xl"
+                    onClick={() => setOpened((o) => !o)}
                     aria-label="Toggle sidebar"
                   >
-                    <IoAddCircleOutline size={20} />
+                    <FaPlus
+                      size={20}
+                      style={{
+                        transform: opened ? "rotate(405deg)" : "rotate(0deg)",
+
+                        transition: "transform 0.5s",
+                      }}
+                    />
                   </ActionIcon>
                 </Popover.Target>
                 <Popover.Dropdown p="xs">
-                  <Flex gap="md">
-                    <ActionIcon
-                      variant="light"
-                      size="xl"
-                      onClick={() => setJobPopoverOpened(true)}
-                    >
-                      <IoHammerOutline />
-                    </ActionIcon>
-                    <ActionIcon
-                      variant="light"
-                      color="orange"
-                      size="xl"
-                      onClick={() => setClientPopoverOpened(true)}
-                    >
-                      <IoPersonOutline />
-                    </ActionIcon>
+                  <Flex direction="column" gap="md">
+                    <Flex direction="column" align="center">
+                      <ActionIcon
+                        variant="light"
+                        size="xl"
+                        onClick={() => {
+                          setOpened(false);
+                          setJobPopoverOpened(true);
+                        }}
+                      >
+                        <IoHammerOutline />
+                      </ActionIcon>
+                      <Text mt="xs" size="xs" fw={600} c="green">
+                        Job
+                      </Text>
+                    </Flex>
+                    <Divider />
+                    <Flex direction="column" align="center">
+                      <ActionIcon
+                        variant="light"
+                        color="orange"
+                        size="xl"
+                        onClick={() => {
+                          setOpened(false);
+                          setClientPopoverOpened(true);
+                        }}
+                      >
+                        <IoPersonOutline />
+                      </ActionIcon>
+                      <Text mt="xs" size="xs" fw={600} c="orange">
+                        Client
+                      </Text>
+                    </Flex>
                   </Flex>
                 </Popover.Dropdown>
               </Popover>
