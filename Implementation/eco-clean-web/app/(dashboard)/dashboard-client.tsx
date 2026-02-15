@@ -55,16 +55,6 @@ export default function DashboardClient() {
             />
           </Group>
         </Group>
-
-        {/* Filters */}
-        <Group gap="xs">
-          <Badge radius="xl" variant="filled">
-            Type | All
-          </Badge>
-          <Badge radius="xl" variant="filled">
-            Team | All
-          </Badge>
-        </Group>
       </Stack>
       <FullCalendar
         headerToolbar={false}

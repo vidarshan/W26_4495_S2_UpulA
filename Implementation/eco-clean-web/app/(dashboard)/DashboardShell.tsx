@@ -18,6 +18,7 @@ import { usePathname } from "next/navigation";
 import React, { useState } from "react";
 import { FaPlus } from "react-icons/fa";
 import {
+  IoAccessibilityOutline,
   IoBriefcaseOutline,
   IoCogOutline,
   IoHammerOutline,
@@ -34,7 +35,7 @@ export default function DashboardShell({
 }: {
   children: React.ReactNode;
 }) {
-  const [opened, setOpened] = useState(true);
+  const [opened, setOpened] = useState(false);
   const [clientPopoverOpened, setClientPopoverOpened] = useState(false);
   const [jobPopoverOpened, setJobPopoverOpened] = useState(false);
   const pathname = usePathname();
@@ -134,6 +135,15 @@ export default function DashboardShell({
                 bdrs="md"
                 leftSection={<IoBriefcaseOutline />}
                 active={pathname.startsWith("/users")}
+              />
+            </Tooltip>
+            <Tooltip label="Employees" position="right" withArrow>
+              <NavLink
+                component={Link}
+                href="/pay"
+                bdrs="md"
+                leftSection={<IoAccessibilityOutline />}
+                active={pathname.startsWith("/pay")}
               />
             </Tooltip>
             <Tooltip label="Settings" position="right" withArrow>
