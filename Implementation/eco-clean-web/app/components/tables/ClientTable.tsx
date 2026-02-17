@@ -167,7 +167,7 @@ export default function ClientsTable() {
                   <Table.Td>{renderValue(client.leadSource)}</Table.Td>
 
                   <Table.Td>
-                    {new Date(client.createdAt).toLocaleDateString()}
+                    {/* {new Date(client.createdAt).toLocaleDateString()} */}
                   </Table.Td>
                 </Table.Tr>
               ))}

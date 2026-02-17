@@ -25,8 +25,8 @@ import { DateInput, TimePicker } from "@mantine/dates";
 import { Dropzone } from "@mantine/dropzone";
 import { useDebouncedValue } from "@mantine/hooks";
 import { useForm } from "@mantine/form";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import {
   IoCalendarOutline,
   IoImageOutline,
@@ -36,7 +36,6 @@ import {
   IoTextOutline,
   IoTimeOutline,
 } from "react-icons/io5";
-import { DateSelectArg } from "@fullcalendar/core";
 import { createJob, CreateJobPayload, JobFormValues } from "@/lib/api/jobs";
 import { getClientAddresses, getClients } from "@/lib/api/client";
 import { getStaff } from "@/lib/api/users";
@@ -48,6 +47,7 @@ interface Props {
   opened: boolean;
   onClose: () => void;
   selectedInfo: CalendarSelection;
+  onSuccess: () => void;
 }
 
 type LineItem = {
@@ -59,7 +59,12 @@ type LineItem = {
   description: string;
 };
 
-export default function NewJobModal({ opened, onClose, selectedInfo }: Props) {
+export default function NewJobModal({
+  opened,
+  onClose,
+  selectedInfo,
+  onSuccess,
+}: Props) {
   const queryClient = useQueryClient();
   console.log(selectedInfo);
   const form = useForm<JobFormValues>({
@@ -119,15 +124,6 @@ export default function NewJobModal({ opened, onClose, selectedInfo }: Props) {
     enabled: !!form.values.clientId,
   });
 
-  const mutation = useMutation({
-    mutationFn: createJob,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["jobs"] });
-      form.reset();
-      onClose();
-    },
-  });
-
   const updateItem = (id: string, field: keyof LineItem, value: any) => {
     setItems((prev) =>
       prev.map((item) => (item.id === id ? { ...item, [field]: value } : item)),
@@ -148,37 +144,7 @@ export default function NewJobModal({ opened, onClose, selectedInfo }: Props) {
     ]);
   };
 
-  useEffect(() => {
-    if (!selectedInfo?.start || !selectedInfo?.end) return;
-
-    const start = selectedInfo.start;
-    const end = selectedInfo.end;
-
-    const strippedDate = new Date(
-      start.getFullYear(),
-      start.getMonth(),
-      start.getDate(),
-    );
-
-    const startTime = start.toTimeString().slice(0, 5);
-    const endTime = end.toTimeString().slice(0, 5);
-
-    if (
-      form.values.startDate?.getTime() === strippedDate.getTime() &&
-      form.values.startTime === startTime &&
-      form.values.endTime === endTime
-    ) {
-      return;
-    }
-
-    form.setValues({
-      startDate: strippedDate,
-      startTime,
-      endTime,
-    });
-  }, [selectedInfo?.start?.getTime(), selectedInfo?.end?.getTime()]);
-
-  const handleOnSubmit = (values) => {
+  const handleOnSubmit = async (values) => {
     console.log("info", selectedInfo);
     console.log("values", values);
     const data = {
@@ -194,7 +160,9 @@ export default function NewJobModal({ opened, onClose, selectedInfo }: Props) {
       recurrence: form.values.recurrence,
       visitInstructions: form.values.visitInstructions,
     };
-    createJob(data);
+    await createJob(data);
+    onSuccess();
+    form.reset();
   };
 
   const renderLineItems = () =>
@@ -362,15 +330,8 @@ export default function NewJobModal({ opened, onClose, selectedInfo }: Props) {
         onSubmit={form.onSubmit((values) => {
           console.log(values);
           handleOnSubmit(values);
+          form.reset();
           onClose();
-          // if (!values.startDate) return;
-
-          // const payload: CreateJobPayload = {
-          //   ...values,
-          //   startDate: values.startDate,
-          // };
-
-          // mutation.mutate(payload);
         })}
       >
         <Paper>

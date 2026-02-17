@@ -8,7 +8,7 @@ export interface CreateJobPayload {
 
   jobType: JobType;
 
-  startDate: Date;
+  startDate: Date | null;
   startTime?: string;
   endTime?: string;
 
@@ -36,7 +36,7 @@ export interface JobFormValues {
   addressId: string;
   jobType: "ONE_OFF" | "RECURRING";
 
-  startDate: Date;
+  startDate: Date | null;
   startTime: string;
   endTime: string;
   isAnytime: boolean;
@@ -49,7 +49,7 @@ export interface JobFormValues {
     endType: "after" | "on";
     endsAfter: number;
     endsUnit: "weeks" | "months";
-    endsOn: Date;
+    endsOn: Date | null;
   };
 
   lineItems: LineItem[];
