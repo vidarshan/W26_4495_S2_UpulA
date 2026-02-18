@@ -5,7 +5,6 @@ import {
   Button,
   Container,
   Group,
-  Modal,
   SegmentedControl,
   Text,
 } from "@mantine/core";
@@ -14,23 +13,31 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import { IoArrowBackOutline, IoArrowForwardOutline } from "react-icons/io5";
-import { useRef, useState } from "react";
-import { DateSelectArg } from "@fullcalendar/core";
-import { useDisclosure } from "@mantine/hooks";
+import { useEffect, useRef, useState } from "react";
+import { DateSelectArg, EventClickArg, EventDropArg } from "@fullcalendar/core";
 import NewJobModal from "../components/popups/JobModal";
-import { CalendarSelection } from "@/types";
-import { useRouter } from "next/navigation";
 import AppointmentInfoModal from "../components/popups/AppointmentInfoModal";
+import ConfirmCancellationModal from "../components/popups/ConfirmCancellationModal";
+import { useCalendarStore, useDashboardUI } from "@/stores/store";
+import { CalendarSelection } from "@/types";
+import { rescheduleAppointment } from "@/lib/api/appointments";
 
 export default function DashboardClient() {
-  const [view, setView] = useState("month");
-  const router = useRouter();
-  const [opened, { open, close }] = useDisclosure(false);
-  const [selectedJob, setSelectedJob] = useState("");
-  const [selectedAppt, setSelectedAppt] = useState("");
-  const [appointmentOpened, setAppointmentOpened] = useState(false);
   const calendarRef = useRef<FullCalendar | null>(null);
+
+  const {
+    newJobOpen,
+    openNewJob,
+    closeNewJob,
+    openAppointment,
+    appointmentOpen,
+    confirmCancelOpen,
+  } = useDashboardUI();
+
+  const [view, setView] = useState("month");
   const [currentTitle, setCurrentTitle] = useState("");
+
+  const { setTriggerRefresh } = useCalendarStore();
 
   const [calendarInfo, setCalendarInfo] = useState<CalendarSelection>({
     start: null,
@@ -50,9 +57,6 @@ export default function DashboardClient() {
       start.getDate(),
     );
 
-    const startTime = start.toTimeString().slice(0, 5);
-    const endTime = end.toTimeString().slice(0, 5);
-
     setCalendarInfo({
       start: strippedDate,
       end,
@@ -61,71 +65,74 @@ export default function DashboardClient() {
       allDay: selectInfo.allDay,
     });
 
-    open();
+    openNewJob();
   };
 
-  const handleEventClick = (info) => {
-    const event = info.event;
-    setSelectedAppt(event.id);
-    setSelectedJob(event.extendedProps.jobId);
-    setAppointmentOpened(true);
-    //router.push(`/jobs/${event.extendedProps.jobId}`);
+  const handleEventClick = (info: EventClickArg) => {
+    openAppointment(info.event.extendedProps.jobId, info.event.id);
+  };
+
+  const handleEventDrop = async (info: EventDropArg) => {
+    const { id } = info.event;
+    const start = info.event.start;
+    const end = info.event.end;
+
+    try {
+      await rescheduleAppointment(id, start, end);
+      info.event.setProp("title", info.event.title); // keep title same
+      // optionally show success message
+    } catch (err) {
+      console.error(err);
+      info.revert(); // rollback if API fails
+    }
   };
 
   const refreshCalendar = () => {
-    console.log("ddd");
     calendarRef.current?.getApi().refetchEvents();
   };
 
-  const onAppointmentClose = () => {
-    setSelectedJob("");
-    setSelectedAppt("");
-    setAppointmentOpened(false);
-  };
+  useEffect(() => {
+    setTriggerRefresh(() => () => {
+      calendarRef.current?.getApi().refetchEvents();
+    });
+  }, [setTriggerRefresh]);
 
   return (
     <Container fluid>
-      {opened && (
+      {newJobOpen && (
         <NewJobModal
           opened
-          onClose={close}
+          onClose={closeNewJob}
           selectedInfo={calendarInfo}
           onSuccess={refreshCalendar}
         />
       )}
-      {appointmentOpened && (
-        <AppointmentInfoModal
-          opened={appointmentOpened}
-          apptId={selectedAppt}
-          jobId={selectedJob}
-          onClose={onAppointmentClose}
-        />
+
+      {appointmentOpen && <AppointmentInfoModal />}
+      {confirmCancelOpen && (
+        <ConfirmCancellationModal onSuccess={refreshCalendar} />
       )}
 
       <h1>Dashboard</h1>
 
-      <Box p={0}>
-        <Group justify="space-between" align="center" mb="lg">
-          <Text w={`20%`} fw={600} c="dimmed">
+      <Box>
+        <Group justify="space-between" mb="lg">
+          <Text fw={600} c="dimmed">
             {currentTitle}
           </Text>
+
           <SegmentedControl
-            color="green"
-            size="md"
             value={view}
             onChange={(value) => {
               setView(value);
-              console.log(value);
               const calendarApi = calendarRef.current?.getApi();
 
               if (value === "month") {
                 calendarApi?.changeView("dayGridMonth");
               }
-
               if (value === "week") {
                 calendarApi?.changeView("timeGridWeek");
               }
-
               if (value === "day") {
                 calendarApi?.changeView("timeGridDay");
               }
@@ -136,6 +143,7 @@ export default function DashboardClient() {
               { label: "Day", value: "day" },
             ]}
           />
+
           <Group>
             <Button.Group>
               <Button
@@ -164,33 +172,32 @@ export default function DashboardClient() {
 
         <FullCalendar
           height="75vh"
-          timeZone="local"
+          editable
+          nowIndicator
           headerToolbar={false}
           ref={calendarRef}
           plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
           initialView="dayGridMonth"
-          eventOverlap={true}
-          selectOverlap={true}
-          datesSet={(arg) => {
-            setCurrentTitle(arg.view.title);
-          }}
-          slotMinTime="00:00:00"
-          slotMaxTime="23:59:00"
-          slotDuration="00:30:00"
-          editable
-          dayMaxEventRows={3}
-          select={handleDateSelect}
-          selectable
           allDaySlot={false}
-          nowIndicator
+          selectable
+          select={handleDateSelect}
           events="/api/appointments"
+          eventDrop={async (info) => {
+            const { id } = info.event;
+            const start = info.event.start;
+            const end = info.event.end;
+
+            try {
+              await rescheduleAppointment(id, start, end); // call your API
+              info.event.setProp("title", info.event.title); // keep title same
+              // optionally show success message
+            } catch (err) {
+              console.error(err);
+              info.revert(); // rollback if API fails
+            }
+          }}
           eventClick={handleEventClick}
-          eventDrop={(info) => {
-            console.log("Moved:", info.event.id, info.event.start);
-          }}
-          eventResize={(info) => {
-            console.log("Resized:", info.event.id, info.event.end);
-          }}
+          datesSet={(arg) => setCurrentTitle(arg.view.title)}
         />
       </Box>
     </Container>

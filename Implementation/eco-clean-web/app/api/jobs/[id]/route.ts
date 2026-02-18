@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
   req: Request,
@@ -40,4 +40,28 @@ export async function GET(
       { status: 500 },
     );
   }
+}
+
+export async function PATCH(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> },
+) {
+  const { id: jobId } = await context.params;
+
+  const updated = await prisma.appointment.updateMany({
+    where: { jobId },
+    data: { status: "CANCELLED" },
+  });
+
+  if (updated.count === 0) {
+    return NextResponse.json(
+      { success: false, message: "No appointments found for this job" },
+      { status: 404 },
+    );
+  }
+
+  return NextResponse.json({
+    success: true,
+    cancelledAppointments: updated.count,
+  });
 }

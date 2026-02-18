@@ -88,3 +88,10 @@ export async function getJobDetails(id: string): Promise<Job> {
 
   return res.json() as Promise<Job>;
 }
+
+export function cancelJob(id: string) {
+  return apiClient(`/api/jobs/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify("CANCEL_JOBS"),
+  });
+}
