@@ -5,6 +5,7 @@ import {
   Button,
   Container,
   Group,
+  Modal,
   SegmentedControl,
   Text,
 } from "@mantine/core";
@@ -18,10 +19,16 @@ import { DateSelectArg } from "@fullcalendar/core";
 import { useDisclosure } from "@mantine/hooks";
 import NewJobModal from "../components/popups/JobModal";
 import { CalendarSelection } from "@/types";
+import { useRouter } from "next/navigation";
+import AppointmentInfoModal from "../components/popups/AppointmentInfoModal";
 
 export default function DashboardClient() {
   const [view, setView] = useState("month");
+  const router = useRouter();
   const [opened, { open, close }] = useDisclosure(false);
+  const [selectedJob, setSelectedJob] = useState("");
+  const [selectedAppt, setSelectedAppt] = useState("");
+  const [appointmentOpened, setAppointmentOpened] = useState(false);
   const calendarRef = useRef<FullCalendar | null>(null);
   const [currentTitle, setCurrentTitle] = useState("");
 
@@ -34,12 +41,35 @@ export default function DashboardClient() {
   });
 
   const handleDateSelect = (selectInfo: DateSelectArg) => {
-    setCalendarInfo(selectInfo);
+    const start = selectInfo.start;
+    const end = selectInfo.end;
+
+    const strippedDate = new Date(
+      start.getFullYear(),
+      start.getMonth(),
+      start.getDate(),
+    );
+
+    const startTime = start.toTimeString().slice(0, 5);
+    const endTime = end.toTimeString().slice(0, 5);
+
+    setCalendarInfo({
+      start: strippedDate,
+      end,
+      startStr: selectInfo.startStr,
+      endStr: selectInfo.endStr,
+      allDay: selectInfo.allDay,
+    });
+
     open();
   };
 
   const handleEventClick = (info) => {
-    console.log(info);
+    const event = info.event;
+    setSelectedAppt(event.id);
+    setSelectedJob(event.extendedProps.jobId);
+    setAppointmentOpened(true);
+    //router.push(`/jobs/${event.extendedProps.jobId}`);
   };
 
   const refreshCalendar = () => {
@@ -47,24 +77,41 @@ export default function DashboardClient() {
     calendarRef.current?.getApi().refetchEvents();
   };
 
+  const onAppointmentClose = () => {
+    setSelectedJob("");
+    setSelectedAppt("");
+    setAppointmentOpened(false);
+  };
+
   return (
     <Container fluid>
-      <NewJobModal
-        selectedInfo={calendarInfo}
-        opened={opened}
-        onClose={close}
-        onSuccess={refreshCalendar}
-      />
+      {opened && (
+        <NewJobModal
+          opened
+          onClose={close}
+          selectedInfo={calendarInfo}
+          onSuccess={refreshCalendar}
+        />
+      )}
+      {appointmentOpened && (
+        <AppointmentInfoModal
+          opened={appointmentOpened}
+          apptId={selectedAppt}
+          jobId={selectedJob}
+          onClose={onAppointmentClose}
+        />
+      )}
+
       <h1>Dashboard</h1>
 
       <Box p={0}>
         <Group justify="space-between" align="center" mb="lg">
-          <Text fw={600} c="dimmed">
+          <Text w={`20%`} fw={600} c="dimmed">
             {currentTitle}
           </Text>
           <SegmentedControl
             color="green"
-            size="sm"
+            size="md"
             value={view}
             onChange={(value) => {
               setView(value);
@@ -117,6 +164,7 @@ export default function DashboardClient() {
 
         <FullCalendar
           height="75vh"
+          timeZone="local"
           headerToolbar={false}
           ref={calendarRef}
           plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}

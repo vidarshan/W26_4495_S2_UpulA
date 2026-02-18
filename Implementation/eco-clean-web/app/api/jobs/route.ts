@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { AppointmentStatus } from "@prisma/client";
+import { AppointmentStatus, JobType, Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
@@ -27,7 +27,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Combine date + time
     const start = new Date(startDate);
     const end = new Date(startDate);
 
@@ -59,7 +58,7 @@ export async function POST(req: NextRequest) {
       const job = await tx.job.create({
         data: {
           title,
-          type: jobType,
+          type: jobType as JobType,
           clientId,
           addressId,
           isAnytime,
@@ -70,7 +69,8 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      if (jobType === "ONE_OFF") {
+      // ONE OFF
+      if (jobType === JobType.ONE_OFF) {
         await tx.appointment.create({
           data: {
             jobId: job.id,
@@ -81,8 +81,9 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      if (jobType === "RECURRING") {
-        const { frequency, interval, endType, endsOn } = recurrence;
+      // RECURRING
+      if (jobType === JobType.RECURRING && recurrence) {
+        const { frequency, interval, endType, endsAfter, endsOn } = recurrence;
 
         await tx.recurrence.create({
           data: {
@@ -90,24 +91,26 @@ export async function POST(req: NextRequest) {
             frequency,
             interval,
             endType,
+            endsAfter: endType === "after" ? endsAfter : null,
             endsOn: endType === "on" && endsOn ? new Date(endsOn) : null,
           },
         });
 
-        const appointments = [];
+        const appointments: Prisma.AppointmentCreateManyInput[] = [];
         const current = new Date(start);
 
-        let safetyCounter = 0;
+        let count = 0;
 
         while (true) {
+          if (endType === "after" && endsAfter && count >= endsAfter) break;
+
           if (endType === "on" && endsOn && current > new Date(endsOn)) break;
-          if (safetyCounter > 500) break; // prevent infinite loop
 
           appointments.push({
             jobId: job.id,
             startTime: new Date(current),
             endTime: new Date(current.getTime() + duration),
-            status: "SCHEDULED",
+            status: AppointmentStatus.SCHEDULED,
           });
 
           if (frequency === "weekly") {
@@ -118,10 +121,10 @@ export async function POST(req: NextRequest) {
             current.setMonth(current.getMonth() + interval);
           }
 
-          safetyCounter++;
+          count++;
         }
 
-        if (appointments.length) {
+        if (appointments.length > 0) {
           await tx.appointment.createMany({
             data: appointments,
           });
@@ -152,12 +155,20 @@ export async function GET(req: NextRequest) {
     const jobs = await prisma.job.findMany({
       where: {
         ...(clientId && { clientId }),
-        ...(type && { type: type }),
+        ...(type && { type: type as JobType }),
       },
       include: {
         client: true,
         address: true,
-        staffMembers: true,
+        staffMembers: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            createdAt: true,
+          },
+        },
         recurrence: true,
         appointments: {
           orderBy: {

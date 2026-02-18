@@ -26,8 +26,9 @@ import { Dropzone } from "@mantine/dropzone";
 import { useDebouncedValue } from "@mantine/hooks";
 import { useForm } from "@mantine/form";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
+  IoAddOutline,
   IoCalendarOutline,
   IoImageOutline,
   IoPersonOutline,
@@ -65,8 +66,8 @@ export default function NewJobModal({
   selectedInfo,
   onSuccess,
 }: Props) {
-  const queryClient = useQueryClient();
-  console.log(selectedInfo);
+  console.log("selectedInfo", selectedInfo);
+
   const form = useForm<JobFormValues>({
     initialValues: {
       title: "",
@@ -74,9 +75,19 @@ export default function NewJobModal({
       staffId: [],
       addressId: "",
       jobType: "ONE_OFF",
-      startDate: null,
-      startTime: "",
-      endTime: "",
+      startDate: selectedInfo?.start
+        ? new Date(
+            selectedInfo.start.getFullYear(),
+            selectedInfo.start.getMonth(),
+            selectedInfo.start.getDate(),
+          )
+        : null,
+      startTime: selectedInfo?.startStr
+        ? selectedInfo.startStr.substring(11, 16)
+        : "",
+      endTime: selectedInfo?.endStr
+        ? selectedInfo.endStr.substring(11, 16)
+        : "",
       isAnytime: false,
       visitInstructions: "",
       recurrence: {
@@ -87,26 +98,115 @@ export default function NewJobModal({
         endsUnit: "months",
         endsOn: null,
       },
-      lineItems: [],
+      lineItems: [
+        {
+          id: crypto.randomUUID(),
+          name: "",
+          quantity: 1,
+          unitCost: 0,
+          unitPrice: 0,
+          description: "",
+        },
+      ],
       notes: "",
     },
+    validate: {
+      title: (value) =>
+        value.trim().length < 3 ? "Title must be at least 3 characters" : null,
+
+      clientId: (value) => (!value ? "Client is required" : null),
+
+      addressId: (value) => (!value ? "Address is required" : null),
+
+      staffId: (value) =>
+        !value || value.length === 0
+          ? "At least one staff member must be assigned"
+          : null,
+
+      startDate: (value) => (!value ? "Start date is required" : null),
+
+      startTime: (value, values) => {
+        if (values.isAnytime) return null;
+        if (!value) return "Start time is required";
+        return null;
+      },
+
+      endTime: (value, values) => {
+        if (values.isAnytime) return null;
+        if (!value) return "End time is required";
+
+        if (!values.startTime) return null;
+
+        const [sh, sm] = values.startTime.split(":").map(Number);
+        const [eh, em] = value.split(":").map(Number);
+
+        const startMinutes = sh * 60 + sm;
+        const endMinutes = eh * 60 + em;
+
+        if (endMinutes <= startMinutes) {
+          return "End time must be after start time";
+        }
+
+        return null;
+      },
+
+      visitInstructions: (value) =>
+        value.length > 500
+          ? "Visit instructions cannot exceed 500 characters"
+          : null,
+
+      recurrence: {
+        interval: (value, values) => {
+          if (values.jobType !== "RECURRING") return null;
+          if (!value || value < 1) return "Repeat interval must be at least 1";
+          return null;
+        },
+
+        endsAfter: (value, values) => {
+          if (
+            values.jobType !== "RECURRING" ||
+            values.recurrence.endType !== "after"
+          )
+            return null;
+
+          if (!value || value < 1) return "Must repeat at least once";
+
+          return null;
+        },
+
+        endsOn: (value, values) => {
+          if (
+            values.jobType !== "RECURRING" ||
+            values.recurrence.endType !== "on"
+          )
+            return null;
+
+          if (!value) return "End date is required";
+
+          if (values.startDate && value <= values.startDate)
+            return "End date must be after start date";
+
+          return null;
+        },
+      },
+
+      lineItems: (value) => {
+        if (!value || value.length === 0)
+          return "At least one line item is required";
+        return null;
+      },
+    },
   });
+
+  const s = selectedInfo?.start
+    ? selectedInfo.start.toTimeString().slice(0, 5)
+    : "";
+  console.log(s);
 
   const [searchClients, setSearchClients] = useState("");
   const [searchAssignees, setSearchAssignees] = useState("");
   const [debouncedSearchClients] = useDebouncedValue(searchClients, 300);
   const [debouncedSearchAssignees] = useDebouncedValue(searchAssignees, 300);
-
-  const [items, setItems] = useState<LineItem[]>([
-    {
-      id: crypto.randomUUID(),
-      name: "",
-      quantity: 1,
-      unitCost: 0,
-      unitPrice: 0,
-      description: "",
-    },
-  ]);
 
   const { data: clientsData } = useQuery({
     queryKey: ["clients", debouncedSearchClients],
@@ -124,15 +224,17 @@ export default function NewJobModal({
     enabled: !!form.values.clientId,
   });
 
-  const updateItem = (id: string, field: keyof LineItem, value: any) => {
-    setItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, [field]: value } : item)),
-    );
+  const updateItem = (
+    index: string | number,
+    field: keyof LineItem,
+    value: string | number,
+  ) => {
+    form.setFieldValue(`lineItems.${index}.${field}`, value);
   };
 
   const addItem = () => {
-    setItems((prev) => [
-      ...prev,
+    form.setFieldValue("lineItems", [
+      ...form.values.lineItems,
       {
         id: crypto.randomUUID(),
         name: "",
@@ -144,7 +246,7 @@ export default function NewJobModal({
     ]);
   };
 
-  const handleOnSubmit = async (values) => {
+  const handleOnSubmit = async (values: CreateJobPayload) => {
     console.log("info", selectedInfo);
     console.log("values", values);
     const data = {
@@ -163,11 +265,12 @@ export default function NewJobModal({
     await createJob(data);
     onSuccess();
     form.reset();
+    onClose();
   };
 
   const renderLineItems = () =>
-    items.map((item, index) => {
-      const total = item.quantity * item.unitPrice;
+    form.values.lineItems.map((item, index) => {
+      const total = item.quantity * item.unitCost;
 
       return (
         <Card withBorder key={item.id} mt={index ? "xs" : 0}>
@@ -175,27 +278,30 @@ export default function NewJobModal({
             <Grid.Col span={12}>
               <TextInput
                 label="Name"
+                placeholder="Enter name"
                 value={item.name}
-                onChange={(e) => updateItem(item.id, "name", e.target.value)}
+                onChange={(e) => updateItem(index, "name", e.target.value)}
               />
             </Grid.Col>
 
             <Grid.Col span={3}>
               <NumberInput
                 label="Quantity"
+                placeholder="Enter quantity"
                 min={1}
                 value={item.quantity}
-                onChange={(val) => updateItem(item.id, "quantity", Number(val))}
+                onChange={(val) => updateItem(index, "quantity", val)}
               />
             </Grid.Col>
 
             <Grid.Col span={3}>
               <NumberInput
                 label="Unit cost"
+                placeholder="Enter cost"
                 prefix="$"
                 decimalScale={2}
                 value={item.unitCost}
-                onChange={(val) => updateItem(item.id, "unitCost", Number(val))}
+                onChange={(val) => updateItem(index, "unitCost", val)}
               />
             </Grid.Col>
 
@@ -203,6 +309,7 @@ export default function NewJobModal({
               <NumberInput
                 label="Unit price"
                 prefix="$"
+                placeholder="Enter price"
                 decimalScale={2}
                 value={item.unitPrice}
                 onChange={(val) =>
@@ -214,6 +321,7 @@ export default function NewJobModal({
             <Grid.Col span={3}>
               <TextInput
                 label="Total"
+                placeholder="Enter total"
                 value={`$${total.toFixed(2)}`}
                 readOnly
               />
@@ -242,6 +350,7 @@ export default function NewJobModal({
 
       <Grid.Col span={4}>
         <TimePicker
+          disabled={form.values.isAnytime}
           label="Start time"
           leftSection={<IoTimeOutline />}
           format="12h"
@@ -252,6 +361,7 @@ export default function NewJobModal({
 
       <Grid.Col span={4}>
         <TimePicker
+          disabled={form.values.isAnytime}
           label="End time"
           leftSection={<IoTimeOutline />}
           format="12h"
@@ -325,14 +435,23 @@ export default function NewJobModal({
   );
 
   return (
-    <Modal opened={opened} onClose={onClose} size="lg" title="New Job" centered>
+    <Modal
+      key={selectedInfo?.start?.toISOString() ?? "new"}
+      opened={opened}
+      onClose={onClose}
+      size="lg"
+      title="New Job"
+      centered
+    >
       <form
-        onSubmit={form.onSubmit((values) => {
-          console.log(values);
-          handleOnSubmit(values);
-          form.reset();
-          onClose();
-        })}
+        onSubmit={form.onSubmit(
+          (values) => {
+            handleOnSubmit(values);
+          },
+          (errors) => {
+            console.log("VALIDATION ERRORS:", errors);
+          },
+        )}
       >
         <Paper>
           <Group mb="sm" justify="space-between">
@@ -375,6 +494,7 @@ export default function NewJobModal({
           <TextInput
             leftSection={<IoTextOutline />}
             label="Title"
+            placeholder="Enter title"
             {...form.getInputProps("title")}
           />
 
@@ -391,6 +511,7 @@ export default function NewJobModal({
                       `${client.firstName} ${client.lastName}`,
                   })) || []
                 }
+                placeholder="Select Clients"
                 onSearchChange={setSearchClients}
                 searchable
                 label="Client"
@@ -401,6 +522,7 @@ export default function NewJobModal({
               <MultiSelect
                 leftSection={<IoPersonOutline />}
                 {...form.getInputProps("staffId")}
+                placeholder="Select Assignee"
                 data={
                   staffData?.data.map((staff: Staff) => ({
                     value: staff.id,
@@ -418,6 +540,7 @@ export default function NewJobModal({
             mt="sm"
             label="Client Address"
             {...form.getInputProps("addressId")}
+            placeholder="Select Address"
             data={
               addressesData?.data.map((address) => ({
                 value: address?.id || "",
@@ -432,7 +555,13 @@ export default function NewJobModal({
             <Text fw={500} size="sm">
               Services
             </Text>
-            <Button size="xs" variant="light" color="green" onClick={addItem}>
+            <Button
+              leftSection={<IoAddOutline />}
+              size="xs"
+              variant="light"
+              color="green"
+              onClick={addItem}
+            >
               Add Line Item
             </Button>
           </Group>
@@ -458,6 +587,7 @@ export default function NewJobModal({
           <Textarea
             mt="md"
             label="Visit instructions"
+            placeholder="Type instructions here..."
             minRows={3}
             {...form.getInputProps("visitInstructions")}
           />

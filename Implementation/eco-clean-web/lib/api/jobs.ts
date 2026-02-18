@@ -1,3 +1,4 @@
+import { Job } from "@/types";
 import { apiClient } from "./client";
 
 export interface CreateJobPayload {
@@ -57,10 +58,12 @@ export interface JobFormValues {
 }
 
 export interface LineItem {
+  id: string;
   name: string;
   quantity: number;
-  unitCost?: number;
-  unitPrice?: number;
+  unitCost: number;
+  unitPrice: number;
+  description: string;
 }
 
 type JobType = "ONE_OFF" | "RECURRING";
@@ -74,4 +77,14 @@ export function createJob(data: CreateJobPayload) {
 
 export function getJobs() {
   return apiClient("/api/jobs");
+}
+
+export async function getJobDetails(id: string): Promise<Job> {
+  const res = await fetch(`/api/jobs/${id}`);
+
+  if (!res.ok) {
+    throw new Error("Failed to fetch job");
+  }
+
+  return res.json() as Promise<Job>;
 }

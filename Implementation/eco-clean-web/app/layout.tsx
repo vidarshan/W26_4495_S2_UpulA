@@ -3,7 +3,7 @@ import Providers from "./providers/providers";
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
 import "@mantine/dropzone/styles.css";
-import { Google_Sans } from "next/font/google";
+import { Manrope } from "next/font/google";
 import "./globals.css";
 import { QueryProvider } from "@/lib/query-provider";
 import {
@@ -16,13 +16,9 @@ export const metadata: Metadata = {
   title: "Eco Clean | Admin",
 };
 
-const googleSans = Google_Sans({
-  variable: "--font-google-sans",
+const manrope = Manrope({
   subsets: ["latin"],
-});
-const googleSansMono = Google_Sans({
-  variable: "--font-google-sans-mono",
-  subsets: ["latin"],
+  variable: "--font-manrope",
 });
 
 export default function RootLayout({
@@ -35,10 +31,8 @@ export default function RootLayout({
       <head>
         <ColorSchemeScript />
       </head>
-      <body
-        className={`${googleSans.variable} ${googleSansMono.variable} antialiased`}
-      >
-        <MantineProvider theme={{ defaultRadius: "md", primaryColor: "green" }}>
+      <body className={`${manrope.variable} antialiased`}>
+        <MantineProvider theme={{ defaultRadius: "lg", primaryColor: "green" }}>
           <QueryProvider>
             <Providers>{children}</Providers>
           </QueryProvider>
