@@ -26,6 +26,7 @@ export async function PATCH(
     });
     return NextResponse.json(updated);
   } catch (err: any) {
+    console.log(err);
     if (err.code === "P2025") {
       // Record not found
       return NextResponse.json(

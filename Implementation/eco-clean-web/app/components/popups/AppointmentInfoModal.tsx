@@ -29,8 +29,11 @@ import {
 import Loader from "../UI/Loader";
 import { Appointment } from "@/types";
 import { useDashboardUI } from "@/stores/store";
+import { useRouter } from "next/navigation";
 
 const AppointmentInfoModal = () => {
+  const router = useRouter();
+
   const {
     appointmentOpen,
     closeAppointment,
@@ -189,7 +192,7 @@ const AppointmentInfoModal = () => {
             <Divider label="Assigned Staff" my="sm" labelPosition="left" />
 
             <Stack gap={6}>
-              {job?.staffMembers.map((staff) => (
+              {/* {job?.staffMembers.map((staff) => (
                 <Group key={staff.id} justify="space-between" align="center">
                   <Group gap={6}>
                     <IoPersonOutline size={14} />
@@ -207,7 +210,7 @@ const AppointmentInfoModal = () => {
                     {staff.role}
                   </Badge>
                 </Group>
-              ))}
+              ))} */}
             </Stack>
 
             <Divider label="Job Details" my="sm" labelPosition="left" />
@@ -263,7 +266,13 @@ const AppointmentInfoModal = () => {
       <Divider my="sm" />
 
       <Flex direction="column">
-        <Button mb="xs" size="xs" leftSection={<IoPencilOutline />} fullWidth>
+        <Button
+          mb="xs"
+          size="xs"
+          leftSection={<IoPencilOutline />}
+          onClick={() => router.push(`/jobs/${selectedJobId}`)}
+          fullWidth
+        >
           Edit Details
         </Button>
 

@@ -1,6 +1,10 @@
 "use client";
-import { ReactNode } from "react";
+import { useJob } from "@/hooks/useJob";
+import { useParams } from "next/navigation";
+import React, { ReactNode } from "react";
 
-export default function Layout({ children }: { children: ReactNode }) {
-  return <div>{children}</div>;
-}
+const JobLayout = ({ children }: { children: ReactNode }) => {
+  return <>{children}</>;
+};
+
+export default JobLayout;

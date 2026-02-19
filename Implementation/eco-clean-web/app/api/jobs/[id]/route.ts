@@ -13,18 +13,14 @@ export async function GET(
       include: {
         client: true,
         address: true,
-        staffMembers: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
-            createdAt: true,
+        appointments: {
+          include: {
+            staff: true,
+            notes: true,
+            images: true,
           },
         },
         lineItems: true,
-        recurrence: true,
-        appointments: true,
         notes: true,
       },
     });
@@ -35,6 +31,7 @@ export async function GET(
 
     return NextResponse.json(job);
   } catch (err) {
+    console.log(err);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },
