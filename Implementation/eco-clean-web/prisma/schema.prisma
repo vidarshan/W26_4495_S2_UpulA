@@ -148,6 +148,7 @@ model AppointmentImage {
   id            String      @id @default(uuid())
   appointmentId String
   url           String
+  fileKey       String?
   appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
 }
 

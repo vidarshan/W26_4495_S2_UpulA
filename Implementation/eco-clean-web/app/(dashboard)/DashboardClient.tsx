@@ -20,11 +20,17 @@ import AppointmentInfoModal from "../components/popups/AppointmentInfoModal";
 import ConfirmCancellationModal from "../components/popups/ConfirmCancellationModal";
 import { useCalendarStore, useDashboardUI } from "@/stores/store";
 import { CalendarSelection } from "@/types";
-import { updateAppointment } from "@/lib/api/appointments";
+import {
+  rescheduleAppointment,
+  updateAppointment,
+} from "@/lib/api/appointments";
 import { APP_TZ } from "@/lib/dateTime";
 import luxonPlugin from "@fullcalendar/luxon3";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function DashboardClient() {
+  const qc = useQueryClient();
+
   const calendarRef = useRef<FullCalendar | null>(null);
 
   const {
@@ -177,15 +183,56 @@ export default function DashboardClient() {
           eventDrop={async (info) => {
             const { id } = info.event;
             const start = info.event.start;
-            const end = info.event.end;
+
+            if (!start) {
+              info.revert();
+              return;
+            }
+
+            // FullCalendar sometimes gives null end (especially for zero-duration events)
+            const prevStart = info.oldEvent.start;
+            const prevEnd = info.oldEvent.end;
+
+            // compute duration from old event (fallback 30 mins)
+            const durationMs =
+              prevStart && prevEnd
+                ? prevEnd.getTime() - prevStart.getTime()
+                : 30 * 60 * 1000;
+
+            const end =
+              info.event.end ?? new Date(start.getTime() + durationMs);
 
             try {
-              await rescheduleAppointment(id, start, end); // call your API
-              info.event.setProp("title", info.event.title); // keep title same
-              // optionally show success message
+              const updated = await rescheduleAppointment(id, start, end);
+
+              info.view.calendar.refetchEvents();
+              qc.setQueryData(["appointment", id], updated);
             } catch (err) {
               console.error(err);
-              info.revert(); // rollback if API fails
+              info.revert();
+            }
+          }}
+          eventResize={async (info) => {
+            const { id } = info.event;
+            const start = info.event.start;
+            const end = info.event.end;
+
+            if (!start || !end) {
+              info.revert();
+              return;
+            }
+
+            try {
+              const updated = await rescheduleAppointment(
+                info.event.id,
+                start,
+                end,
+              );
+              info.view.calendar.refetchEvents();
+              qc.setQueryData(["appointment", id], updated);
+            } catch (err) {
+              console.error(err);
+              info.revert();
             }
           }}
           eventClick={handleEventClick}

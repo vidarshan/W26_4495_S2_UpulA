@@ -21,3 +21,25 @@ export function updateAppointment(
 export function cancelAppointment(id: string) {
   return updateAppointment(id, { status: "CANCELLED" });
 }
+
+export async function rescheduleAppointment(
+  id: string,
+  start: Date,
+  end: Date,
+) {
+  const res = await fetch(`/api/appointments/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      startTime: start.toISOString(),
+      endTime: end.toISOString(),
+    }),
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data?.error || "Failed to reschedule appointment");
+  }
+
+  return res.json();
+}

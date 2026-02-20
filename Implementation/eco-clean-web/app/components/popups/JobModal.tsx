@@ -17,8 +17,8 @@ import {
   Flex,
   Card,
   Radio,
-  Switch,
   Text,
+  Image,
 } from "@mantine/core";
 import { DateInput, TimeInput } from "@mantine/dates";
 import { Dropzone } from "@mantine/dropzone";
@@ -35,6 +35,7 @@ import { Client } from "../tables/ClientTable";
 import { CalendarSelection } from "@/types";
 import { DateTime } from "luxon";
 import { APP_TZ } from "@/lib/dateTime";
+import { useUploadThing } from "@/lib/uploadthing";
 
 interface Props {
   opened: boolean;
@@ -52,6 +53,8 @@ type LineItem = {
   description: string;
 };
 
+type UploadedImage = { url: string; fileKey: string };
+
 type AppointmentForm = {
   id: string;
   startDate: Date | null;
@@ -59,7 +62,22 @@ type AppointmentForm = {
   endTime: string; // "HH:mm"
   staffId: string[];
   notes: string;
-  images: File[];
+  images: File[]; // local picked files (optional)
+  uploadedImages: UploadedImage[]; // ✅ persisted (url + fileKey)
+};
+
+type RecurrenceForm = {
+  frequency: "weekly" | "monthly";
+  interval: number;
+  endType: "after" | "on";
+  endsAfter: number;
+  endsOn: Date | null;
+};
+
+type JobFormValuesWithRecurrence = JobFormValues & {
+  recurrence: RecurrenceForm;
+  appointments: AppointmentForm[];
+  lineItems: LineItem[];
 };
 
 function jsDateToHHmm(d: Date) {
@@ -68,19 +86,18 @@ function jsDateToHHmm(d: Date) {
   return dt.isValid ? dt.toFormat("HH:mm") : "";
 }
 
-type RecurrenceEndType = "after" | "on";
-
-type RecurrenceForm = {
-  frequency: "weekly" | "monthly";
-  interval: number; // every N
-  endType: "after" | "on"; // (optional: add "never")
-  endsAfter: number; // count
-  endsOn: Date | null; // date
-};
-
-type JobFormValuesWithRecurrence = JobFormValues & {
-  recurrence: RecurrenceForm;
-};
+function blankAppointment(): AppointmentForm {
+  return {
+    id: crypto.randomUUID(),
+    startDate: null,
+    startTime: "",
+    endTime: "",
+    staffId: [],
+    notes: "",
+    images: [],
+    uploadedImages: [],
+  };
+}
 
 export default function NewJobModal({
   opened,
@@ -88,7 +105,8 @@ export default function NewJobModal({
   selectedInfo,
   onSuccess,
 }: Props) {
-  console.log(selectedInfo);
+  const { startUpload, isUploading } = useUploadThing("appointmentImages");
+
   const form = useForm<JobFormValuesWithRecurrence>({
     mode: "controlled",
     initialValues: {
@@ -110,7 +128,7 @@ export default function NewJobModal({
       ],
       appointments: [
         {
-          id: crypto.randomUUID(),
+          ...blankAppointment(),
           startDate: selectedInfo?.start
             ? new Date(
                 selectedInfo.start.getFullYear(),
@@ -122,10 +140,7 @@ export default function NewJobModal({
             ? jsDateToHHmm(selectedInfo.start)
             : "",
           endTime: selectedInfo?.end ? jsDateToHHmm(selectedInfo.end) : "",
-          staffId: [],
-          notes: "",
-          images: [],
-        } as AppointmentForm,
+        },
       ],
       recurrence: {
         frequency: "weekly",
@@ -133,15 +148,12 @@ export default function NewJobModal({
         endType: "after",
         endsAfter: 6,
         endsOn: null,
-      } satisfies RecurrenceForm,
+      },
     },
     validate: {
       title: (v) => (!v.trim() ? "Title is required" : null),
       clientId: (v) => (!v ? "Client is required" : null),
       addressId: (v) => (!v ? "Address is required" : null),
-      appointments: {
-        startDate: (v, values, path) => null,
-      } as any,
       recurrence: {
         interval: (v, values) =>
           values.jobType === "RECURRING" && (!v || v < 1)
@@ -201,18 +213,11 @@ export default function NewJobModal({
   const addAppointment = () => {
     form.setFieldValue("appointments", [
       ...form.values.appointments,
-      {
-        id: crypto.randomUUID(),
-        startDate: null,
-        startTime: "",
-        endTime: "",
-        staffId: [],
-        notes: "",
-        images: [],
-      } as AppointmentForm,
+      blankAppointment(),
     ]);
   };
 
+  // Fill appointment[0] from FullCalendar selection
   const startStr = selectedInfo?.startStr || "";
   const endStr = selectedInfo?.endStr || "";
   const allDay = !!selectedInfo?.allDay;
@@ -221,16 +226,12 @@ export default function NewJobModal({
     if (!opened) return;
     if (!startStr) return;
 
-    // Parse ISO strings coming from FullCalendar
     const startDT = DateTime.fromISO(startStr, { zone: APP_TZ });
     const endDT = endStr ? DateTime.fromISO(endStr, { zone: APP_TZ }) : null;
-
-    // If parsing ever fails, bail safely (don’t write "Invalid DateTime" into the form)
     if (!startDT.isValid) return;
 
     const startDate = startDT.startOf("day").toJSDate();
 
-    // For allDay selections (month view etc.), default times
     const startTime = allDay ? "09:00" : startDT.toFormat("HH:mm");
     const endTime = allDay
       ? "11:00"
@@ -241,39 +242,10 @@ export default function NewJobModal({
     form.setFieldValue("appointments.0.startDate", startDate);
     form.setFieldValue("appointments.0.startTime", startTime);
     form.setFieldValue("appointments.0.endTime", endTime);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opened, startStr, endStr, allDay]);
 
-  const handleSubmit = async (values) => {
-    const payload = {
-      ...values,
-      recurrence:
-        values.jobType === "RECURRING" ? values.recurrence : undefined,
-      appointments:
-        values.jobType === "RECURRING"
-          ? [values.appointments[0]]
-          : values.appointments.map((appt: any) => ({
-              id: appt.id,
-              startDate: appt.startDate,
-              startTime: appt.startTime,
-              endTime: appt.endTime,
-              staffId: appt.staffId?.length ? appt.staffId : undefined,
-              notes: appt.notes?.trim() ? appt.notes : undefined,
-              images: appt.images?.length ? appt.images : [],
-            })),
-    };
-
-    await createJob(payload);
-    onSuccess();
-    form.reset();
-    onClose();
-  };
-
-  console.log(
-    "FORM TIMES",
-    form.values.appointments?.[0]?.startTime,
-    form.values.appointments?.[0]?.endTime,
-  );
-
+  // Keep endsAfter/endsOn coherent
   useEffect(() => {
     if (form.values.jobType !== "RECURRING") return;
 
@@ -287,23 +259,43 @@ export default function NewJobModal({
       ) {
         form.setFieldValue("recurrence.endsAfter", 6);
       }
-    } else {
-      if (form.values.recurrence.endsAfter) {
-        // keep it if you want, but backend uses endType anyway
-        // optionally clear:
-        // form.setFieldValue("recurrence.endsAfter", 0);
-      }
     }
-  }, [form.values.jobType, form.values.recurrence.endType]);
+  }, [form.values.jobType, form.values.recurrence.endType]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  console.log(
-    "APP_TZ",
-    APP_TZ,
-    "isValid:",
-    DateTime.now().setZone(APP_TZ).isValid,
-  );
+  const handleSubmit = async (values: JobFormValuesWithRecurrence) => {
+    const mapAppt = (appt: AppointmentForm) => ({
+      id: appt.id,
+      startDate: appt.startDate,
+      startTime: appt.startTime,
+      endTime: appt.endTime,
+      staffId: appt.staffId?.length ? appt.staffId : undefined,
+      notes: appt.notes?.trim() ? appt.notes : undefined,
+      images: appt.uploadedImages?.length
+        ? appt.uploadedImages.map((img) => ({
+            url: img.url,
+            fileKey: img.fileKey,
+          }))
+        : undefined,
+    });
+
+    const payload = {
+      ...values,
+      recurrence:
+        values.jobType === "RECURRING" ? values.recurrence : undefined,
+      appointments:
+        values.jobType === "RECURRING"
+          ? [mapAppt(values.appointments[0])]
+          : values.appointments.map(mapAppt),
+    };
+
+    await createJob(payload);
+    onSuccess();
+    form.reset();
+    onClose();
+  };
+
   const renderAppointments = () =>
-    form.values.appointments.map((appt: any, index: number) => (
+    form.values.appointments.map((appt, index) => (
       <Card withBorder mt="sm" key={appt.id}>
         <Grid>
           <Grid.Col span={4}>
@@ -337,7 +329,7 @@ export default function NewJobModal({
               label="Staff"
               placeholder="Assign staff"
               data={
-                staffData?.data.map((s: Staff) => ({
+                staffData?.data?.map((s: Staff) => ({
                   value: s.id,
                   label: s.name,
                 })) || []
@@ -356,20 +348,59 @@ export default function NewJobModal({
             />
           </Grid.Col>
 
+          {appt.uploadedImages?.length ? (
+            <Group mt="xs">
+              {appt.uploadedImages.map((img) => (
+                <Image
+                  key={img.fileKey}
+                  src={img.url}
+                  alt="attached_img"
+                  style={{
+                    width: 64,
+                    height: 64,
+                    objectFit: "cover",
+                    borderRadius: 8,
+                  }}
+                />
+              ))}
+            </Group>
+          ) : null}
+
           <Grid.Col span={12}>
             <Dropzone
-              onDrop={(files) => {
-                const existing: File[] = appt.images || [];
-                const next = [...existing, ...files].slice(0, 10);
-                form.setFieldValue(`appointments.${index}.images`, next);
-              }}
+              accept={["image/png", "image/jpeg", "image/webp"]}
               maxFiles={10}
+              onDrop={async (files) => {
+                // keep local files (optional)
+                const existing = appt.images || [];
+                const nextFiles = [...existing, ...files].slice(0, 10);
+                form.setFieldValue(`appointments.${index}.images`, nextFiles);
+
+                // upload immediately
+                const uploaded = await startUpload(files);
+
+                const imgs: UploadedImage[] = (uploaded ?? []).map((u) => ({
+                  url: u.url,
+                  fileKey: u.key, // ✅ UploadThing's key
+                }));
+
+                // append uploaded images (url + fileKey)
+                form.setFieldValue(`appointments.${index}.uploadedImages`, [
+                  ...(appt.uploadedImages || []),
+                  ...imgs,
+                ]);
+              }}
             >
               <Flex direction="column" align="center">
                 <IoImageOutline size={24} />
                 <Text mt="xs" size="xs">
                   Drag images here or click to upload (max 10)
                 </Text>
+                {isUploading && (
+                  <Text mt="xs" size="xs" c="dimmed">
+                    Uploading...
+                  </Text>
+                )}
               </Flex>
             </Dropzone>
           </Grid.Col>
@@ -402,7 +433,7 @@ export default function NewJobModal({
                 placeholder="Select client"
                 {...form.getInputProps("clientId")}
                 data={
-                  clientsData?.data.map((c: Client) => ({
+                  clientsData?.data?.map((c: Client) => ({
                     value: c.id,
                     label: c.companyName || `${c.firstName} ${c.lastName}`,
                   })) || []
@@ -418,7 +449,7 @@ export default function NewJobModal({
                 placeholder="Select address"
                 {...form.getInputProps("addressId")}
                 data={
-                  addressesData?.data.map((a: any) => ({
+                  addressesData?.data?.map((a: any) => ({
                     value: a.id,
                     label: `${a.street1}, ${a.city}, ${a.province}`,
                   })) || []
@@ -440,7 +471,7 @@ export default function NewJobModal({
             </Button>
           </Group>
 
-          {form.values.lineItems.map((item: any, index: number) => (
+          {form.values.lineItems.map((item, index) => (
             <Card withBorder mt="sm" key={item.id}>
               <Grid>
                 <Grid.Col span={6}>
@@ -483,6 +514,7 @@ export default function NewJobModal({
           ))}
 
           <Divider my="sm" />
+
           {form.values.jobType === "RECURRING" && (
             <Card withBorder mt="sm">
               <Text fw={500} mb="xs">
@@ -569,7 +601,9 @@ export default function NewJobModal({
               </Grid>
             </Card>
           )}
+
           <Divider my="sm" />
+
           <Group align="center" justify="space-between">
             <Text fw={500}>Appointments</Text>
             <Button
@@ -588,7 +622,7 @@ export default function NewJobModal({
           <Button variant="default" onClick={onClose} type="button">
             Cancel
           </Button>
-          <Button type="submit" color="green">
+          <Button type="submit" color="green" disabled={isUploading}>
             Save Job
           </Button>
         </Group>

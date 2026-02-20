@@ -157,17 +157,29 @@ export async function POST(req: NextRequest) {
           data.notes = { create: [{ content: template.notes }] };
         }
 
-        // Only works when you send URLs (not File[]).
         if (Array.isArray(template.images) && template.images.length) {
           data.images = {
             create: template.images
-              .map((img: any) =>
-                typeof img === "string"
-                  ? { url: img }
-                  : img?.url
-                    ? { url: img.url }
-                    : null,
-              )
+              .map((img: any) => {
+                // expect objects from UploadThing
+                if (img && typeof img === "object") {
+                  const url = img.url;
+                  const fileKey = img.fileKey ?? img.key;
+                  if (!url) return null;
+
+                  return {
+                    url,
+                    ...(fileKey ? { fileKey } : {}), // only set if present
+                  };
+                }
+
+                // if someone sent just a string url, we can store it but cannot delete file later
+                if (typeof img === "string") {
+                  return { url: img };
+                }
+
+                return null;
+              })
               .filter(Boolean) as any[],
           };
         }
