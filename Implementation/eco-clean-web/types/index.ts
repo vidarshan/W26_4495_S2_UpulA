@@ -49,6 +49,7 @@ export interface Appointment {
   endTime: string;
   status: "SCHEDULED" | "COMPLETED" | "CANCELLED";
   createdAt: string;
+  staff: StaffMember[];
   completionSent: boolean;
   reminder1dSent: boolean;
   reminder5dSent: boolean;
@@ -94,9 +95,16 @@ export interface Job {
 
   client: Client;
   address: Address;
-  staffMembers: StaffMember[];
   lineItems: LineItem[];
   recurrence: Recurrence | null;
   appointments: Appointment[];
   notes: Note[];
+}
+
+export interface UpdateAppointmentPayload {
+  date?: string | Date | null;
+  startTime?: string;
+  endTime?: string;
+  status?: "SCHEDULED" | "COMPLETED" | "CANCELLED";
+  staffIds?: string[];
 }

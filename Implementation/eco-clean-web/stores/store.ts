@@ -1,3 +1,4 @@
+import { Appointment, CalendarSelection } from "@/types";
 import { create } from "zustand";
 
 type CancelMode = "JOB" | "APPOINTMENT" | null;
@@ -11,6 +12,7 @@ interface DashboardUIState {
   // selection
   selectedJobId: string | null;
   selectedApptId: string | null;
+  selectedInfo: CalendarSelection | null;
 
   // modals
   newJobOpen: boolean;
@@ -20,7 +22,7 @@ interface DashboardUIState {
   cancelMode: CancelMode;
 
   // actions
-  openNewJob: () => void;
+  openNewJobWithSelection: (arg: CalendarSelection) => void;
   closeNewJob: () => void;
 
   openAppointment: (jobId: string, apptId: string) => void;
@@ -35,6 +37,7 @@ interface DashboardUIState {
 export const useDashboardUI = create<DashboardUIState>((set) => ({
   selectedJobId: null,
   selectedApptId: null,
+  selectedInfo: null,
 
   newJobOpen: false,
   appointmentOpen: false,
@@ -42,8 +45,16 @@ export const useDashboardUI = create<DashboardUIState>((set) => ({
 
   cancelMode: null,
 
-  openNewJob: () => set({ newJobOpen: true }),
-  closeNewJob: () => set({ newJobOpen: false }),
+  openNewJobWithSelection: (selection) =>
+    set({
+      newJobOpen: true,
+      selectedInfo: selection,
+    }),
+
+  closeNewJob: () =>
+    set({
+      newJobOpen: false,
+    }),
 
   openAppointment: (jobId, apptId) =>
     set({
@@ -81,4 +92,16 @@ export const useDashboardUI = create<DashboardUIState>((set) => ({
 export const useCalendarStore = create<CalendarState>((set) => ({
   triggerRefresh: () => {},
   setTriggerRefresh: (fn) => set(() => ({ triggerRefresh: fn })),
+}));
+
+interface AppointmentState {
+  selectedAppointment?: Appointment;
+  setSelectedAppointment: (appt: Appointment) => void;
+  clearSelectedAppointment: () => void;
+}
+
+export const useAppointmentStore = create<AppointmentState>((set) => ({
+  selectedAppointment: undefined,
+  setSelectedAppointment: (appt) => set({ selectedAppointment: appt }),
+  clearSelectedAppointment: () => set({ selectedAppointment: undefined }),
 }));

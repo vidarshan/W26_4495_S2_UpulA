@@ -20,52 +20,37 @@ import AppointmentInfoModal from "../components/popups/AppointmentInfoModal";
 import ConfirmCancellationModal from "../components/popups/ConfirmCancellationModal";
 import { useCalendarStore, useDashboardUI } from "@/stores/store";
 import { CalendarSelection } from "@/types";
-import { rescheduleAppointment } from "@/lib/api/appointments";
+import { updateAppointment } from "@/lib/api/appointments";
+import { APP_TZ } from "@/lib/dateTime";
+import luxonPlugin from "@fullcalendar/luxon3";
 
 export default function DashboardClient() {
   const calendarRef = useRef<FullCalendar | null>(null);
 
   const {
     newJobOpen,
-    openNewJob,
     closeNewJob,
     openAppointment,
     appointmentOpen,
     confirmCancelOpen,
+    openNewJobWithSelection,
+    selectedInfo,
   } = useDashboardUI();
 
-  const [view, setView] = useState("month");
+  const [view, setView] = useState("week");
   const [currentTitle, setCurrentTitle] = useState("");
 
   const { setTriggerRefresh } = useCalendarStore();
 
-  const [calendarInfo, setCalendarInfo] = useState<CalendarSelection>({
-    start: null,
-    end: null,
-    startStr: "",
-    endStr: "",
-    allDay: false,
-  });
-
   const handleDateSelect = (selectInfo: DateSelectArg) => {
-    const start = selectInfo.start;
-    const end = selectInfo.end;
-
-    const strippedDate = new Date(
-      start.getFullYear(),
-      start.getMonth(),
-      start.getDate(),
-    );
-
-    setCalendarInfo({
-      start: strippedDate,
-      end,
+    console.log("FC TZ:", calendarRef.current?.getApi().getOption("timeZone"));
+    openNewJobWithSelection({
+      start: selectInfo.start,
+      end: selectInfo.end,
       startStr: selectInfo.startStr,
       endStr: selectInfo.endStr,
       allDay: selectInfo.allDay,
     });
-
-    openNewJob();
   };
 
   const handleEventClick = (info: EventClickArg) => {
@@ -78,7 +63,7 @@ export default function DashboardClient() {
     const end = info.event.end;
 
     try {
-      await rescheduleAppointment(id, start, end);
+      // await rescheduleAppointment(id, start, end);
       info.event.setProp("title", info.event.title); // keep title same
       // optionally show success message
     } catch (err) {
@@ -99,16 +84,14 @@ export default function DashboardClient() {
 
   return (
     <Container fluid>
-      {newJobOpen && (
-        <NewJobModal
-          opened
-          onClose={closeNewJob}
-          selectedInfo={calendarInfo}
-          onSuccess={refreshCalendar}
-        />
-      )}
+      <NewJobModal
+        opened={newJobOpen}
+        onClose={closeNewJob}
+        selectedInfo={selectedInfo}
+        onSuccess={refreshCalendar}
+      />
 
-      {appointmentOpen && <AppointmentInfoModal />}
+      {appointmentOpen && <AppointmentInfoModal onSuccess={refreshCalendar} />}
       {confirmCancelOpen && (
         <ConfirmCancellationModal onSuccess={refreshCalendar} />
       )}
@@ -169,15 +152,24 @@ export default function DashboardClient() {
             </Button.Group>
           </Group>
         </Group>
-
+        {}
         <FullCalendar
           height="75vh"
           editable
+          timeZone={APP_TZ}
+          // selectAllow={(info) =>
+          //   info.start.toDateString() === info.end.toDateString()
+          // }
           nowIndicator
           headerToolbar={false}
           ref={calendarRef}
-          plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
-          initialView="dayGridMonth"
+          plugins={[
+            timeGridPlugin,
+            dayGridPlugin,
+            interactionPlugin,
+            luxonPlugin,
+          ]}
+          initialView="timeGridWeek"
           allDaySlot={false}
           selectable
           select={handleDateSelect}

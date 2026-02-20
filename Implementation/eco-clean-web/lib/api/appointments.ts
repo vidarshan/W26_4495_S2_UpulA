@@ -1,19 +1,23 @@
 import { apiClient } from "./client";
 
-export function cancelAppointment(id: string) {
-  return apiClient(`/api/appointments/${id}`, {
-    method: "PATCH",
-    body: JSON.stringify({ status: "CANCELLED" }),
-  });
-}
+export type UpdateAppointmentPayload = Partial<{
+  startTime: string; // ISO
+  endTime: string; // ISO
+  status: "SCHEDULED" | "COMPLETED" | "CANCELLED";
+  staffIds: string[];
+  note: string | null;
+}>;
 
-export function rescheduleAppointment(
+export function updateAppointment(
   id: string,
-  newStart: Date | null,
-  newEnd: Date | null,
+  payload: UpdateAppointmentPayload,
 ) {
   return apiClient(`/api/appointments/${id}`, {
     method: "PATCH",
-    body: JSON.stringify({ startTime: newStart, endTime: newEnd }),
+    body: JSON.stringify(payload),
   });
+}
+
+export function cancelAppointment(id: string) {
+  return updateAppointment(id, { status: "CANCELLED" });
 }

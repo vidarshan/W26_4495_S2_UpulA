@@ -3,6 +3,50 @@ import { LineItem } from "@/types";
 import { AppointmentStatus, JobType, Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 
+function parseHHmm(value: unknown) {
+  if (typeof value !== "string") return null;
+  const m = value.match(/^([01]\d|2[0-3]):([0-5]\d)$/);
+  if (!m) return null;
+  return { h: Number(m[1]), min: Number(m[2]) };
+}
+
+function startOfDay(d: Date) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+function addWeeks(date: Date, weeks: number) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + 7 * weeks);
+  return d;
+}
+
+function addMonths(date: Date, months: number) {
+  const d = new Date(date);
+  d.setMonth(d.getMonth() + months);
+  return d;
+}
+
+function asDate(value: any): Date | null {
+  const d = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function buildStartEnd(dateOnly: Date, startTime: string, endTime: string) {
+  const st = parseHHmm(startTime);
+  const et = parseHHmm(endTime);
+  if (!st || !et) return null;
+
+  const start = new Date(dateOnly);
+  start.setHours(st.h, st.min, 0, 0);
+
+  const end = new Date(dateOnly);
+  end.setHours(et.h, et.min, 0, 0);
+
+  return { start, end };
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -26,8 +70,31 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // For recurring, you usually want at least one "template" appointment
+    if (!appointments?.length) {
+      return NextResponse.json(
+        { error: "At least one appointment is required" },
+        { status: 400 },
+      );
+    }
+
+    // Validate non-anytime times
+    if (!isAnytime) {
+      for (const appt of appointments) {
+        if (!appt?.startDate) continue;
+        if (!parseHHmm(appt.startTime) || !parseHHmm(appt.endTime)) {
+          return NextResponse.json(
+            {
+              error: "Invalid startTime/endTime. Expected HH:mm (e.g., 09:30)",
+            },
+            { status: 400 },
+          );
+        }
+      }
+    }
+
     const result = await prisma.$transaction(async (tx) => {
-      // 1️⃣ Create Job
+      // 1) Create Job
       const job = await tx.job.create({
         data: {
           title,
@@ -37,7 +104,7 @@ export async function POST(req: NextRequest) {
           isAnytime,
           visitInstructions,
           lineItems: {
-            create: lineItems.map((li: LineItem) => ({
+            create: lineItems.map((li: any) => ({
               name: li.name,
               quantity: li.quantity,
               unitCost: li.unitCost,
@@ -50,18 +117,27 @@ export async function POST(req: NextRequest) {
 
       const createdAppointments: any[] = [];
 
-      // Helper: create single appointment safely
-      const createAppointment = async (appt: any) => {
-        if (!appt.startDate) return null;
+      // helper: create one appt instance at a specific dateOnly
+      const createApptInstance = async (template: any, dateOnly: Date) => {
+        const date = startOfDay(dateOnly);
 
-        const start = new Date(appt.startDate);
-        const end = new Date(appt.startDate);
+        let start: Date;
+        let end: Date;
 
-        if (!isAnytime) {
-          const [sh, sm] = appt.startTime.split(":").map(Number);
-          const [eh, em] = appt.endTime.split(":").map(Number);
-          start.setHours(sh, sm, 0, 0);
-          end.setHours(eh, em, 0, 0);
+        if (isAnytime) {
+          // For anytime: define your own convention
+          // Example: store start=end at midnight (or set a default duration)
+          start = new Date(date);
+          end = new Date(date);
+        } else {
+          const built = buildStartEnd(
+            date,
+            template.startTime,
+            template.endTime,
+          );
+          if (!built) return null;
+          start = built.start;
+          end = built.end;
         }
 
         const data: Prisma.AppointmentCreateInput = {
@@ -71,79 +147,96 @@ export async function POST(req: NextRequest) {
           status: AppointmentStatus.SCHEDULED,
         };
 
-        if (appt.staffId && appt.staffId.length > 0) {
-          data.staff = { connect: appt.staffId.map((id: string) => ({ id })) };
+        if (Array.isArray(template.staffId) && template.staffId.length) {
+          data.staff = {
+            connect: template.staffId.map((id: string) => ({ id })),
+          };
         }
 
-        if (appt.notes && appt.notes.trim() !== "") {
-          data.notes = { create: [{ content: appt.notes }] };
+        if (typeof template.notes === "string" && template.notes.trim()) {
+          data.notes = { create: [{ content: template.notes }] };
         }
 
-        if (appt.images && appt.images.length > 0) {
-          // Convert File objects to URL strings or your storage URLs
+        // Only works when you send URLs (not File[]).
+        if (Array.isArray(template.images) && template.images.length) {
           data.images = {
-            create: appt.images.map((img: any) => ({ url: img.url || img })),
+            create: template.images
+              .map((img: any) =>
+                typeof img === "string"
+                  ? { url: img }
+                  : img?.url
+                    ? { url: img.url }
+                    : null,
+              )
+              .filter(Boolean) as any[],
           };
         }
 
         return tx.appointment.create({ data });
       };
 
-      // 2️⃣ ONE_OFF appointments
+      // 2) ONE_OFF: create as provided
       if (jobType === JobType.ONE_OFF) {
         for (const appt of appointments) {
-          const newAppt = await createAppointment(appt);
-          if (newAppt) createdAppointments.push(newAppt);
+          const date = asDate(appt.startDate);
+          if (!date) continue;
+          const created = await createApptInstance(appt, date);
+          if (created) createdAppointments.push(created);
         }
       }
 
-      // 3️⃣ RECURRING appointments
-      if (jobType === JobType.RECURRING && recurrence) {
+      // 3) RECURRING: create recurrence + generate occurrences
+      if (jobType === JobType.RECURRING) {
+        if (!recurrence) {
+          throw new Error("Recurrence details missing for recurring job");
+        }
+
         const { frequency, interval, endType, endsAfter, endsOn } = recurrence;
+
+        const safeInterval =
+          Number.isFinite(interval) && interval > 0 ? interval : 1;
+
+        const endsOnDate = endType === "on" && endsOn ? asDate(endsOn) : null;
+
+        const safeEndsAfter =
+          endType === "after" && Number.isFinite(endsAfter) && endsAfter > 0
+            ? endsAfter
+            : null;
 
         await tx.recurrence.create({
           data: {
             jobId: job.id,
             frequency,
-            interval,
+            interval: safeInterval,
             endType,
-            endsAfter: endType === "after" ? endsAfter : null,
-            endsOn: endType === "on" && endsOn ? new Date(endsOn) : null,
+            endsAfter: safeEndsAfter,
+            endsOn: endsOnDate,
           },
         });
 
-        for (const appt of appointments) {
-          if (!appt.startDate) continue;
+        for (const template of appointments) {
+          const firstDate = asDate(template.startDate);
+          if (!firstDate) continue;
 
-          const start = new Date(appt.startDate);
-          const end = new Date(appt.startDate);
-          if (!isAnytime) {
-            const [sh, sm] = appt.startTime.split(":").map(Number);
-            const [eh, em] = appt.endTime.split(":").map(Number);
-            start.setHours(sh, sm, 0, 0);
-            end.setHours(eh, em, 0, 0);
-          }
-
-          const duration = end.getTime() - start.getTime();
-          const current = new Date(start);
+          let cursor = startOfDay(firstDate);
           let count = 0;
 
           while (true) {
-            if (endType === "after" && endsAfter && count >= endsAfter) break;
-            if (endType === "on" && endsOn && current > new Date(endsOn)) break;
+            // stop conditions
+            if (safeEndsAfter && count >= safeEndsAfter) break;
+            if (endsOnDate && cursor > startOfDay(endsOnDate)) break;
 
-            const newAppt = await createAppointment({
-              ...appt,
-              startDate: new Date(current),
-              endTime: new Date(current.getTime() + duration),
-            });
+            const created = await createApptInstance(template, cursor);
+            if (created) createdAppointments.push(created);
 
-            if (newAppt) createdAppointments.push(newAppt);
-
-            if (frequency === "weekly")
-              current.setDate(current.getDate() + 7 * interval);
-            if (frequency === "monthly")
-              current.setMonth(current.getMonth() + interval);
+            // advance
+            if (frequency === "weekly") cursor = addWeeks(cursor, safeInterval);
+            else if (frequency === "monthly")
+              cursor = addMonths(cursor, safeInterval);
+            else {
+              // if you add more frequencies later
+              throw new Error(`Unsupported frequency: ${frequency}`);
+            }
 
             count++;
           }
