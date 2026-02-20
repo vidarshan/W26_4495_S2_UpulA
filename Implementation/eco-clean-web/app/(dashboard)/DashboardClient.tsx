@@ -11,7 +11,9 @@ import {
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
-import interactionPlugin from "@fullcalendar/interaction";
+import interactionPlugin, {
+  EventResizeDoneArg,
+} from "@fullcalendar/interaction";
 import { IoArrowBackOutline, IoArrowForwardOutline } from "react-icons/io5";
 import { useEffect, useRef, useState } from "react";
 import { DateSelectArg, EventClickArg, EventDropArg } from "@fullcalendar/core";
@@ -19,11 +21,8 @@ import NewJobModal from "../components/popups/JobModal";
 import AppointmentInfoModal from "../components/popups/AppointmentInfoModal";
 import ConfirmCancellationModal from "../components/popups/ConfirmCancellationModal";
 import { useCalendarStore, useDashboardUI } from "@/stores/store";
-import { CalendarSelection } from "@/types";
-import {
-  rescheduleAppointment,
-  updateAppointment,
-} from "@/lib/api/appointments";
+
+import { rescheduleAppointment } from "@/lib/api/appointments";
 import { APP_TZ } from "@/lib/dateTime";
 import luxonPlugin from "@fullcalendar/luxon3";
 import { useQueryClient } from "@tanstack/react-query";
@@ -49,7 +48,6 @@ export default function DashboardClient() {
   const { setTriggerRefresh } = useCalendarStore();
 
   const handleDateSelect = (selectInfo: DateSelectArg) => {
-    console.log("FC TZ:", calendarRef.current?.getApi().getOption("timeZone"));
     openNewJobWithSelection({
       start: selectInfo.start,
       end: selectInfo.end,
@@ -59,23 +57,59 @@ export default function DashboardClient() {
     });
   };
 
-  const handleEventClick = (info: EventClickArg) => {
-    openAppointment(info.event.extendedProps.jobId, info.event.id);
-  };
-
-  const handleEventDrop = async (info: EventDropArg) => {
+  const handleDateResize = async (info: EventResizeDoneArg) => {
     const { id } = info.event;
     const start = info.event.start;
     const end = info.event.end;
 
+    if (!start || !end) {
+      info.revert();
+      return;
+    }
+
     try {
-      // await rescheduleAppointment(id, start, end);
-      info.event.setProp("title", info.event.title); // keep title same
-      // optionally show success message
+      const updated = await rescheduleAppointment(info.event.id, start, end);
+      info.view.calendar.refetchEvents();
+      qc.setQueryData(["appointment", id], updated);
     } catch (err) {
       console.error(err);
-      info.revert(); // rollback if API fails
+      info.revert();
     }
+  };
+
+  const handleDateDrop = async (info: EventDropArg) => {
+    const { id } = info.event;
+    const start = info.event.start;
+
+    if (!start) {
+      info.revert();
+      return;
+    }
+
+    const prevStart = info.oldEvent.start;
+    const prevEnd = info.oldEvent.end;
+
+    // compute duration from old event (fallback 30 mins)
+    const durationMs =
+      prevStart && prevEnd
+        ? prevEnd.getTime() - prevStart.getTime()
+        : 30 * 60 * 1000;
+
+    const end = info.event.end ?? new Date(start.getTime() + durationMs);
+
+    try {
+      const updated = await rescheduleAppointment(id, start, end);
+
+      info.view.calendar.refetchEvents();
+      qc.setQueryData(["appointment", id], updated);
+    } catch (err) {
+      console.error(err);
+      info.revert();
+    }
+  };
+
+  const handleEventClick = (info: EventClickArg) => {
+    openAppointment(info.event.extendedProps.jobId, info.event.id);
   };
 
   const refreshCalendar = () => {
@@ -163,9 +197,6 @@ export default function DashboardClient() {
           height="75vh"
           editable
           timeZone={APP_TZ}
-          // selectAllow={(info) =>
-          //   info.start.toDateString() === info.end.toDateString()
-          // }
           nowIndicator
           headerToolbar={false}
           ref={calendarRef}
@@ -180,61 +211,8 @@ export default function DashboardClient() {
           selectable
           select={handleDateSelect}
           events="/api/appointments"
-          eventDrop={async (info) => {
-            const { id } = info.event;
-            const start = info.event.start;
-
-            if (!start) {
-              info.revert();
-              return;
-            }
-
-            // FullCalendar sometimes gives null end (especially for zero-duration events)
-            const prevStart = info.oldEvent.start;
-            const prevEnd = info.oldEvent.end;
-
-            // compute duration from old event (fallback 30 mins)
-            const durationMs =
-              prevStart && prevEnd
-                ? prevEnd.getTime() - prevStart.getTime()
-                : 30 * 60 * 1000;
-
-            const end =
-              info.event.end ?? new Date(start.getTime() + durationMs);
-
-            try {
-              const updated = await rescheduleAppointment(id, start, end);
-
-              info.view.calendar.refetchEvents();
-              qc.setQueryData(["appointment", id], updated);
-            } catch (err) {
-              console.error(err);
-              info.revert();
-            }
-          }}
-          eventResize={async (info) => {
-            const { id } = info.event;
-            const start = info.event.start;
-            const end = info.event.end;
-
-            if (!start || !end) {
-              info.revert();
-              return;
-            }
-
-            try {
-              const updated = await rescheduleAppointment(
-                info.event.id,
-                start,
-                end,
-              );
-              info.view.calendar.refetchEvents();
-              qc.setQueryData(["appointment", id], updated);
-            } catch (err) {
-              console.error(err);
-              info.revert();
-            }
-          }}
+          eventDrop={handleDateDrop}
+          eventResize={handleDateResize}
           eventClick={handleEventClick}
           datesSet={(arg) => setCurrentTitle(arg.view.title)}
         />
