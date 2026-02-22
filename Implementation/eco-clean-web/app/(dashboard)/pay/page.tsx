@@ -1,5 +1,4 @@
 import { Button } from "@mantine/core";
-import React from "react";
 import { IoAlarmOutline } from "react-icons/io5";
 
 const page = () => {

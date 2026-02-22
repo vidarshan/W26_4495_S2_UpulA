@@ -1,5 +1,6 @@
 import { Client } from "@/app/components/tables/ClientTable";
 import { ListResponse } from "@/app/types/api";
+import { Address } from "@prisma/client";
 
 export type GetClientsParams = {
   q?: string;

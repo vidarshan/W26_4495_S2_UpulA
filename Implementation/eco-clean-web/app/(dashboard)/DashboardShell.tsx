@@ -29,6 +29,7 @@ import {
 } from "react-icons/io5";
 import ClientPropertyModal from "../components/ClientModal";
 import NewJobModal from "../components/popups/JobModal";
+import { useDashboardUI } from "@/stores/store";
 
 export default function DashboardShell({
   children,
@@ -39,6 +40,7 @@ export default function DashboardShell({
   const [clientPopoverOpened, setClientPopoverOpened] = useState(false);
   const [jobPopoverOpened, setJobPopoverOpened] = useState(false);
   const pathname = usePathname();
+  const { selectedInfo } = useDashboardUI();
 
   return (
     <AppShell
@@ -178,6 +180,8 @@ export default function DashboardShell({
           <NewJobModal
             opened={jobPopoverOpened}
             onClose={() => setJobPopoverOpened(false)}
+            selectedInfo={selectedInfo}
+            onSuccess={() => console.log("refresh")}
           />
           {children}
         </Container>

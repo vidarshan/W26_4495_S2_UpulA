@@ -13,109 +13,171 @@ import {
   SegmentedControl,
   Textarea,
   NumberInput,
+  MultiSelect,
+  Flex,
+  Card,
   Radio,
-  Checkbox,
-  Center,
   Text,
+  Image,
 } from "@mantine/core";
-import { useState } from "react";
-
-import { DateInput, TimePicker } from "@mantine/dates";
+import { DateInput, TimeInput } from "@mantine/dates";
+import { Dropzone } from "@mantine/dropzone";
 import { useDebouncedValue } from "@mantine/hooks";
-import {
-  IoCalendarOutline,
-  IoPersonOutline,
-  IoRadioButtonOffOutline,
-  IoReloadOutline,
-  IoTextOutline,
-  IoTimeOutline,
-} from "react-icons/io5";
 import { useForm } from "@mantine/form";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createJob, CreateJobPayload, JobFormValues } from "@/lib/api/jobs";
+import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { IoAddOutline, IoImageOutline } from "react-icons/io5";
+import { createJob, JobFormValues } from "@/lib/api/jobs";
 import { getClientAddresses, getClients } from "@/lib/api/client";
 import { getStaff } from "@/lib/api/users";
-
 import { Staff } from "@/app/types/staff";
 import { Client } from "../tables/ClientTable";
+import { CalendarSelection } from "@/types";
+import { DateTime } from "luxon";
+import { APP_TZ } from "@/lib/dateTime";
+import { useUploadThing } from "@/lib/uploadthing";
 
 interface Props {
   opened: boolean;
   onClose: () => void;
+  selectedInfo: CalendarSelection | null;
+  onSuccess: () => void;
 }
 
-export default function NewJobModal({ opened, onClose }: Props) {
-  const queryClient = useQueryClient();
-  const form = useForm<JobFormValues>({
+type LineItem = {
+  id: string;
+  name: string;
+  quantity: number;
+  unitCost: number;
+  unitPrice: number;
+  description: string;
+};
+
+type UploadedImage = { url: string; fileKey: string };
+
+type AppointmentForm = {
+  id: string;
+  startDate: Date | null;
+  startTime: string; // "HH:mm"
+  endTime: string; // "HH:mm"
+  staffId: string[];
+  notes: string;
+  images: File[]; // local picked files (optional)
+  uploadedImages: UploadedImage[]; // ✅ persisted (url + fileKey)
+};
+
+type RecurrenceForm = {
+  frequency: "weekly" | "monthly";
+  interval: number;
+  endType: "after" | "on";
+  endsAfter: number;
+  endsOn: Date | null;
+};
+
+type JobFormValuesWithRecurrence = JobFormValues & {
+  recurrence: RecurrenceForm;
+  appointments: AppointmentForm[];
+  lineItems: LineItem[];
+};
+
+function jsDateToHHmm(d: Date) {
+  if (!(d instanceof Date) || Number.isNaN(d.getTime())) return "";
+  const dt = DateTime.fromJSDate(d, { zone: APP_TZ });
+  return dt.isValid ? dt.toFormat("HH:mm") : "";
+}
+
+function blankAppointment(): AppointmentForm {
+  return {
+    id: crypto.randomUUID(),
+    startDate: null,
+    startTime: "",
+    endTime: "",
+    staffId: [],
+    notes: "",
+    images: [],
+    uploadedImages: [],
+  };
+}
+
+export default function NewJobModal({
+  opened,
+  onClose,
+  selectedInfo,
+  onSuccess,
+}: Props) {
+  const { startUpload, isUploading } = useUploadThing("appointmentImages");
+
+  const form = useForm<JobFormValuesWithRecurrence>({
+    mode: "controlled",
     initialValues: {
       title: "",
       clientId: "",
-      staffId: "",
       addressId: "",
       jobType: "ONE_OFF",
-
-      startDate: null,
-      startTime: "",
-      endTime: "",
       isAnytime: false,
       visitInstructions: "",
-
+      lineItems: [
+        {
+          id: crypto.randomUUID(),
+          name: "",
+          quantity: 1,
+          unitCost: 0,
+          unitPrice: 0,
+          description: "",
+        },
+      ],
+      appointments: [
+        {
+          ...blankAppointment(),
+          startDate: selectedInfo?.start
+            ? new Date(
+                selectedInfo.start.getFullYear(),
+                selectedInfo.start.getMonth(),
+                selectedInfo.start.getDate(),
+              )
+            : null,
+          startTime: selectedInfo?.start
+            ? jsDateToHHmm(selectedInfo.start)
+            : "",
+          endTime: selectedInfo?.end ? jsDateToHHmm(selectedInfo.end) : "",
+        },
+      ],
       recurrence: {
         frequency: "weekly",
         interval: 1,
         endType: "after",
         endsAfter: 6,
-        endsUnit: "months",
         endsOn: null,
       },
-
-      lineItems: [],
-      notes: "",
     },
     validate: {
-      title: (value) =>
-        value.trim().length < 3 ? "Title must be at least 3 characters" : null,
-      clientId: (value) => (!value ? "Client is required" : null),
-      staffId: (value) => (!value ? "Assignee is required" : null),
-      startDate: (value) => (!value ? "Start date is required" : null),
-      startTime: (value, values) =>
-        !values.isAnytime && !value
-          ? "Start time required unless Anytime"
-          : null,
-      endTime: (value, values) => {
-        if (values.isAnytime) return null;
-        if (!value) return "End time is required";
-
-        if (values.startTime && value <= values.startTime)
-          return "End time must be after start time";
-
-        return null;
-      },
+      title: (v) => (!v.trim() ? "Title is required" : null),
+      clientId: (v) => (!v ? "Client is required" : null),
+      addressId: (v) => (!v ? "Address is required" : null),
       recurrence: {
-        interval: (value, values) =>
-          values.jobType === "RECURRING" && (!value || value < 1)
+        interval: (v, values) =>
+          values.jobType === "RECURRING" && (!v || v < 1)
             ? "Interval must be at least 1"
             : null,
-
-        endsAfter: (value, values) =>
+        endsAfter: (v, values) =>
           values.jobType === "RECURRING" &&
           values.recurrence.endType === "after" &&
-          (!value || value < 1)
+          (!v || v < 1)
             ? "Must be at least 1"
             : null,
-
-        endsOn: (value, values) =>
+        endsOn: (v, values) =>
           values.jobType === "RECURRING" &&
           values.recurrence.endType === "on" &&
-          !value
-            ? "End date required"
+          !v
+            ? "End date is required"
             : null,
       },
     },
   });
+
   const [searchClients, setSearchClients] = useState("");
-  const [debouncedSearchClients] = useDebouncedValue(searchClients, 300);
   const [searchAssignees, setSearchAssignees] = useState("");
+  const [debouncedSearchClients] = useDebouncedValue(searchClients, 300);
   const [debouncedSearchAssignees] = useDebouncedValue(searchAssignees, 300);
 
   const { data: clientsData } = useQuery({
@@ -125,7 +187,7 @@ export default function NewJobModal({ opened, onClose }: Props) {
 
   const { data: staffData } = useQuery({
     queryKey: ["staff", debouncedSearchAssignees],
-    queryFn: () => getStaff(),
+    queryFn: getStaff,
   });
 
   const { data: addressesData } = useQuery({
@@ -134,290 +196,433 @@ export default function NewJobModal({ opened, onClose }: Props) {
     enabled: !!form.values.clientId,
   });
 
-  const mutation = useMutation({
-    mutationFn: createJob,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["jobs"] });
-      onClose();
-      form.reset();
-    },
-    onError: (error) => {
-      console.log(error);
-      alert(error);
-    },
-  });
-  return (
-    <Modal
-      opened={opened}
-      onClose={onClose}
-      size="90%"
-      title="New Job"
-      centered
-    >
-      <form
-        onSubmit={form.onSubmit((values) => {
-          console.log("Form values:", values);
-          if (!values.startDate) {
-            form.setFieldError("startDate", "Start date required");
-            return;
-          }
-          const payload: CreateJobPayload = {
-            ...values,
-            startDate: values.startDate,
-          };
-          mutation.mutate(payload);
-        })}
-      >
-        <Paper>
-          <Group justify="space-between" align="center">
-            <Text fw={500} size="sm">
-              Select Job Type
-            </Text>
-            <SegmentedControl
-              color="green"
-              value={form.values.jobType}
-              onChange={(value) =>
-                form.setFieldValue(
-                  "jobType",
-                  value as CreateJobPayload["jobType"],
-                )
-              }
-              data={[
-                {
-                  label: (
-                    <Center style={{ gap: 10 }}>
-                      <IoRadioButtonOffOutline />
-                      <span>One off</span>
-                    </Center>
-                  ),
+  const addLineItem = () => {
+    form.setFieldValue("lineItems", [
+      ...form.values.lineItems,
+      {
+        id: crypto.randomUUID(),
+        name: "",
+        quantity: 1,
+        unitCost: 0,
+        unitPrice: 0,
+        description: "",
+      },
+    ]);
+  };
 
-                  value: "ONE_OFF",
-                },
-                {
-                  label: (
-                    <Center style={{ gap: 10 }}>
-                      <IoReloadOutline />
-                      <span>Recurring</span>
-                    </Center>
-                  ),
-                  value: "RECURRING",
-                },
-              ]}
+  const addAppointment = () => {
+    form.setFieldValue("appointments", [
+      ...form.values.appointments,
+      blankAppointment(),
+    ]);
+  };
+
+  // Fill appointment[0] from FullCalendar selection
+  const startStr = selectedInfo?.startStr || "";
+  const endStr = selectedInfo?.endStr || "";
+  const allDay = !!selectedInfo?.allDay;
+
+  useEffect(() => {
+    if (!opened) return;
+    if (!startStr) return;
+
+    const startDT = DateTime.fromISO(startStr, { zone: APP_TZ });
+    const endDT = endStr ? DateTime.fromISO(endStr, { zone: APP_TZ }) : null;
+    if (!startDT.isValid) return;
+
+    const startDate = startDT.startOf("day").toJSDate();
+
+    const startTime = allDay ? "09:00" : startDT.toFormat("HH:mm");
+    const endTime = allDay
+      ? "11:00"
+      : endDT && endDT.isValid
+        ? endDT.toFormat("HH:mm")
+        : "";
+
+    form.setFieldValue("appointments.0.startDate", startDate);
+    form.setFieldValue("appointments.0.startTime", startTime);
+    form.setFieldValue("appointments.0.endTime", endTime);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [opened, startStr, endStr, allDay]);
+
+  // Keep endsAfter/endsOn coherent
+  useEffect(() => {
+    if (form.values.jobType !== "RECURRING") return;
+
+    if (form.values.recurrence.endType === "after") {
+      if (form.values.recurrence.endsOn) {
+        form.setFieldValue("recurrence.endsOn", null);
+      }
+      if (
+        !form.values.recurrence.endsAfter ||
+        form.values.recurrence.endsAfter < 1
+      ) {
+        form.setFieldValue("recurrence.endsAfter", 6);
+      }
+    }
+  }, [form.values.jobType, form.values.recurrence.endType]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleSubmit = async (values: JobFormValuesWithRecurrence) => {
+    const mapAppt = (appt: AppointmentForm) => ({
+      id: appt.id,
+      startDate: appt.startDate,
+      startTime: appt.startTime,
+      endTime: appt.endTime,
+      staffId: appt.staffId?.length ? appt.staffId : undefined,
+      notes: appt.notes?.trim() ? appt.notes : undefined,
+      images: appt.uploadedImages?.length
+        ? appt.uploadedImages.map((img) => ({
+            url: img.url,
+            fileKey: img.fileKey,
+          }))
+        : undefined,
+    });
+
+    const payload = {
+      ...values,
+      recurrence:
+        values.jobType === "RECURRING" ? values.recurrence : undefined,
+      appointments:
+        values.jobType === "RECURRING"
+          ? [mapAppt(values.appointments[0])]
+          : values.appointments.map(mapAppt),
+    };
+
+    await createJob(payload);
+    onSuccess();
+    form.reset();
+    onClose();
+  };
+
+  const renderAppointments = () =>
+    form.values.appointments.map((appt, index) => (
+      <Card withBorder mt="sm" key={appt.id}>
+        <Grid>
+          <Grid.Col span={4}>
+            <DateInput
+              key={form.key(`appointments.${index}.startDate`)}
+              label="Date"
+              {...form.getInputProps(`appointments.${index}.startDate`)}
             />
-          </Group>
-          <Divider my="md" />
-          <TextInput
-            leftSection={<IoTextOutline />}
-            label="Title"
-            placeholder="Job title"
-            {...form.getInputProps("title")}
+          </Grid.Col>
+
+          <Grid.Col span={4}>
+            <TimeInput
+              key={form.key(`appointments.${index}.startTime`)}
+              label="Start"
+              disabled={form.values.isAnytime}
+              {...form.getInputProps(`appointments.${index}.startTime`)}
+            />
+          </Grid.Col>
+
+          <Grid.Col span={4}>
+            <TimeInput
+              key={form.key(`appointments.${index}.endTime`)}
+              label="End"
+              disabled={form.values.isAnytime}
+              {...form.getInputProps(`appointments.${index}.endTime`)}
+            />
+          </Grid.Col>
+
+          <Grid.Col span={12}>
+            <MultiSelect
+              label="Staff"
+              placeholder="Assign staff"
+              data={
+                staffData?.data?.map((s: Staff) => ({
+                  value: s.id,
+                  label: s.name,
+                })) || []
+              }
+              onSearchChange={setSearchAssignees}
+              searchable
+              {...form.getInputProps(`appointments.${index}.staffId`)}
+            />
+          </Grid.Col>
+
+          <Grid.Col span={12}>
+            <Textarea
+              label="Notes"
+              placeholder="Enter notes"
+              {...form.getInputProps(`appointments.${index}.notes`)}
+            />
+          </Grid.Col>
+
+          {appt.uploadedImages?.length ? (
+            <Group mt="xs">
+              {appt.uploadedImages.map((img) => (
+                <Image
+                  key={img.fileKey}
+                  src={img.url}
+                  alt="attached_img"
+                  style={{
+                    width: 64,
+                    height: 64,
+                    objectFit: "cover",
+                    borderRadius: 8,
+                  }}
+                />
+              ))}
+            </Group>
+          ) : null}
+
+          <Grid.Col span={12}>
+            <Dropzone
+              accept={["image/png", "image/jpeg", "image/webp"]}
+              maxFiles={10}
+              onDrop={async (files) => {
+                // keep local files (optional)
+                const existing = appt.images || [];
+                const nextFiles = [...existing, ...files].slice(0, 10);
+                form.setFieldValue(`appointments.${index}.images`, nextFiles);
+
+                // upload immediately
+                const uploaded = await startUpload(files);
+
+                const imgs: UploadedImage[] = (uploaded ?? []).map((u) => ({
+                  url: u.url,
+                  fileKey: u.key, // ✅ UploadThing's key
+                }));
+
+                // append uploaded images (url + fileKey)
+                form.setFieldValue(`appointments.${index}.uploadedImages`, [
+                  ...(appt.uploadedImages || []),
+                  ...imgs,
+                ]);
+              }}
+            >
+              <Flex direction="column" align="center">
+                <IoImageOutline size={24} />
+                <Text mt="xs" size="xs">
+                  Drag images here or click to upload (max 10)
+                </Text>
+                {isUploading && (
+                  <Text mt="xs" size="xs" c="dimmed">
+                    Uploading...
+                  </Text>
+                )}
+              </Flex>
+            </Dropzone>
+          </Grid.Col>
+        </Grid>
+      </Card>
+    ));
+
+  return (
+    <Modal opened={opened} onClose={onClose} size="xl" title="New Job" centered>
+      <form onSubmit={form.onSubmit(handleSubmit)}>
+        <Paper>
+          <SegmentedControl
+            mt="sm"
+            value={form.values.jobType}
+            onChange={(value) =>
+              form.setFieldValue("jobType", value as JobFormValues["jobType"])
+            }
+            data={[
+              { label: "One-off", value: "ONE_OFF" },
+              { label: "Recurring", value: "RECURRING" },
+            ]}
           />
+
+          <TextInput mt="sm" label="Title" {...form.getInputProps("title")} />
+
           <Grid mt="sm">
             <Grid.Col span={6}>
               <Select
-                leftSection={<IoPersonOutline />}
-                searchValue={searchClients}
+                label="Client"
+                placeholder="Select client"
                 {...form.getInputProps("clientId")}
-                label="Select a client"
-                placeholder="Choose client"
-                nothingFoundMessage="No clients found"
                 data={
-                  clientsData?.data.map((client: Client) => ({
-                    value: client.id,
-                    label:
-                      client.companyName ||
-                      `${client.firstName} ${client.lastName}`,
+                  clientsData?.data?.map((c: Client) => ({
+                    value: c.id,
+                    label: c.companyName || `${c.firstName} ${c.lastName}`,
                   })) || []
                 }
                 onSearchChange={setSearchClients}
                 searchable
               />
             </Grid.Col>
+
             <Grid.Col span={6}>
               <Select
-                leftSection={<IoPersonOutline />}
-                searchValue={searchAssignees}
-                {...form.getInputProps("staffId")}
-                label="Select a assignee"
-                placeholder="Choose staff member"
-                nothingFoundMessage="No staff members found"
+                label="Client Address"
+                placeholder="Select address"
+                {...form.getInputProps("addressId")}
                 data={
-                  staffData?.data.map((staff: Staff) => ({
-                    value: staff.id,
-                    label: staff.name,
+                  addressesData?.data?.map((a: any) => ({
+                    value: a.id,
+                    label: `${a.street1}, ${a.city}, ${a.province}`,
                   })) || []
                 }
-                onSearchChange={setSearchAssignees}
-                searchable
               />
             </Grid.Col>
           </Grid>
-          <Select
-            mt="sm"
-            data={
-              addressesData?.data.map((address) => ({
-                value: address?.id || "",
-                label: `${address.street1}, ${address.city}, ${address.province}`,
-              })) || []
-            }
-            label="Client Address"
-            {...form.getInputProps("addressId")}
-            placeholder="Select Address"
-          />
-          <Divider my="md" />
-          {form.values.jobType === "ONE_OFF" ? (
-            <>
-              {" "}
+
+          <Divider my="sm" />
+
+          <Group align="center" justify="space-between">
+            <Text fw={500}>Services</Text>
+            <Button
+              leftSection={<IoAddOutline />}
+              size="xs"
+              onClick={addLineItem}
+            >
+              Add Line Item
+            </Button>
+          </Group>
+
+          {form.values.lineItems.map((item, index) => (
+            <Card withBorder mt="sm" key={item.id}>
               <Grid>
-                <Grid.Col span={4}>
-                  <DateInput
-                    label="Start date"
-                    placeholder="Select date"
-                    leftSection={<IoCalendarOutline />}
-                    {...form.getInputProps("startDate")}
+                <Grid.Col span={6}>
+                  <TextInput
+                    label="Name"
+                    {...form.getInputProps(`lineItems.${index}.name`)}
                   />
                 </Grid.Col>
-
-                <Grid.Col span={4}>
-                  <TimePicker
-                    label="Start time"
-                    leftSection={<IoTimeOutline />}
-                    {...form.getInputProps("startTime")}
-                    withDropdown
+                <Grid.Col span={2}>
+                  <NumberInput
+                    label="Qty"
+                    min={1}
+                    {...form.getInputProps(`lineItems.${index}.quantity`)}
                   />
                 </Grid.Col>
-
-                <Grid.Col span={4}>
-                  <TimePicker
-                    label="End time"
-                    leftSection={<IoTimeOutline />}
-                    {...form.getInputProps("endTime")}
-                    withDropdown
+                <Grid.Col span={2}>
+                  <NumberInput
+                    label="Unit Cost"
+                    min={0}
+                    prefix="$"
+                    {...form.getInputProps(`lineItems.${index}.unitCost`)}
+                  />
+                </Grid.Col>
+                <Grid.Col span={2}>
+                  <NumberInput
+                    label="Unit Price"
+                    min={0}
+                    prefix="$"
+                    {...form.getInputProps(`lineItems.${index}.unitPrice`)}
                   />
                 </Grid.Col>
               </Grid>
-              <Checkbox
-                my="md"
-                label="Anytime"
-                {...form.getInputProps("isAnytime", {
-                  type: "checkbox",
-                })}
-              />
+
               <Textarea
-                label="Visit instructions"
-                minRows={3}
-                {...form.getInputProps("visitInstructions")}
+                mt="sm"
+                label="Description"
+                {...form.getInputProps(`lineItems.${index}.description`)}
               />
-            </>
-          ) : (
-            <>
+            </Card>
+          ))}
+
+          <Divider my="sm" />
+
+          {form.values.jobType === "RECURRING" && (
+            <Card withBorder mt="sm">
+              <Text fw={500} mb="xs">
+                Recurrence
+              </Text>
+
               <Grid>
-                <Grid.Col span={4}>
-                  <DateInput
-                    label="Start date"
-                    placeholder="Select date"
-                    leftSection={<IoCalendarOutline />}
-                    {...form.getInputProps("startDate")}
+                <Grid.Col span={6}>
+                  <Select
+                    label="Frequency"
+                    data={[
+                      { value: "weekly", label: "Weekly" },
+                      { value: "monthly", label: "Monthly" },
+                    ]}
+                    value={form.values.recurrence.frequency}
+                    onChange={(v) =>
+                      form.setFieldValue(
+                        "recurrence.frequency",
+                        v as "weekly" | "monthly",
+                      )
+                    }
                   />
                 </Grid.Col>
 
-                <Grid.Col span={4}>
-                  <TimePicker
-                    label="Start time"
-                    leftSection={<IoTimeOutline />}
-                    {...form.getInputProps("startTime")}
-                    withDropdown
+                <Grid.Col span={6}>
+                  <NumberInput
+                    label={`Every (${form.values.recurrence.frequency === "weekly" ? "weeks" : "months"})`}
+                    min={1}
+                    value={form.values.recurrence.interval}
+                    onChange={(v) =>
+                      form.setFieldValue("recurrence.interval", Number(v) || 1)
+                    }
                   />
                 </Grid.Col>
 
-                <Grid.Col span={4}>
-                  <TimePicker
-                    label="End time"
-                    leftSection={<IoTimeOutline />}
-                    {...form.getInputProps("endTime")}
-                    withDropdown
-                  />
+                <Grid.Col span={12}>
+                  <Radio.Group
+                    label="Ends"
+                    value={form.values.recurrence.endType}
+                    onChange={(v) =>
+                      form.setFieldValue(
+                        "recurrence.endType",
+                        v as "after" | "on",
+                      )
+                    }
+                  >
+                    <Stack gap="xs" mt="xs">
+                      <Radio value="after" label="After" />
+                      <Radio value="on" label="On date" />
+                    </Stack>
+                  </Radio.Group>
                 </Grid.Col>
-              </Grid>
 
-              <Checkbox
-                my="md"
-                label="Anytime"
-                {...form.getInputProps("isAnytime", {
-                  type: "checkbox",
-                })}
-              />
-
-              <Select
-                label="Repeats"
-                leftSection={<IoReloadOutline />}
-                data={[
-                  { value: "weekly", label: "Weekly" },
-                  { value: "monthly", label: "Monthly" },
-                ]}
-                {...form.getInputProps("recurrence.frequency")}
-              />
-
-              <NumberInput
-                mt="sm"
-                leftSection={<IoReloadOutline />}
-                label="Repeat every (interval)"
-                min={1}
-                {...form.getInputProps("recurrence.interval")}
-              />
-
-              <Radio.Group
-                mt="sm"
-                label="Ends"
-                {...form.getInputProps("recurrence.endType")}
-              >
-                <Stack mt="sm">
-                  <Radio value="after" label="After" />
-
-                  {form.values.recurrence.endType === "after" && (
-                    <Group>
-                      <NumberInput
-                        min={1}
-                        leftSection={<IoTextOutline />}
-                        {...form.getInputProps("recurrence.endsAfter")}
-                      />
-                      <Select
-                        leftSection={<IoCalendarOutline />}
-                        data={[
-                          { value: "months", label: "Months" },
-                          { value: "weeks", label: "Weeks" },
-                        ]}
-                        {...form.getInputProps("recurrence.endsUnit")}
-                      />
-                    </Group>
-                  )}
-
-                  <Radio mt="xs" value="on" label="On date" />
-
-                  {form.values.recurrence.endType === "on" && (
-                    <DateInput
-                      leftSection={<IoCalendarOutline />}
-                      placeholder="Select"
-                      {...form.getInputProps("recurrence.endsOn")}
+                {form.values.recurrence.endType === "after" && (
+                  <Grid.Col span={6}>
+                    <NumberInput
+                      label="Occurrences"
+                      min={1}
+                      value={form.values.recurrence.endsAfter}
+                      onChange={(v) =>
+                        form.setFieldValue(
+                          "recurrence.endsAfter",
+                          Number(v) || 1,
+                        )
+                      }
                     />
-                  )}
-                </Stack>
-              </Radio.Group>
+                  </Grid.Col>
+                )}
 
-              <Textarea
-                mt="md"
-                label="Visit instructions"
-                minRows={3}
-                {...form.getInputProps("visitInstructions")}
-              />
-            </>
+                {form.values.recurrence.endType === "on" && (
+                  <Grid.Col span={6}>
+                    <DateInput
+                      label="End date"
+                      value={form.values.recurrence.endsOn}
+                      onChange={(d) =>
+                        form.setFieldValue("recurrence.endsOn", d)
+                      }
+                      minDate={
+                        form.values.appointments?.[0]?.startDate ?? undefined
+                      }
+                    />
+                  </Grid.Col>
+                )}
+              </Grid>
+            </Card>
           )}
+
+          <Divider my="sm" />
+
+          <Group align="center" justify="space-between">
+            <Text fw={500}>Appointments</Text>
+            <Button
+              leftSection={<IoAddOutline />}
+              size="xs"
+              onClick={addAppointment}
+            >
+              Add Appointment
+            </Button>
+          </Group>
+
+          {renderAppointments()}
         </Paper>
-        <Group justify="flex-end" mt="md">
-          <Button variant="default" onClick={onClose}>
+
+        <Group justify="right" mt="md">
+          <Button variant="default" onClick={onClose} type="button">
             Cancel
           </Button>
-          <Button type="submit" color="green">
+          <Button type="submit" color="green" disabled={isUploading}>
             Save Job
           </Button>
         </Group>

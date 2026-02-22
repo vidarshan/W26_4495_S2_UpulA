@@ -8,8 +8,6 @@ export async function GET(
   try {
     const { id: clientId } = await context.params;
 
-    console.log("Client ID:", clientId);
-
     if (!clientId) {
       return NextResponse.json(
         { error: "Client ID required" },

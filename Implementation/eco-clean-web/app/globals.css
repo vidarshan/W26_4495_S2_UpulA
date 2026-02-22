@@ -1,12 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap');
-
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap');
 html, button, p, h1, h2, h3, h4, h5, h6, a, p, div, span, input{
-  font-family: "Geist", sans-serif !important;
-  /*font-style: normal !important;*/
+  font-family: "Manrope", sans-serif !important;
 }
 
 .fc {
-  font-family: "Geist", sans-serif !important;
+  font-family: "Manrope", sans-serif !important;
   font-style: normal !important;
 }
 
