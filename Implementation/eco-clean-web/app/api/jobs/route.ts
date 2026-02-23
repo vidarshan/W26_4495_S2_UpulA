@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: typeof prisma) => {
       const job = await tx.job.create({
         data: {
           title,
