@@ -3,10 +3,17 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(
   req: NextRequest,
+<<<<<<< Updated upstream
   context: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id: clientId } = await context.params;
+=======
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id: clientId } = await params;
+>>>>>>> Stashed changes
 
     if (!clientId) {
       return NextResponse.json(
@@ -25,7 +32,11 @@ export async function GET(
     console.error(error);
     return NextResponse.json(
       { error: "Internal server error" },
+<<<<<<< Updated upstream
       { status: 500 },
+=======
+      { status: 500 }
+>>>>>>> Stashed changes
     );
   }
 }

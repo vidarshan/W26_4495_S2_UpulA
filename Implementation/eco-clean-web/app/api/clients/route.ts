@@ -121,9 +121,42 @@ export async function POST(req: Request) {
       );
     }
 
+<<<<<<< Updated upstream
     const client = await prisma.$transaction(
       async (tx: Prisma.TransactionClient) => {
         const createdClient = await tx.client.create({
+=======
+    const client = await prisma.$transaction(async (tx) => {
+      const createdClient = await tx.client.create({
+        data: {
+          title,
+          firstName,
+          lastName,
+          companyName,
+          email,
+          phone,
+          preferredContact,
+          leadSource,
+        },
+      });
+
+      await tx.address.createMany({
+        data: addresses.map((addr: Address, index: number) => ({
+          clientId: createdClient.id,
+          street1: addr.street1,
+          street2: addr.street2,
+          city: addr.city,
+          province: addr.province,
+          postalCode: addr.postalCode,
+          country: addr.country,
+          isBilling: !!addr.isBilling,
+          isPrimary: index === 0,
+        })),
+      });
+
+      if (note) {
+        await tx.clientNote.create({
+>>>>>>> Stashed changes
           data: {
             title,
             firstName,

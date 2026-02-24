@@ -1,5 +1,10 @@
+<<<<<<< Updated upstream
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+=======
+import { prisma } from '@/lib/prisma';
+import { NextRequest, NextResponse } from 'next/server';
+>>>>>>> Stashed changes
 
 export async function GET(
   _req: NextRequest,
@@ -8,7 +13,7 @@ export async function GET(
   const { id } = await params;
 
   if (!id) {
-    return NextResponse.json({ error: "Missing id" }, { status: 400 });
+    return NextResponse.json({ error: 'Missing id' }, { status: 400 });
   }
 
   try {
@@ -24,16 +29,16 @@ export async function GET(
 
     if (!appointment) {
       return NextResponse.json(
-        { error: "Appointment not found" },
+        { error: 'Appointment not found' },
         { status: 404 },
       );
     }
 
     return NextResponse.json(appointment);
   } catch (err) {
-    console.error("GET appointment by ID error:", err);
+    console.error('GET appointment by ID error:', err);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: 'Internal server error' },
       { status: 500 },
     );
   }
@@ -46,14 +51,14 @@ export async function PATCH(
   const { id } = await params;
 
   if (!id) {
-    return NextResponse.json({ error: "Missing id" }, { status: 400 });
+    return NextResponse.json({ error: 'Missing id' }, { status: 400 });
   }
 
   let body: any;
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
   const { startTime, endTime, status, staffIds, note, noteIsClientVisible } =
@@ -61,7 +66,7 @@ export async function PATCH(
 
   if ((startTime && !endTime) || (!startTime && endTime)) {
     return NextResponse.json(
-      { error: "Provide both startTime and endTime together" },
+      { error: 'Provide both startTime and endTime together' },
       { status: 400 },
     );
   }
@@ -74,7 +79,7 @@ export async function PATCH(
     const e = new Date(endTime);
     if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) {
       return NextResponse.json(
-        { error: "Invalid startTime/endTime" },
+        { error: 'Invalid startTime/endTime' },
         { status: 400 },
       );
     }
@@ -102,24 +107,18 @@ export async function PATCH(
         appt = await tx.appointment.findUnique({ where: { id } });
       }
 
-      if (!appt) throw new Error("Appointment not found");
+      if (!appt) throw new Error('Appointment not found');
 
       // 2) Handle note updates (VisitNote)
-      // - note: string | null | undefined
-      //   undefined => don't touch notes
-      //   null/""    => remove the latest internal note (optional behavior)
-      //   string     => upsert latest internal note
       if (note !== undefined) {
-        const trimmed = typeof note === "string" ? note.trim() : "";
+        const trimmed = typeof note === 'string' ? note.trim() : '';
 
-        // Find latest note (you can filter isClientVisible if you want)
         const existing = await tx.visitNote.findFirst({
           where: { appointmentId: id },
-          orderBy: { createdAt: "desc" },
+          orderBy: { createdAt: 'desc' },
         });
 
         if (!trimmed) {
-          // User cleared note => delete existing latest note (or you can keep it)
           if (existing) {
             await tx.visitNote.delete({ where: { id: existing.id } });
           }
@@ -129,7 +128,7 @@ export async function PATCH(
               where: { id: existing.id },
               data: {
                 content: trimmed,
-                ...(typeof noteIsClientVisible === "boolean"
+                ...(typeof noteIsClientVisible === 'boolean'
                   ? { isClientVisible: noteIsClientVisible }
                   : {}),
               },
@@ -140,7 +139,7 @@ export async function PATCH(
                 appointmentId: id,
                 content: trimmed,
                 isClientVisible:
-                  typeof noteIsClientVisible === "boolean"
+                  typeof noteIsClientVisible === 'boolean'
                     ? noteIsClientVisible
                     : false,
               },
@@ -171,9 +170,9 @@ export async function PATCH(
 
     return NextResponse.json(updated);
   } catch (err) {
-    console.error("Failed to update appointment:", err);
+    console.error('Failed to update appointment:', err);
     return NextResponse.json(
-      { error: "Failed to update appointment" },
+      { error: 'Failed to update appointment' },
       { status: 500 },
     );
   }
