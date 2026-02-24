@@ -12,6 +12,23 @@
 2026-02-12 6:00-7:30pm Debugged inconsistent page sizing and standardized container widths
 2026-02-12 8:00-9:00pm Generated database dump process for team collaboration
 2026-02-12 9:00-10:00pm Refactored reusable layout structure for scalability
+2026-02-12 9:00–10:00pm Refactored reusable layout structure for scalability
+2026-02-13 10:00am–12:00pm Refactored Job–Appointment relationship logic (Prisma schema updates)
+2026-02-13 2:00–3:30pm Resolved Prisma migration constraint errors for required datetime fields
+2026-02-13 7:00–9:00pm Improved job creation transaction flow (Anytime vs Scheduled logic)
+2026-02-16 3:00–5:00pm Standardized date utilities (ISO ↔ date-only ↔ time conversions)
+2026-02-17 11:00am–1:30pm Reworked Anytime scheduling logic in Job POST route
+2026-02-17 3:30–6:00pm Fixed Prisma staff relation errors (staff vs staffId correction)
+2026-02-18 9:00–11:30pm Debugged appointment update errors (Invalid Date handling)
+2026-02-18 11:30pm–12:30am Normalized API date parsing to prevent runtime failures
+2026-02-19 2:30–4:30pm Fixed appointment PATCH route (async params resolution)
+2026-02-19 5:00–6:30pm Resolved DELETE route debugging for uploadthing integration
+2026-02-19 7:00–9:00pm Refactored line item pricing logic (unitCost vs quantity modeling)
+2026-02-19 9:00–10:30pm Streamlined API validation and frontend data normalization
+2026-02-20 3:00–5:00pm Improved appointment image upload handling (Mantine Dropzone integration)
+2026-02-22 8:00–10:30pm Planned PWA transition strategy (unified web/mobile architecture)
+2026-02-23 9:30–11:30am Reviewed cloud scalability & CDN strategy for production readiness
+2026-02-23 1:00–3:00pm Evaluated infrastructure design for fault tolerance and automation
 
 
 -- Progress Report 1 --

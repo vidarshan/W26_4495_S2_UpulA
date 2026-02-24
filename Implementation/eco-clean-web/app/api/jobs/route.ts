@@ -28,7 +28,7 @@ function addMonths(date: Date, months: number) {
   return d;
 }
 
-function asDate(value: any): Date | null {
+function asDate(value: Date): Date | null {
   const d = value instanceof Date ? value : new Date(value);
   return Number.isNaN(d.getTime()) ? null : d;
 }
@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
           isAnytime,
           visitInstructions,
           lineItems: {
-            create: lineItems.map((li: any) => ({
+            create: lineItems.map((li: LineItem) => ({
               name: li.name,
               quantity: li.quantity,
               unitCost: li.unitCost,
@@ -141,7 +141,7 @@ export async function POST(req: NextRequest) {
         }
 
         const data: Prisma.AppointmentCreateInput = {
-          jobId: job.id,
+          job: { connect: { id: job.id } },
           startTime: start,
           endTime: end,
           status: AppointmentStatus.SCHEDULED,

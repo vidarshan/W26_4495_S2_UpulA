@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { Appointment, Prisma } from "@prisma/client";
+import { PatchAppointmentBody } from "@/types";
 
 export async function GET(
   _req: NextRequest,
@@ -49,7 +51,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Missing id" }, { status: 400 });
   }
 
-  let body: any;
+  let body: PatchAppointmentBody;
   try {
     body = await req.json();
   } catch {
@@ -67,8 +69,8 @@ export async function PATCH(
   }
 
   // Build appointment update data
-  const data: any = {};
-
+  const data: Prisma.AppointmentUpdateInput = {};
+  console.log(data);
   if (startTime && endTime) {
     const s = new Date(startTime);
     const e = new Date(endTime);
@@ -91,7 +93,7 @@ export async function PATCH(
   try {
     const updated = await prisma.$transaction(async (tx) => {
       // 1) Update appointment core fields (only if needed)
-      let appt = null as any;
+      let appt: Appointment | null = null;
 
       if (Object.keys(data).length > 0) {
         appt = await tx.appointment.update({

@@ -22,7 +22,7 @@ export async function GET(req: Request) {
     const skip = (page - 1) * limit;
 
     const where: Prisma.UserWhereInput = {
-      role: "STAFF",
+      //role: "STAFF" | "ADMIN",
       ...(q && {
         OR: [
           {

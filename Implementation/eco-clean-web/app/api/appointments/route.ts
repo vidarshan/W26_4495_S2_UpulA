@@ -29,8 +29,6 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // ✅ Correct overlap logic:
-    // event overlaps range if it starts before rangeEnd AND ends after rangeStart
     const appointments = await prisma.appointment.findMany({
       where: {
         status: "SCHEDULED",
@@ -48,8 +46,7 @@ export async function GET(req: NextRequest) {
       return {
         id: appt.id,
         title: `${appt.job.title} - ${appt.job.client.firstName}`,
-        // ✅ Always send ISO strings (not Date objects)
-        // This removes ambiguity and makes FullCalendar parsing consistent.
+        //Always send ISO strings (not Date objects)
         start: appt.startTime.toISOString(),
         end: appt.endTime.toISOString(),
         backgroundColor: color,

@@ -3,6 +3,118 @@ Prompt: Prisma client.findMany with filtering, sorting, pagination
 Value Addition: Built scalable backend query logic with dynamic orderBy and efficient skip/take pagination
 
 AI: ChatGPT 5.2 (Go Plan)
+Prompt: Dynamic Prisma orderBy toggle (oldest/newest) with TypeScript SortOrder fix
+Value Addition: Implemented type-safe sorting logic resolving Prisma SortOrder typing errors
+
+AI: ChatGPT 5.2 (Go Plan)
+Prompt: Connecting Mantine Select component to backend data
+Value Addition: Enabled dynamic dropdown population from API data
+
+AI: ChatGPT 5.2 (Go Plan)
+Prompt: Implement searchable Mantine Select with onSearchChange filtering
+Value Addition: Added client-side search refinement for improved UX
+
+AI: ChatGPT 5.2 (Go Plan)
+Prompt: Mantine Grid and Stack dashboard layout structure
+Value Addition: Designed scalable dashboard layout foundation
+
+AI: ChatGPT 5.2 (Go Plan)
+Prompt: Sidebar collapse behavior in Mantine responsive layout
+Value Addition: Improved dashboard responsiveness and adaptive UI behavior
+
+AI: ChatGPT 5.2 (Go Plan)
+Prompt: Structured form layout with grouped sections (Primary Contact)
+Value Addition: Enhanced form hierarchy and usability through structured grouping
+
+AI: ChatGPT 5.2 (Go Plan)
+Prompt: Connecting Mantine form submission to Next.js API routes
+Value Addition: Enabled full-stack data flow between frontend forms and backend endpoints
+
+AI: ChatGPT 5.2 (Go Plan)
+Prompt: UI spacing and alignment optimization in Mantine forms
+Value Addition: Improved visual hierarchy and professional polish of UI
+
+AI: ChatGPT 5.2 (Go Plan)
+Prompt: Integrating FullCalendar in Next.js App Router
+Value Addition: Embedded interactive scheduling interface within dashboard
+
+AI: ChatGPT 5.2 (Go Plan)
+Prompt: Configuring FullCalendar plugins (timeGrid, dayGrid, interaction)
+Value Addition: Enabled multi-view scheduling and interactive event management
+
+AI: ChatGPT 5.2 (Go Plan)
+Prompt: Fix inconsistent page sizing and layout width issues
+Value Addition: Standardized container widths for consistent cross-page layout
+
+AI: ChatGPT 5.2 (Go Plan)
+Prompt: PostgreSQL database dump process for team collaboration
+Value Addition: Established reproducible DB export workflow for shared development
+
+AI: ChatGPT 5.2 (Go Plan)
+Prompt: Reusable layout architecture in Next.js dashboard
+Value Addition: Refactored layout for scalability and future feature expansion
+
+AI: ChatGPT 5.2 (Go Plan)
+Prompt: Prisma Job–Appointment relationship modeling
+Value Addition: Improved relational integrity and transactional job creation flow
+
+AI: ChatGPT 5.2 (Go Plan)
+Prompt: Fix Prisma migration error (required column without default)
+Value Addition: Resolved schema deployment blocking issue safely
+
+AI: ChatGPT 5.2 (Go Plan)
+Prompt: Anytime vs Scheduled appointment logic in transactional API route
+Value Addition: Implemented conditional scheduling architecture
+
+AI: ChatGPT 5.2 (Go Plan)
+Prompt: ISO date handling between frontend and Prisma backend
+Value Addition: Standardized date conversion utilities preventing runtime Date errors
+
+AI: ChatGPT 5.2 (Go Plan)
+Prompt: Fix Prisma staff vs staffId relation error
+Value Addition: Corrected relational mapping and eliminated API runtime failure
+
+AI: ChatGPT 5.2 (Go Plan)
+Prompt: Debug Invalid Date object error in Prisma update
+Value Addition: Prevented data corruption by normalizing API input parsing
+
+AI: ChatGPT 5.2 (Go Plan)
+Prompt: Next.js App Router async params handling in PATCH route
+Value Addition: Fixed dynamic route parameter resolution preventing 500 errors
+
+AI: ChatGPT 5.2 (Go Plan)
+Prompt: Debug DELETE route not being triggered (upload integration)
+Value Addition: Resolved routing mismatch and ensured image deletion reliability
+
+AI: ChatGPT 5.2 (Go Plan)
+Prompt: Unit cost vs quantity financial calculation modeling
+Value Addition: Corrected pricing logic ensuring accurate invoice totals
+
+AI: ChatGPT 5.2 (Go Plan)
+Prompt: Frontend-to-backend data normalization strategy
+Value Addition: Reduced validation failures and improved API resilience
+
+AI: ChatGPT 5.2 (Go Plan)
+Prompt: Mantine Dropzone image upload handling with backend integration
+Value Addition: Enabled structured appointment image management
+
+AI: ChatGPT 5.2 (Go Plan)
+Prompt: Converting React Native mobile app to PWA architecture
+Value Addition: Defined unified deployment strategy reducing maintenance overhead
+
+AI: ChatGPT 5.2 (Go Plan)
+Prompt: CDN and scalability considerations for production deployment
+Value Addition: Strengthened architectural readiness for scalable cloud hosting
+
+AI: ChatGPT 5.2 (Go Plan)
+Prompt: Infrastructure design for fault tolerance and automation
+Value Addition: Established production-oriented infrastructure planning framework
+
+AI: ChatGPT 5.2 (Go Plan)
+Prompt: Prisma client.findMany with filtering, sorting, pagination
+Value Addition: Built scalable backend query logic with dynamic orderBy and efficient skip/take pagination
+
+AI: ChatGPT 5.2 (Go Plan)
 Prompt: Implementing oldest/newest sorting toggle
 Value Addition: Enabled dynamic server-side sorting with clean query structure
 

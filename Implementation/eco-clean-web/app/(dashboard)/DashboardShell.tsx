@@ -139,15 +139,6 @@ export default function DashboardShell({
                 active={pathname.startsWith("/users")}
               />
             </Tooltip>
-            <Tooltip label="Employees" position="right" withArrow>
-              <NavLink
-                component={Link}
-                href="/pay"
-                bdrs="md"
-                leftSection={<IoAccessibilityOutline />}
-                active={pathname.startsWith("/pay")}
-              />
-            </Tooltip>
             <Tooltip label="Settings" position="right" withArrow>
               <NavLink
                 component={Link}

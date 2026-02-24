@@ -1,3 +1,5 @@
+import { Prisma } from "@prisma/client";
+
 export type CalendarSelection = {
   start: Date | null;
   end: Date | null;
@@ -108,3 +110,13 @@ export interface UpdateAppointmentPayload {
   status?: "SCHEDULED" | "COMPLETED" | "CANCELLED";
   staffIds?: string[];
 }
+
+
+export type PatchAppointmentBody = {
+  startTime?: string;
+  endTime?: string;
+  status?: Prisma.AppointmentUpdateInput["status"];
+  staffIds?: string[];
+  note?: string | null;
+  noteIsClientVisible?: boolean;
+};
