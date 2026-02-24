@@ -31,5 +31,8 @@ DATABASE_URL="postgresql://postgres:postgres@localhost:5432/eco_clean?schema=pub
 ## 4) Prisma Client Generation (In the bash)
 npx prisma generate
 
+## 5) Install the npm modules and run Development 
+npm install
+npm run dev
 
 
