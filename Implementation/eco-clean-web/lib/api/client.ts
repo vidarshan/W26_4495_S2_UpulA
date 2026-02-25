@@ -36,27 +36,32 @@ export interface StaffResponse {
   role: string;
 }
 
+type ApiClientOptions = Omit<RequestInit, "body"> & {
+  body?: any;
+};
+
 export async function apiClient<T>(
   url: string,
-  options?: RequestInit,
-): Promise<T> {
+  options: ApiClientOptions = {},
+) {
+  const { body, headers, ...rest } = options;
+
   const res = await fetch(url, {
+    ...rest,
     headers: {
       "Content-Type": "application/json",
-      ...options?.headers,
+      ...(headers || {}),
     },
-    ...options,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 
-  const text = await res.text();
-  const data = text ? JSON.parse(text) : null;
+  const data = await res.json().catch(() => null);
 
   if (!res.ok) {
-    const error = await res.json().catch(() => null);
-    throw new Error(error?.error || "Something went wrong");
+    throw new Error(data?.error || "Request failed");
   }
 
-  return data;
+  return data as T;
 }
 
 export function getClients(query: string) {

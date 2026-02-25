@@ -3,6 +3,7 @@ import { getAuthSession } from "@/lib/session";
 import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
 import { Prisma } from "@prisma/client";
+import crypto from "crypto";
 
 export async function GET(req: Request) {
   const session = await getAuthSession();
@@ -19,10 +20,11 @@ export async function GET(req: Request) {
     const limit = Number(searchParams.get("limit") || 20);
     const sort = searchParams.get("sort") || "newest";
 
+    const paginate = searchParams.get("paginate") !== "false";
+
     const skip = (page - 1) * limit;
 
     const where: Prisma.UserWhereInput = {
-      role: "STAFF",
       ...(q && {
         OR: [
           {
@@ -45,6 +47,27 @@ export async function GET(req: Request) {
       sort === "oldest"
         ? { createdAt: Prisma.SortOrder.asc }
         : { createdAt: Prisma.SortOrder.desc };
+
+    if (!paginate) {
+      const users = await prisma.user.findMany({
+        where,
+        orderBy,
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          createdAt: true,
+        },
+      });
+
+      return NextResponse.json({
+        data: users,
+        meta: {
+          total: users.length,
+        },
+      });
+    }
 
     const [users, total] = await Promise.all([
       prisma.user.findMany({
@@ -81,6 +104,13 @@ export async function GET(req: Request) {
   }
 }
 
+function generatePassword(length = 14) {
+  return crypto
+    .randomBytes(Math.ceil((length * 3) / 4))
+    .toString("base64url")
+    .slice(0, length);
+}
+
 export async function POST(req: Request) {
   const session = await getAuthSession();
 
@@ -88,25 +118,56 @@ export async function POST(req: Request) {
   //   return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   // }
 
-  const { name, email, password, role } = await req.json();
+  const { name, email, role } = await req.json();
 
-  if (!name || !email || !password || !role) {
+  if (!name || !email || !role) {
     return NextResponse.json(
       { error: "Missing required fields" },
       { status: 400 },
     );
   }
 
-  const hashedPassword = await bcrypt.hash(password, 10);
+  const tempPassword = generatePassword(14);
+  const hashedPassword = await bcrypt.hash(tempPassword, 10);
 
   const user = await prisma.user.create({
-    data: {
-      name,
-      email,
-      password: hashedPassword,
-      role,
-    },
+    data: { name, email, role, password: hashedPassword },
+    select: { id: true, name: true, email: true, role: true, createdAt: true },
   });
 
-  return NextResponse.json(user, { status: 201 });
+  // return tempPassword only once (admin can copy)
+  return NextResponse.json({ user, tempPassword }, { status: 201 });
+}
+
+export async function PATCH(
+  req: Request,
+  { params }: { params: { id: string } },
+) {
+  const session = await getAuthSession();
+
+  // if (!session || session.user.role !== "ADMIN") {
+  //   return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  // }
+
+  const { id } = params;
+  const { name, email, role, password } = await req.json();
+
+  if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
+
+  const data: any = {};
+  if (name !== undefined) data.name = name;
+  if (email !== undefined) data.email = email;
+  if (role !== undefined) data.role = role;
+
+  if (typeof password === "string" && password.trim().length > 0) {
+    data.password = await bcrypt.hash(password, 10);
+  }
+
+  const user = await prisma.user.update({
+    where: { id },
+    data,
+    select: { id: true, name: true, email: true, role: true, updatedAt: true },
+  });
+
+  return NextResponse.json({ user }, { status: 200 });
 }

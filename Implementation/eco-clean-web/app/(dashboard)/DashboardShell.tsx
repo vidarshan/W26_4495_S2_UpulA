@@ -108,6 +108,23 @@ export default function DashboardShell({
                         Client
                       </Text>
                     </Flex>
+                    <Divider />
+                    <Flex direction="column" align="center">
+                      <ActionIcon
+                        variant="light"
+                        color="violet"
+                        size="xl"
+                        onClick={() => {
+                          setOpened(false);
+                          setClientPopoverOpened(true);
+                        }}
+                      >
+                        <IoBriefcaseOutline />
+                      </ActionIcon>
+                      <Text mt="xs" size="xs" fw={600} c="violet">
+                        User
+                      </Text>
+                    </Flex>
                   </Flex>
                 </Popover.Dropdown>
               </Popover>
@@ -133,21 +150,13 @@ export default function DashboardShell({
             <Tooltip label="Employees" position="right" withArrow>
               <NavLink
                 component={Link}
-                href="/users"
+                href="/employees"
                 bdrs="md"
                 leftSection={<IoBriefcaseOutline />}
-                active={pathname.startsWith("/users")}
+                active={pathname.startsWith("/employees")}
               />
             </Tooltip>
-            <Tooltip label="Employees" position="right" withArrow>
-              <NavLink
-                component={Link}
-                href="/pay"
-                bdrs="md"
-                leftSection={<IoAccessibilityOutline />}
-                active={pathname.startsWith("/pay")}
-              />
-            </Tooltip>
+
             <Tooltip label="Settings" position="right" withArrow>
               <NavLink
                 component={Link}

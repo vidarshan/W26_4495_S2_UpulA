@@ -34,7 +34,7 @@ export interface Address {
   createdAt: string;
 }
 
-export interface StaffMember {
+export interface User {
   id: string;
   name: string;
   email: string;
@@ -49,7 +49,7 @@ export interface Appointment {
   endTime: string;
   status: "SCHEDULED" | "COMPLETED" | "CANCELLED";
   createdAt: string;
-  staff: StaffMember[];
+  staff: User[];
   completionSent: boolean;
   reminder1dSent: boolean;
   reminder5dSent: boolean;
@@ -108,3 +108,19 @@ export interface UpdateAppointmentPayload {
   status?: "SCHEDULED" | "COMPLETED" | "CANCELLED";
   staffIds?: string[];
 }
+
+export type PaginationMeta =
+  | { total: number }
+  | { page: number; limit: number; total: number; totalPages: number };
+
+export type UserListResponse = {
+  data: User[];
+  meta: PaginationMeta;
+};
+
+export type EditUserInput = {
+  id: string;
+  name: string;
+  role: string;
+  email: string;
+};

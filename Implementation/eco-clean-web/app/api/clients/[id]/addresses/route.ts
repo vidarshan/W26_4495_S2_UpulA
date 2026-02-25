@@ -3,13 +3,16 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const clientId = params.id;
+    const { id: clientId } = await params;
 
     if (!clientId) {
-      return NextResponse.json({ error: "Client ID required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Client ID required" },
+        { status: 400 },
+      );
     }
 
     const addresses = await prisma.address.findMany({
@@ -20,7 +23,10 @@ export async function GET(
     return NextResponse.json({ data: addresses });
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
   }
 }
 
