@@ -55,6 +55,13 @@ export interface Appointment {
   reminder5dSent: boolean;
 }
 
+export interface UserForm {
+  email: string;
+  name: string;
+  password: string;
+  role: "STAFF" | "ADMIN";
+}
+
 export interface Recurrence {
   id: string;
   frequency: "weekly" | "monthly";

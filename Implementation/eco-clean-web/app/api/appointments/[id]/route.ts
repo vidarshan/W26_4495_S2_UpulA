@@ -89,9 +89,9 @@ export async function PATCH(
   }
 
   try {
-    const updated = await prisma.$transaction(async (tx: typeof prisma) => {
+    const updated = await prisma.$transaction(async (tx) => {
       // 1) Update appointment core fields (only if needed)
-      let appt = null as any;
+      let appt = null;
 
       if (Object.keys(data).length > 0) {
         appt = await tx.appointment.update({

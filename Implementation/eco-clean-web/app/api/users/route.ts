@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
 import { Prisma } from "@prisma/client";
 import crypto from "crypto";
+import { User, UserForm } from "@/types";
 
 export async function GET(req: Request) {
   const session = await getAuthSession();
@@ -137,37 +138,4 @@ export async function POST(req: Request) {
 
   // return tempPassword only once (admin can copy)
   return NextResponse.json({ user, tempPassword }, { status: 201 });
-}
-
-export async function PATCH(
-  req: Request,
-  { params }: { params: { id: string } },
-) {
-  const session = await getAuthSession();
-
-  // if (!session || session.user.role !== "ADMIN") {
-  //   return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  // }
-
-  const { id } = params;
-  const { name, email, role, password } = await req.json();
-
-  if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
-
-  const data: any = {};
-  if (name !== undefined) data.name = name;
-  if (email !== undefined) data.email = email;
-  if (role !== undefined) data.role = role;
-
-  if (typeof password === "string" && password.trim().length > 0) {
-    data.password = await bcrypt.hash(password, 10);
-  }
-
-  const user = await prisma.user.update({
-    where: { id },
-    data,
-    select: { id: true, name: true, email: true, role: true, updatedAt: true },
-  });
-
-  return NextResponse.json({ user }, { status: 200 });
 }
