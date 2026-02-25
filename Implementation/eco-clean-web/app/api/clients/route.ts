@@ -1,5 +1,6 @@
 import { Address } from "@/app/components/tables/ClientTable";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 export async function GET(req: Request) {
@@ -24,7 +25,9 @@ export async function GET(req: Request) {
         }
       : undefined;
 
-    const orderBy = { createdAt: sort === "oldest" ? ("asc" as const) : ("desc" as const) };
+    const orderBy = {
+      createdAt: sort === "oldest" ? ("asc" as const) : ("desc" as const),
+    };
 
     const [clients, total] = await Promise.all([
       prisma.client.findMany({
@@ -58,7 +61,10 @@ export async function GET(req: Request) {
     });
   } catch (error) {
     console.error("GET /clients failed:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
   }
 }
 
@@ -80,56 +86,67 @@ export async function POST(req: Request) {
     } = body;
 
     if (!firstName || !lastName || !email || !phone) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 },
+      );
     }
 
     if (!addresses || addresses.length === 0) {
-      return NextResponse.json({ error: "At least one address is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "At least one address is required" },
+        { status: 400 },
+      );
     }
 
-    const client = await prisma.$transaction(async (tx: typeof prisma) => {
-      const createdClient = await tx.client.create({
-        data: {
-          title,
-          firstName,
-          lastName,
-          companyName,
-          email,
-          phone,
-          preferredContact,
-          leadSource,
-        },
-      });
-
-      await tx.address.createMany({
-        data: addresses.map((addr: Address, index: number) => ({
-          clientId: createdClient.id,
-          street1: addr.street1,
-          street2: addr.street2,
-          city: addr.city,
-          province: addr.province,
-          postalCode: addr.postalCode,
-          country: addr.country,
-          isBilling: !!addr.isBilling,
-          isPrimary: index === 0,
-        })),
-      });
-
-      if (note) {
-        await tx.clientNote.create({
+    const client = await prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => {
+        const createdClient = await tx.client.create({
           data: {
-            clientId: createdClient.id,
-            content: note,
+            title,
+            firstName,
+            lastName,
+            companyName,
+            email,
+            phone,
+            preferredContact,
+            leadSource,
           },
         });
-      }
 
-      return createdClient;
-    });
+        await tx.address.createMany({
+          data: addresses.map((addr: Address, index: number) => ({
+            clientId: createdClient.id,
+            street1: addr.street1,
+            street2: addr.street2,
+            city: addr.city,
+            province: addr.province,
+            postalCode: addr.postalCode,
+            country: addr.country,
+            isBilling: !!addr.isBilling,
+            isPrimary: index === 0,
+          })),
+        });
+
+        if (note) {
+          await tx.clientNote.create({
+            data: {
+              clientId: createdClient.id,
+              content: note,
+            },
+          });
+        }
+
+        return createdClient;
+      },
+    );
 
     return NextResponse.json(client, { status: 201 });
   } catch (error) {
     console.error("Create client failed:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
   }
 }

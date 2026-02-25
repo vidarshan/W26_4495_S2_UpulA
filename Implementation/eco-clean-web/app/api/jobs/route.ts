@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
@@ -42,13 +43,12 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const result = await prisma.$transaction(async (tx: typeof prisma) => {
+    const result = await prisma.$transaction(async (tx) => {
       const job = await tx.job.create({
         data: {
           title,
           type: jobType,
           clientId,
-          staffId,
           addressId,
         },
       });
@@ -72,12 +72,12 @@ export async function POST(req: NextRequest) {
             jobId: job.id,
             frequency,
             interval,
+            endType,
             endsAfter: endType === "after" ? endsAfter : null,
-            endsOn: endType === "on" ? new Date(endsOn) : null,
+            endsOn: endType === "on" && endsOn ? new Date(endsOn) : null,
           },
         });
 
-        // Generate recurring visits
         const current = new Date(start);
         let count = 0;
 
@@ -89,19 +89,15 @@ export async function POST(req: NextRequest) {
             data: {
               jobId: job.id,
               startTime: new Date(current),
-              endTime: new Date(current),
+              endTime: new Date(current), // (you probably want +duration here)
               status: "SCHEDULED",
             },
           });
 
-          // Move forward
-          if (frequency === "weekly") {
+          if (frequency === "weekly")
             current.setDate(current.getDate() + 7 * interval);
-          }
-
-          if (frequency === "monthly") {
+          if (frequency === "monthly")
             current.setMonth(current.getMonth() + interval);
-          }
 
           count++;
         }
