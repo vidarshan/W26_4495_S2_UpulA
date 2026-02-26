@@ -180,7 +180,6 @@ export default function DashboardShell({
             <Box>
               <Divider mb="xs" />
               <NavLink
-              
                 component="button"
                 leftSection={<IoLogOutOutline size={18} />}
                 color="red"
@@ -192,7 +191,12 @@ export default function DashboardShell({
         </Stack>
       </AppShell.Navbar>
       <AppShell.Main>
-        <Container fluid>
+        <Container
+          fluid
+          onClick={() => {
+            opened && setOpened(false);
+          }}
+        >
           <UserUpsertModal
             key="new"
             opened={userOpened}
