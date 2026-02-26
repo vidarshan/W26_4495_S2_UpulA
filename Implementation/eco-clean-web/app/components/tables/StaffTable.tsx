@@ -17,9 +17,10 @@ import { IoFilterOutline, IoSearchOutline } from "react-icons/io5";
 import Loader from "../UI/Loader";
 import { formatDateTime } from "@/lib/utils/formatDateTime";
 import UserUpsertModal from "../popups/UserModal";
+import { Staff } from "@/app/types/staff";
 
 export default function StaffTable() {
-  const [sort, setSort] = useState("newest");
+  const [sort, setSort] = useState<"newest" | "oldest">("newest");
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
   const limit = 10;
@@ -36,21 +37,21 @@ export default function StaffTable() {
   const meta = data?.meta;
 
   const [opened, setOpened] = useState(false);
-  const [mode, setMode] = useState("add");
-  const [selectedUser, setSelectedUser] = useState(null);
+  const [mode, setMode] = useState<"create" | "edit">("create");
+  const [selectedUser, setSelectedUser] = useState<Staff | null>(null);
 
-  const handleSearch = (value) => {
+  const handleSearch = (value: string) => {
     setQ(value);
     setPage(1);
   };
 
   const openAdd = useCallback(() => {
-    setMode("add");
+    setMode("create");
     setSelectedUser(null);
     setOpened(true);
   }, []);
 
-  const openEdit = useCallback((u) => {
+  const openEdit = useCallback((u: Staff) => {
     setMode("edit");
     setSelectedUser(u);
     setOpened(true);
@@ -93,7 +94,6 @@ export default function StaffTable() {
             radius="md"
             onChange={(e) => handleSearch(e.target.value)}
           />
-
           <Select
             placeholder="Sort by"
             leftSection={<IoFilterOutline />}
@@ -102,7 +102,9 @@ export default function StaffTable() {
               { value: "newest", label: "Newest" },
               { value: "oldest", label: "Oldest" },
             ]}
-            onChange={(value) => setSort(value || "newest")}
+            onChange={(value) =>
+              setSort((value as "newest" | "oldest") ?? "newest")
+            }
             radius="md"
           />
         </Group>
