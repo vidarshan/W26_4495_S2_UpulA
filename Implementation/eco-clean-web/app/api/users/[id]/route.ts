@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthSession } from "@/lib/session";
 import bcrypt from "bcrypt";
-import { Role } from "@prisma/client";
+
+type Role = "ADMIN" | "STAFF" | "CLIENT";
 
 type PatchBody = {
   name?: string;

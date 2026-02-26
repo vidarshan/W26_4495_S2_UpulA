@@ -105,7 +105,7 @@ export async function POST(req: NextRequest) {
           return NextResponse.json(
             { error: "Missing recurrence data" },
             { status: 400 },
-          ) as any;
+          );
         }
 
         const { frequency, interval, endType, endsAfter, endsOn } = recurrence;
