@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "postinstall": "prisma generate",
+    "vercel-build": "npx prisma generate && node -e \"process.exit(process.env.RUN_MIGRATIONS==='true'?0:1)\" || true && npx prisma migrate deploy && next build"
   },
   "prisma": {
     "seed": "npx ts-node prisma/seed.ts"
@@ -24,8 +26,8 @@
     "@mantine/form": "^8.3.14",
     "@mantine/hooks": "^8.3.13",
     "@mantine/next": "^6.0.22",
+    "@mantine/notifications": "^8.3.15",
     "@prisma/adapter-pg": "^7.3.0",
-    "@prisma/client": "^7.3.0",
     "@tanstack/react-query": "^5.90.21",
     "@tanstack/react-query-devtools": "^5.91.3",
     "@uploadthing/react": "^7.3.3",
@@ -47,6 +49,7 @@
     "zustand": "^5.0.11"
   },
   "devDependencies": {
+    "@prisma/client": "^7.4.1",
     "@tailwindcss/postcss": "^4",
     "@types/bcrypt": "^6.0.0",
     "@types/fullcalendar": "^3.8.0",

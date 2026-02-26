@@ -1,6 +1,20 @@
-import { Address } from "@/app/components/tables/ClientTable";
+export const runtime = "nodejs";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+
+// ✅ Define Address type here (or move to /types/address.ts and import from there)
+type Address = {
+  street1: string;
+  street2?: string | null;
+  city: string;
+  province: string;
+  postalCode: string;
+  country: string;
+  isBilling?: boolean;
+};
+
+// ✅ Infer tx type from prisma.$transaction callback
+type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
 
 export async function GET(req: Request) {
   try {
@@ -24,7 +38,9 @@ export async function GET(req: Request) {
         }
       : undefined;
 
-    const orderBy = { createdAt: sort === "oldest" ? ("asc" as const) : ("desc" as const) };
+    const orderBy = {
+      createdAt: sort === "oldest" ? ("asc" as const) : ("desc" as const),
+    };
 
     const [clients, total] = await Promise.all([
       prisma.client.findMany({
@@ -58,7 +74,10 @@ export async function GET(req: Request) {
     });
   } catch (error) {
     console.error("GET /clients failed:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
   }
 }
 
@@ -77,17 +96,34 @@ export async function POST(req: Request) {
       leadSource,
       addresses,
       note,
-    } = body;
+    } = body as {
+      title?: string;
+      firstName?: string;
+      lastName?: string;
+      companyName?: string;
+      email?: string;
+      phone?: string;
+      preferredContact?: string;
+      leadSource?: string;
+      addresses?: Address[];
+      note?: string;
+    };
 
     if (!firstName || !lastName || !email || !phone) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 },
+      );
     }
 
     if (!addresses || addresses.length === 0) {
-      return NextResponse.json({ error: "At least one address is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "At least one address is required" },
+        { status: 400 },
+      );
     }
-
-    const client = await prisma.$transaction(async (tx: typeof prisma) => {
+    const preferred = preferredContact ?? "EMAIL";
+    const client = await prisma.$transaction(async (tx: Tx) => {
       const createdClient = await tx.client.create({
         data: {
           title,
@@ -96,16 +132,16 @@ export async function POST(req: Request) {
           companyName,
           email,
           phone,
-          preferredContact,
+          preferredContact: preferred,
           leadSource,
         },
       });
 
       await tx.address.createMany({
-        data: addresses.map((addr: Address, index: number) => ({
+        data: addresses.map((addr, index) => ({
           clientId: createdClient.id,
           street1: addr.street1,
-          street2: addr.street2,
+          street2: addr.street2 ?? null,
           city: addr.city,
           province: addr.province,
           postalCode: addr.postalCode,
@@ -130,6 +166,9 @@ export async function POST(req: Request) {
     return NextResponse.json(client, { status: 201 });
   } catch (error) {
     console.error("Create client failed:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
   }
 }

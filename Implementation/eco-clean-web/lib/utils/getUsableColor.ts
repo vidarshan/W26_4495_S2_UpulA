@@ -1,3 +1,5 @@
+import randomColor from "randomcolor";
+
 export function getReadableColor() {
   let color;
   let attempts = 0;

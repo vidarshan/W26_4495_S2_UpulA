@@ -35,7 +35,13 @@ export async function run5DayReminders(now = new Date()) {
         lt: endOfDay(target),
       },
     },
-    include: { client: true },
+    include: {
+      job: {
+        include: {
+          client: true,
+        },
+      },
+    },
   });
 
   for (const appt of appointments) {
@@ -44,7 +50,7 @@ export async function run5DayReminders(now = new Date()) {
       const time = appt.startTime.toUTCString().slice(17, 22);
 
       await sendEmail(
-        appt.client.email,
+        appt.job.client.email,
         "Appointment reminder",
         reminderTemplate(5, date, time),
       );

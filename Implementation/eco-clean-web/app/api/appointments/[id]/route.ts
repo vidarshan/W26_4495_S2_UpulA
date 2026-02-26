@@ -1,5 +1,13 @@
+export const runtime = "nodejs";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
+
+type Tx = Parameters<typeof prisma.$transaction>[0] extends (
+  tx: infer T,
+  ...args: unknown[]
+) => unknown
+  ? T
+  : never;
 
 export async function GET(
   _req: NextRequest,
@@ -49,7 +57,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Missing id" }, { status: 400 });
   }
 
-  let body: any;
+  let body;
   try {
     body = await req.json();
   } catch {
@@ -66,8 +74,7 @@ export async function PATCH(
     );
   }
 
-  // Build appointment update data
-  const data: any = {};
+  const data: Parameters<typeof prisma.appointment.update>[0]["data"] = {};
 
   if (startTime && endTime) {
     const s = new Date(startTime);
@@ -89,9 +96,9 @@ export async function PATCH(
   }
 
   try {
-    const updated = await prisma.$transaction(async (tx: typeof prisma) => {
+    const updated = await prisma.$transaction(async (tx: Tx) => {
       // 1) Update appointment core fields (only if needed)
-      let appt = null as any;
+      let appt = null;
 
       if (Object.keys(data).length > 0) {
         appt = await tx.appointment.update({

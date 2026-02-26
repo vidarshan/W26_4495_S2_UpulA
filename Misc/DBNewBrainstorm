@@ -1,0 +1,163 @@
+erDiagram
+  USER {
+    String id PK
+    String name
+    String email "UNIQUE"
+    String password
+    Role role
+    DateTime createdAt
+  }
+
+  STAFF {
+    String id PK
+    String userId "UNIQUE FK"
+    Boolean isActive
+    Float hourlyRate "NULLABLE"
+    DateTime createdAt
+    DateTime updatedAt
+  }
+
+  CLIENT {
+    String id PK
+    String title "NULLABLE"
+    String firstName
+    String lastName
+    String companyName "NULLABLE"
+    String email
+    String phone
+    String preferredContact
+    String leadSource "NULLABLE"
+    DateTime createdAt
+    DateTime updatedAt
+  }
+
+  ADDRESS {
+    String id PK
+    String clientId FK
+    String street1
+    String street2 "NULLABLE"
+    String city
+    String province
+    String postalCode
+    String country
+    Boolean isPrimary
+    Boolean isBilling
+    DateTime createdAt
+  }
+
+  JOB {
+    String id PK
+    String title
+    JobType type
+    String clientId FK
+    String addressId FK
+    Boolean isAnytime
+    String visitInstructions "NULLABLE"
+    DateTime createdAt
+    DateTime updatedAt
+  }
+
+  RECURRENCE {
+    String id PK
+    String jobId "UNIQUE FK"
+    String frequency
+    Int interval
+    DateTime endsOn "NULLABLE"
+    String endType
+    Int endsAfter "NULLABLE"
+    DateTime createdAt
+  }
+
+  APPOINTMENT {
+    String id PK
+    String jobId FK
+    DateTime startTime
+    DateTime endTime
+    AppointmentStatus status
+    Boolean reminder1dSent
+    Boolean reminder5dSent
+    DateTime createdAt
+    DateTime updatedAt
+  }
+
+  ASSIGNMENT {
+    String id PK
+    String appointmentId FK
+    String staffId FK
+    AssignmentStatus status
+    DateTime plannedStart "NULLABLE"
+    DateTime plannedEnd "NULLABLE"
+    DateTime actualStart "NULLABLE"
+    DateTime actualEnd "NULLABLE"
+    Int breakMinutes "NULLABLE"
+    String notes "NULLABLE"
+    Float hourlyRateAtTime "NULLABLE"
+    DateTime createdAt
+    DateTime updatedAt
+  }
+
+  STAFFAVAILABILITY {
+    String id PK
+    String staffId FK
+    DayOfWeek dayOfWeek
+    Int startMinute
+    Int endMinute
+    DateTime effectiveFrom "NULLABLE"
+    DateTime effectiveTo "NULLABLE"
+    DateTime createdAt
+  }
+
+  LEAVE {
+    String id PK
+    String staffId FK
+    LeaveType type
+    DateTime startAt
+    DateTime endAt
+    String reason "NULLABLE"
+    DateTime createdAt
+  }
+
+  TIMESHEETPERIOD {
+    String id PK
+    DateTime startDate
+    DateTime endDate
+    TimesheetStatus status
+    DateTime createdAt
+    DateTime lockedAt "NULLABLE"
+  }
+
+  TIMESHEETENTRY {
+    String id PK
+    String periodId FK
+    String staffId FK
+    String assignmentId "UNIQUE FK NULLABLE"
+    DateTime workDate
+    Int minutesWorked
+    Float hourlyRate "NULLABLE"
+    String notes "NULLABLE"
+    DateTime createdAt
+    DateTime updatedAt
+  }
+
+  %% -----------------------------
+  %% Relationships (cardinality)
+  %% -----------------------------
+
+  USER ||--o| STAFF : profile
+
+  CLIENT ||--o{ ADDRESS : has
+  CLIENT ||--o{ JOB : has
+
+  ADDRESS ||--o{ JOB : location_for
+  JOB ||--o| RECURRENCE : recurrence
+  JOB ||--o{ APPOINTMENT : schedules
+
+  APPOINTMENT ||--o{ ASSIGNMENT : has
+  STAFF ||--o{ ASSIGNMENT : works
+
+  STAFF ||--o{ STAFFAVAILABILITY : availability
+  STAFF ||--o{ LEAVE : leave
+
+  TIMESHEETPERIOD ||--o{ TIMESHEETENTRY : includes
+  STAFF ||--o{ TIMESHEETENTRY : logs
+  ASSIGNMENT ||--o| TIMESHEETENTRY : source

@@ -34,7 +34,7 @@ export interface Address {
   createdAt: string;
 }
 
-export interface StaffMember {
+export interface User {
   id: string;
   name: string;
   email: string;
@@ -49,10 +49,17 @@ export interface Appointment {
   endTime: string;
   status: "SCHEDULED" | "COMPLETED" | "CANCELLED";
   createdAt: string;
-  staff: StaffMember[];
+  staff: User[];
   completionSent: boolean;
   reminder1dSent: boolean;
   reminder5dSent: boolean;
+}
+
+export interface UserForm {
+  email: string;
+  name: string;
+  password: string;
+  role: "STAFF" | "ADMIN";
 }
 
 export interface Recurrence {
@@ -108,3 +115,51 @@ export interface UpdateAppointmentPayload {
   status?: "SCHEDULED" | "COMPLETED" | "CANCELLED";
   staffIds?: string[];
 }
+
+export type PaginationMeta =
+  | { total: number }
+  | { page: number; limit: number; total: number; totalPages: number };
+
+export type UserListResponse = {
+  data: User[];
+  meta: PaginationMeta;
+};
+
+export type EditUserInput = {
+  id: string;
+  name: string;
+  role: string;
+  email: string;
+};
+
+export type ParsedSelection = {
+  // Raw Date objects
+  startDate: Date;
+  endDate: Date;
+
+  // ISO strings (UTC)
+  startISO: string;
+  endISO: string;
+
+  // Original timezone-preserved strings
+  startWithOffset: string;
+  endWithOffset: string;
+
+  // Timestamps
+  startTimestamp: number;
+  endTimestamp: number;
+
+  // Date-only strings
+  startDateOnly: string;
+  endDateOnly: string;
+
+  // Time parts (local)
+  startTime: string; // "HH:mm"
+  endTime: string; // "HH:mm"
+
+  durationInMinutes: number;
+
+  allDay: boolean;
+};
+
+export type Role = "ADMIN" | "STAFF";

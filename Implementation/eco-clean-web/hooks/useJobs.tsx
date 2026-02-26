@@ -1,4 +1,4 @@
-import { Job } from "@prisma/client";
+import { Job } from "@/types";
 import { useEffect, useState } from "react";
 
 export function useJobs() {

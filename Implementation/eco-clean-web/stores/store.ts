@@ -8,6 +8,12 @@ interface CalendarState {
   setTriggerRefresh: (fn: () => void) => void;
 }
 
+type UserSelectionState = {
+  selectedUserId: string | null;
+  setSelectedUserId: (id: string | null) => void;
+  clearSelectedUser: () => void;
+};
+
 interface DashboardUIState {
   // selection
   selectedJobId: string | null;
@@ -104,4 +110,10 @@ export const useAppointmentStore = create<AppointmentState>((set) => ({
   selectedAppointment: undefined,
   setSelectedAppointment: (appt) => set({ selectedAppointment: appt }),
   clearSelectedAppointment: () => set({ selectedAppointment: undefined }),
+}));
+
+export const useUserSelectionStore = create<UserSelectionState>((set) => ({
+  selectedUserId: null,
+  setSelectedUserId: (id) => set({ selectedUserId: id }),
+  clearSelectedUser: () => set({ selectedUserId: null }),
 }));

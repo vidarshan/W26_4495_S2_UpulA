@@ -19,7 +19,7 @@ import {
 import { DateInput, TimeInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-
+import { notifications } from "@mantine/notifications";
 import Loader from "../UI/Loader";
 import { useDashboardUI } from "@/stores/store";
 import { useAppointment } from "@/hooks/useAppointment";
@@ -30,6 +30,18 @@ import { deleteAppointmentImage, useUploadThing } from "@/lib/uploadthing";
 import { IoCloseOutline } from "react-icons/io5";
 
 type Status = "SCHEDULED" | "COMPLETED" | "CANCELLED";
+
+type AppointmentImage = { id: string; url: string };
+
+type AppointmentCache = {
+  id: string;
+  startTime: string;
+  endTime: string;
+  status: Status;
+  staff?: { id: string; name?: string }[];
+  notes?: { id: string; content: string; createdAt: string }[];
+  images?: AppointmentImage[];
+};
 
 type AppointmentForm = {
   id: string;
@@ -67,12 +79,12 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
   const qc = useQueryClient();
   const { data: staffData, isLoading: staffLoading } = useQuery({
     queryKey: ["staff", "all"],
-    queryFn: getStaff,
+    queryFn: () => getStaff(),
     staleTime: 60_000,
   });
 
   const staffOptions = useMemo(() => {
-    return (staffData?.data ?? []).map((s: any) => ({
+    return (staffData?.data ?? []).map((s) => ({
       value: s.id,
       label: s.name,
     }));
@@ -99,23 +111,21 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
   useEffect(() => {
     if (!appointment) return;
 
-    const noteValue =
-      Array.isArray(appointment.notes) && appointment.notes.length
-        ? (appointment.notes
-            .slice()
-            .sort(
-              (a: any, b: any) =>
-                new Date(b.createdAt).getTime() -
-                new Date(a.createdAt).getTime(),
-            )[0]?.content ?? "")
-        : "";
+    const noteValue = appointment.notes?.length
+      ? (appointment.notes
+          .slice()
+          .sort(
+            (a, b) =>
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+          )[0]?.content ?? "")
+      : "";
 
     form.setValues({
       date: isoToDateOnly(appointment.startTime),
       startTime: isoToHHmm(appointment.startTime),
       endTime: isoToHHmm(appointment.endTime),
       status: appointment.status,
-      staff: (appointment.staff ?? []).map((s: any) => s.id),
+      staff: (appointment.staff ?? []).map((s) => s.id),
       note: noteValue,
     });
 
@@ -126,8 +136,7 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
     appointment?.startTime,
     appointment?.endTime,
     appointment?.status,
-    // optional but good:
-    appointment?.staff?.map((s: any) => s.id).join(","),
+    appointment?.staff?.map((s) => s.id).join(","),
     appointment?.notes?.length,
   ]);
 
@@ -164,22 +173,31 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
     form.resetDirty();
     onSuccess?.();
     closeAppointment();
+    notifications.show({
+      title: `Success`,
+      message: "Updated the appointment",
+      color: "green",
+    });
   };
+
+  const apptKey = ["appointment", selectedApptId] as const;
 
   const deleteImageMutation = useMutation({
     mutationFn: (imageId: string) => deleteAppointmentImage(imageId),
 
-    onMutate: async (imageId) => {
-      await qc.cancelQueries({ queryKey: ["appointment", selectedApptId] });
+    onMutate: async (imageId: string) => {
+      await qc.cancelQueries({ queryKey: apptKey });
 
-      const prev = qc.getQueryData<any>(["appointment", selectedApptId]);
+      const prev = qc.getQueryData<AppointmentCache>(apptKey);
 
-      // Optimistically remove image from cached appointment
-      qc.setQueryData(["appointment", selectedApptId], (old: any) => {
+      qc.setQueryData<AppointmentCache | undefined>(apptKey, (old) => {
         if (!old) return old;
+
         return {
           ...old,
-          images: (old.images ?? []).filter((img: any) => img.id !== imageId),
+          images: (old.images ?? []).filter(
+            (img: AppointmentImage) => img.id !== imageId,
+          ),
         };
       });
 
@@ -187,15 +205,13 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
     },
 
     onError: (_err, _imageId, ctx) => {
-      // rollback on failure
       if (ctx?.prev) {
-        qc.setQueryData(["appointment", selectedApptId], ctx.prev);
+        qc.setQueryData(apptKey, ctx.prev);
       }
     },
 
     onSettled: () => {
-      // refetch to be 100% consistent
-      qc.invalidateQueries({ queryKey: ["appointment", selectedApptId] });
+      qc.invalidateQueries({ queryKey: apptKey });
       onSuccess();
     },
   });
@@ -229,7 +245,9 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
               <DateInput
                 label="Date"
                 value={form.values.date}
-                onChange={(d) => form.setFieldValue("date", d)}
+                onChange={(d) => {
+                  form.setFieldValue("date", d ? new Date(d) : null);
+                }}
                 error={form.errors.date}
               />
 
@@ -283,7 +301,7 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
 
             {appointment?.images?.length > 0 && (
               <Group mt="xs" wrap="wrap" gap="xs">
-                {appointment.images.map((img: any) => (
+                {appointment.images.map((img) => (
                   <Box
                     key={img.id}
                     pos="relative"

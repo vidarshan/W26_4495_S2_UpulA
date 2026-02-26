@@ -15,10 +15,13 @@ function toDateTimeUtc(input: IsoOrDate): DateTime {
 }
 
 // ISO/Date (UTC instant) -> date-only (JS Date at local midnight, representing APP_TZ day)
-export function isoToDateOnly(iso: string) {
-  const dt = DateTime.fromISO(iso, { zone: "utc" }).setZone(APP_TZ);
-  // return a real "date-only" JS Date in local time
-  return new Date(dt.year, dt.month - 1, dt.day);
+export function isoToDateOnly(iso: string | Date): Date | null {
+  if (!iso) return null;
+  const d = typeof iso === "string" ? new Date(iso) : iso;
+  if (Number.isNaN(d.getTime())) return null;
+
+  // local date (no time)
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
 // ISO/Date (UTC instant) -> "HH:mm" in APP_TZ
 export function isoToHHmm(input: IsoOrDate): string {
