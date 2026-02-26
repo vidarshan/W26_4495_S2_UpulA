@@ -121,7 +121,7 @@ export async function POST(req: Request) {
         { status: 400 },
       );
     }
-
+    const preferred = preferredContact ?? "EMAIL";
     const client = await prisma.$transaction(async (tx: Tx) => {
       const createdClient = await tx.client.create({
         data: {
@@ -131,7 +131,7 @@ export async function POST(req: Request) {
           companyName,
           email,
           phone,
-          preferredContact,
+          preferredContact: preferred,
           leadSource,
         },
       });
