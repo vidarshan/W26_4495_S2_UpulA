@@ -134,3 +134,4 @@ export async function POST(req: Request) {
   // return tempPassword only once (admin can copy)
   return NextResponse.json({ user, tempPassword }, { status: 201 });
 }
+
