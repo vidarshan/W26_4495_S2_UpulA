@@ -66,8 +66,7 @@ export async function PATCH(
     );
   }
 
-  // Build appointment update data
-  const data = {};
+  const data: Parameters<typeof prisma.appointment.update>[0]["data"] = {};
 
   if (startTime && endTime) {
     const s = new Date(startTime);
