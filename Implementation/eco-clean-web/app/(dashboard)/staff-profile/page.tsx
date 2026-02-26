@@ -1,38 +1,34 @@
-"use client";
+'use client';
 
 import {
-    ActionIcon,
-    Avatar,
-    Box,
-    Button,
-    Card,
-    Container,
-    Grid,
-    Group,
-    Stack,
-    Text,
-    TextInput,
-    Title,
-} from "@mantine/core";
-import { IoSettingsOutline } from "react-icons/io5";
-import { useRouter } from "next/navigation";
-
+  ActionIcon,
+  Avatar,
+  Box,
+  Button,
+  Card,
+  Container,
+  Grid,
+  Group,
+  Stack,
+  Text,
+  TextInput,
+  Title,
+} from '@mantine/core';
+import { useRouter } from 'next/navigation';
+import { IoSettingsOutline } from 'react-icons/io5';
 
 export default function StaffProfilePage() {
   // Replace with real data later (session / API)
   const staff = {
-    name: "Upul Atapattu",
-    staffId: "STF-0001",
-    phone: "+1 (604) 555-0199",
-    address: "12667 110A Avenue, Surrey, BC",
-    postalCode: "V3V 0A1",
-    emergencyContact: "Ayesha — +1 (604) 555-0123",
-
-
+    name: 'Upul Atapattu',
+    staffId: 'STF-0001',
+    phone: '+1 (604) 555-0199',
+    address: '12667 110A Avenue, Surrey, BC',
+    postalCode: 'V3V 0A1',
+    emergencyContact: 'Ayesha — +1 (604) 555-0123',
   };
 
   const router = useRouter();
-
 
   return (
     <Container size="lg" py="xl">
@@ -43,7 +39,7 @@ export default function StaffProfilePage() {
           variant="subtle"
           size="lg"
           aria-label="Settings"
-          onClick={() => console.log("Open settings")}
+          onClick={() => console.log('Open settings')}
         >
           <IoSettingsOutline size={22} />
         </ActionIcon>
@@ -67,10 +63,10 @@ export default function StaffProfilePage() {
                 w={220}
                 h={220}
                 style={{
-                  borderRadius: "50%",
-                  display: "grid",
-                  placeItems: "center",
-                  border: "2px solid var(--mantine-color-blue-filled)",
+                  borderRadius: '50%',
+                  display: 'grid',
+                  placeItems: 'center',
+                  border: '2px solid var(--mantine-color-blue-filled)',
                 }}
               >
                 <Avatar
@@ -93,41 +89,41 @@ export default function StaffProfilePage() {
             <Stack gap="md">
               <LabeledField label="Address" value={staff.address} />
               <LabeledField label="Postal Code" value={staff.postalCode} />
-              <LabeledField label="Emergency Contact" value={staff.emergencyContact} />
+              <LabeledField
+                label="Emergency Contact"
+                value={staff.emergencyContact}
+              />
             </Stack>
           </Grid.Col>
         </Grid>
-
-
       </Card>
 
-       {/* Bottom buttons */}
-        <Grid mt="xl" gutter="lg">
-          <Grid.Col span={{ base: 12, sm: 6 }}>
-            <BigActionButton onClick={() => router.push("/enter-time")}>
-              Enter Time
-            </BigActionButton>
-          </Grid.Col>
+      {/* Bottom buttons */}
+      <Grid mt="xl" gutter="lg">
+        <Grid.Col span={{ base: 12, sm: 6 }}>
+          <BigActionButton onClick={() => router.push('/enter-time')}>
+            Enter Time
+          </BigActionButton>
+        </Grid.Col>
 
-          <Grid.Col span={{ base: 12, sm: 6 }}>
-            <BigActionButton onClick={() => console.log("Pay stubs")}>
-              Pay Stubs
-            </BigActionButton>
-          </Grid.Col>
+        <Grid.Col span={{ base: 12, sm: 6 }}>
+          <BigActionButton onClick={() => console.log('Pay stubs')}>
+            Pay Stubs
+          </BigActionButton>
+        </Grid.Col>
 
-          <Grid.Col span={{ base: 12, sm: 6 }}>
-            <BigActionButton onClick={() => console.log("Availability")}>
-              Availability
-            </BigActionButton>
-          </Grid.Col>
+        <Grid.Col span={{ base: 12, sm: 6 }}>
+          <BigActionButton onClick={() => router.push('/enter-availability')}>
+            Availability
+          </BigActionButton>
+        </Grid.Col>
 
-          <Grid.Col span={{ base: 12, sm: 6 }}>
-            <BigActionButton onClick={() => router.push("/apply-leave")}>
-              Apply Leave
-            </BigActionButton>
-          </Grid.Col>
-        </Grid>
-
+        <Grid.Col span={{ base: 12, sm: 6 }}>
+          <BigActionButton onClick={() => router.push('/apply-leave')}>
+            Apply Leave
+          </BigActionButton>
+        </Grid.Col>
+      </Grid>
     </Container>
   );
 }
@@ -141,9 +137,9 @@ function LabeledField({ label, value }: { label: string; value: string }) {
           p="sm"
           withBorder
           style={{
-            background: "var(--mantine-color-blue-filled)",
-            color: "var(--mantine-color-white)",
-            textAlign: "center",
+            background: 'var(--mantine-color-blue-filled)',
+            color: 'var(--mantine-color-white)',
+            textAlign: 'center',
           }}
         >
           <Text fw={700} size="sm">
@@ -153,7 +149,12 @@ function LabeledField({ label, value }: { label: string; value: string }) {
       </Box>
 
       {/* Display-only field; swap to TextInput for editing later */}
-      <TextInput value={value} readOnly styles={{ input: { height: 44 } }} w="100%" />
+      <TextInput
+        value={value}
+        readOnly
+        styles={{ input: { height: 44 } }}
+        w="100%"
+      />
     </Group>
   );
 }
