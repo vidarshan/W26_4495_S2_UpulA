@@ -67,12 +67,12 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
   const qc = useQueryClient();
   const { data: staffData, isLoading: staffLoading } = useQuery({
     queryKey: ["staff", "all"],
-    queryFn: getStaff,
+    queryFn: () => getStaff(),
     staleTime: 60_000,
   });
 
   const staffOptions = useMemo(() => {
-    return (staffData?.data ?? []).map((s: any) => ({
+    return (staffData?.data ?? []).map((s) => ({
       value: s.id,
       label: s.name,
     }));
@@ -99,23 +99,21 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
   useEffect(() => {
     if (!appointment) return;
 
-    const noteValue =
-      Array.isArray(appointment.notes) && appointment.notes.length
-        ? (appointment.notes
-            .slice()
-            .sort(
-              (a: any, b: any) =>
-                new Date(b.createdAt).getTime() -
-                new Date(a.createdAt).getTime(),
-            )[0]?.content ?? "")
-        : "";
+    const noteValue = appointment.notes?.length
+      ? (appointment.notes
+          .slice()
+          .sort(
+            (a, b) =>
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+          )[0]?.content ?? "")
+      : "";
 
     form.setValues({
       date: isoToDateOnly(appointment.startTime),
       startTime: isoToHHmm(appointment.startTime),
       endTime: isoToHHmm(appointment.endTime),
       status: appointment.status,
-      staff: (appointment.staff ?? []).map((s: any) => s.id),
+      staff: (appointment.staff ?? []).map((s) => s.id),
       note: noteValue,
     });
 
@@ -126,8 +124,7 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
     appointment?.startTime,
     appointment?.endTime,
     appointment?.status,
-    // optional but good:
-    appointment?.staff?.map((s: any) => s.id).join(","),
+    appointment?.staff?.map((s) => s.id).join(","),
     appointment?.notes?.length,
   ]);
 
@@ -229,7 +226,9 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
               <DateInput
                 label="Date"
                 value={form.values.date}
-                onChange={(d) => form.setFieldValue("date", d)}
+                onChange={(d) => {
+                  form.setFieldValue("date", d ? new Date(d) : null);
+                }}
                 error={form.errors.date}
               />
 
@@ -283,7 +282,7 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
 
             {appointment?.images?.length > 0 && (
               <Group mt="xs" wrap="wrap" gap="xs">
-                {appointment.images.map((img: any) => (
+                {appointment.images.map((img) => (
                   <Box
                     key={img.id}
                     pos="relative"

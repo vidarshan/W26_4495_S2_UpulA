@@ -71,10 +71,18 @@ type RecurrenceForm = {
   interval: number;
   endType: "after" | "on";
   endsAfter: number;
+  endsUnit: "weeks" | "months";
   endsOn: Date | null;
 };
 
-type JobFormValuesWithRecurrence = JobFormValues & {
+type JobFormValuesWithRecurrence = {
+  title: string;
+  clientId: string;
+  addressId: string;
+  jobType: "ONE_OFF" | "RECURRING";
+  isAnytime: boolean;
+  visitInstructions: string;
+
   recurrence: RecurrenceForm;
   appointments: AppointmentForm[];
   lineItems: LineItem[];
@@ -147,6 +155,7 @@ export default function NewJobModal({
         interval: 1,
         endType: "after",
         endsAfter: 6,
+        endsUnit: "weeks",
         endsOn: null,
       },
     },
@@ -186,8 +195,12 @@ export default function NewJobModal({
   });
 
   const { data: staffData } = useQuery({
-    queryKey: ["staff", debouncedSearchAssignees],
-    queryFn: getStaff,
+    queryKey: [
+      "staff",
+      { q: debouncedSearchAssignees, paginate: false },
+    ] as const,
+    queryFn: () => getStaff(),
+    staleTime: 60_000,
   });
 
   const { data: addressesData } = useQuery({
@@ -449,7 +462,7 @@ export default function NewJobModal({
                 placeholder="Select address"
                 {...form.getInputProps("addressId")}
                 data={
-                  addressesData?.data?.map((a: any) => ({
+                  addressesData?.data?.map((a) => ({
                     value: a.id,
                     label: `${a.street1}, ${a.city}, ${a.province}`,
                   })) || []
@@ -590,7 +603,10 @@ export default function NewJobModal({
                       label="End date"
                       value={form.values.recurrence.endsOn}
                       onChange={(d) =>
-                        form.setFieldValue("recurrence.endsOn", d)
+                        form.setFieldValue(
+                          "recurrence.endsOn",
+                          d ? new Date(d) : null,
+                        )
                       }
                       minDate={
                         form.values.appointments?.[0]?.startDate ?? undefined

@@ -52,6 +52,8 @@ const JobDetails = () => {
       jobType: "ONE_OFF",
       startDate: null,
       isAnytime: false,
+      startTime: "",
+      endTime: "",
       visitInstructions: "",
       recurrence: {
         frequency: "weekly",
@@ -266,7 +268,7 @@ const JobDetails = () => {
           <Button>Edit Client</Button>
         </Group>
 
-        <ClientCard client={job?.client} address={job?.address} />
+        {/* <ClientCard client={job?.client} address={job?.address} /> */}
       </Paper>
       <Paper mt="md" p="sm" withBorder>
         <Title order={3}>Appointments</Title>

@@ -1,34 +1,41 @@
 import { Job } from "@/types";
 import { apiClient } from "./client";
 
-export interface CreateJobPayload {
+export type CreateJobPayload = {
   title: string;
   clientId: string;
   addressId: string;
-  staffIds?: string[]; // many-to-many
-
-  jobType: JobType;
-
-  startDate: Date | null;
-  startTime?: string;
-  endTime?: string;
-
-  isAnytime?: boolean;
+  jobType: "ONE_OFF" | "RECURRING";
+  isAnytime: boolean;
   visitInstructions?: string;
+  lineItems: {
+    id: string;
+    name: string;
+    quantity: number;
+    unitCost: number;
+    unitPrice: number;
+    description?: string;
+  }[];
 
   recurrence?: {
-    frequency: string;
+    frequency: "weekly" | "monthly";
     interval: number;
-
     endType: "after" | "on";
-
-    // Only used when endType === "after"
-    endsAfter?: number;
-
-    // Only used when endType === "on"
-    endsOn?: Date | null;
+    endsAfter: number;
+    endsUnit: "weeks" | "months";
+    endsOn: Date | null;
   };
-}
+
+  appointments: {
+    id: string;
+    startDate: Date | null;
+    startTime: string;
+    endTime: string;
+    staffId?: string[];
+    notes?: string;
+    images?: { url: string; fileKey: string }[];
+  }[];
+};
 
 export interface JobFormValues {
   title: string;
