@@ -4,7 +4,7 @@ import { ReactNode, useState } from "react";
 import UserUpsertModal from "../popups/UserModal";
 import { IoAdd } from "react-icons/io5";
 
-const UserShell = ({ children }: { children: ReactNode }) => {
+const ClientShell = ({ children }: { children: ReactNode }) => {
   const [opened, setOpened] = useState(false);
 
   const openAdd = () => setOpened(true);
@@ -13,9 +13,9 @@ const UserShell = ({ children }: { children: ReactNode }) => {
   return (
     <Container fluid>
       <Group justify="space-between" align="center" mb="md">
-        <Title order={2}>Users</Title>
+        <Title order={2}>Clients</Title>
         <Button leftSection={<IoAdd />} onClick={openAdd}>
-          Add user
+          Add client
         </Button>
       </Group>
 
@@ -34,4 +34,4 @@ const UserShell = ({ children }: { children: ReactNode }) => {
   );
 };
 
-export default UserShell;
+export default ClientShell;

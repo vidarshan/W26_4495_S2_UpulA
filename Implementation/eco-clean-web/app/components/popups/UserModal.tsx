@@ -16,6 +16,7 @@ import {
 import { useForm } from "@mantine/form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
+import { IoPeopleOutline, IoTextOutline } from "react-icons/io5";
 
 type Mode = "create" | "edit";
 type Role = "ADMIN" | "STAFF";
@@ -193,13 +194,24 @@ export default function UserUpsertModal({
     >
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Stack gap="sm">
-          <TextInput label="Name" {...form.getInputProps("name")} />
-          <TextInput label="Email" {...form.getInputProps("email")} />
+          <TextInput
+            leftSection={<IoTextOutline />}
+            label="Name"
+            placeholder="Staff name"
+            {...form.getInputProps("name")}
+          />
+          <TextInput
+            leftSection={<IoTextOutline />}
+            placeholder="Staff email"
+            label="Email"
+            {...form.getInputProps("email")}
+          />
 
           <Select
             label="Role"
             data={roleOptions}
             value={form.values.role}
+            leftSection={<IoPeopleOutline />}
             onChange={(v) => {
               // Mantine Select returns string | null
               const nextRole: Role =

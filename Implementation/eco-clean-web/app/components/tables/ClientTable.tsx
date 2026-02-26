@@ -98,9 +98,7 @@ export default function ClientsTable() {
   return (
     <Box>
       <Group justify="space-between" mb="md">
-        <Text size="xl" fw={400}>
-          Clients
-        </Text>
+        <Box></Box>
         <Group gap="sm">
           <TextInput
             placeholder="Search clients"
@@ -130,50 +128,51 @@ export default function ClientsTable() {
           <Text c="dimmed">No matching clients</Text>
         </Center>
       ) : (
-        <ScrollArea mih="60vh">
-          <Table striped highlightOnHover withTableBorder withRowBorders>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Client</Table.Th>
-                <Table.Th>Company</Table.Th>
-                <Table.Th>Email</Table.Th>
-                <Table.Th>Phone</Table.Th>
-                <Table.Th>Preferred</Table.Th>
-                <Table.Th>Lead source</Table.Th>
-                <Table.Th>Created</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {clients.map((client) => (
-                <Table.Tr
-                  key={client.id}
-                  onClick={() => router.push(`/clients/${client.id}`)}
-                  style={{ cursor: "pointer" }}
-                >
-                  <Table.Td>
-                    <Text fw={500}>{getClientName(client)}</Text>
-                  </Table.Td>
-
-                  <Table.Td>{renderValue(client.companyName)}</Table.Td>
-
-                  <Table.Td>{client.email}</Table.Td>
-
-                  <Table.Td>{client.phone}</Table.Td>
-
-                  <Table.Td>
-                    {renderPreferredContact(client.preferredContact)}
-                  </Table.Td>
-
-                  <Table.Td>{renderValue(client.leadSource)}</Table.Td>
-
-                  <Table.Td>
-                    {/* {new Date(client.createdAt).toLocaleDateString()} */}
-                  </Table.Td>
+        <>
+          <ScrollArea mih="60vh">
+            <Table striped highlightOnHover withTableBorder withRowBorders>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>Client</Table.Th>
+                  <Table.Th>Company</Table.Th>
+                  <Table.Th>Email</Table.Th>
+                  <Table.Th>Phone</Table.Th>
+                  <Table.Th>Preferred</Table.Th>
+                  <Table.Th>Lead source</Table.Th>
+                  <Table.Th>Created</Table.Th>
                 </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
+              </Table.Thead>
+              <Table.Tbody>
+                {clients.map((client) => (
+                  <Table.Tr
+                    key={client.id}
+                    onClick={() => router.push(`/clients/${client.id}`)}
+                    style={{ cursor: "pointer" }}
+                  >
+                    <Table.Td>
+                     {getClientName(client)}
+                    </Table.Td>
 
+                    <Table.Td>{renderValue(client.companyName)}</Table.Td>
+
+                    <Table.Td>{client.email}</Table.Td>
+
+                    <Table.Td>{client.phone}</Table.Td>
+
+                    <Table.Td>
+                      {renderPreferredContact(client.preferredContact)}
+                    </Table.Td>
+
+                    <Table.Td>{renderValue(client.leadSource)}</Table.Td>
+
+                    <Table.Td>
+                      {new Date(client.createdAt).toLocaleDateString()}
+                    </Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
+          </ScrollArea>
           <Flex mt="sm" w="100%" justify="flex-end">
             <Pagination
               value={meta.page}
@@ -186,7 +185,7 @@ export default function ClientsTable() {
               }
             />
           </Flex>
-        </ScrollArea>
+        </>
       )}
     </Box>
   );
