@@ -27,20 +27,29 @@ export function getStaff(params?: {
 }
 
 export function createUser(name: string, role: string, email: string) {
-  return apiClient<{ user: any; tempPassword: string }>(`/api/users`, {
+  return apiClient<{ user: User; tempPassword: string }>(`/api/users`, {
     method: "POST",
     body: { name, role, email },
   });
 }
 
+type UserPayload = {
+  name: string;
+  role: Role;
+  email: string;
+  password?: string;
+};
+
+type Role = "ADMIN" | "STAFF";
+
 export function editUser(
   id: string,
   name: string,
-  role: string,
+  role: Role,
   email: string,
   password?: string,
 ) {
-  const body: any = { name, role, email };
+  const body: UserPayload = { name, role, email };
   if (password) body.password = password;
 
   return apiClient(`/api/users/${id}`, {
