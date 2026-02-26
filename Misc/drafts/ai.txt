@@ -251,3 +251,123 @@ Value Addition: Designed a stateless, scalable, and maintainable system
 AI: ChatGPT 5.2 Plus
 Prompt: Step-by-step implementation plan for appointment reminders
 Value Addition: Reduced integration errors and development time
+
+AI: ChatGPT 5.2 Plus
+Prompt: Debug why client edit form was not populating from API response
+Value Addition: Identified response shape mismatch and corrected React Query data unwrapping to properly hydrate Mantine form state
+
+AI: ChatGPT 5.2 Plus
+Prompt: Fix React Query mutation triggering POST instead of PATCH on client update
+Value Addition: Eliminated stale closure issue by passing clientId at mutate-time, preventing accidental client duplication
+
+AI: ChatGPT 5.2 Plus
+Prompt: Design and implement PATCH endpoint for updating client with nested addresses and notes
+Value Addition: Built transaction-safe Prisma update flow with address upsert logic and relational consistency
+
+AI: ChatGPT 5.2 Plus
+Prompt: Debug “Missing required fields” error during PATCH request
+Value Addition: Discovered double JSON stringification in custom apiClient, restoring correct request body parsing
+
+AI: ChatGPT 5.2 Plus
+Prompt: Fix Mantine Notifications breaking Next.js RootLayout
+Value Addition: Corrected component usage to prevent layout rendering failure and restored global UI notification system
+
+AI: ChatGPT 5.2 Plus
+Prompt: Synchronize address updates (update existing, create new, delete removed) in Prisma transaction
+Value Addition: Ensured client-address data integrity and prevented orphaned or stale address records
+
+AI: ChatGPT 5.2 Plus
+Prompt: Convert custom useEffect client list hook to TanStack React Query
+Value Addition: Introduced proper caching, query keys, and scalable data fetching architecture for client management
+
+AI: ChatGPT 5.2 Plus
+Prompt: Implement query invalidation after client create/update
+Value Addition: Enabled automatic table refresh without manual refetch logic
+
+AI: ChatGPT 5.2 Plus
+Prompt: Refactor Client modal to support create and edit using clientId
+Value Addition: Eliminated type conflicts and ensured full relational data (addresses, notes) loads correctly
+
+AI: ChatGPT 5.2 Plus
+Prompt: Fetch full client with addresses inside modal using useQuery
+Value Addition: Prevented incomplete data issues and improved separation between list DTO and detailed DTO
+
+AI: ChatGPT 5.2 Plus
+Prompt: Replace manual fetch in modal with useMutation
+Value Addition: Centralized API logic, improved error handling, and aligned with production-grade React Query patterns
+
+AI: ChatGPT 5.2 Plus
+Prompt: Create typed API client layer (createClient, updateClient, getClient)
+Value Addition: Standardized API interaction layer and removed string-based endpoint logic from UI components
+
+AI: ChatGPT 5.2 Plus
+Prompt: Define CreateClientPayload and ClientWithRelations types
+Value Addition: Strengthened type safety between frontend and backend, reducing runtime integration errors
+
+AI: ChatGPT 5.2 Plus
+Prompt: Normalize API response shape inside modal (data?.data ?? data)
+Value Addition: Fixed modal population issue caused by inconsistent API response structure
+
+AI: ChatGPT 5.2 Plus
+Prompt: Proper modal state management when opening from table row
+Value Addition: Ensured reliable edit-mode initialization without stale state or null type conflicts
+
+AI: ChatGPT 5.2 Plus
+Prompt: Improve mutation lifecycle handling (remove premature reset/close)
+Value Addition: Prevented UI race conditions and ensured form closes only after successful persistence
+
+AI: ChatGPT 5.2 Plus
+Prompt: Fix Prisma client export errors on Vercel (PrismaClient, Prisma, Role missing)
+Value Addition: Identified that Prisma Client was not generating in Vercel build environment and implemented postinstall: prisma generate, preventing production build failures.
+
+AI: ChatGPT 5.2 Plus
+Prompt: Convert Prisma setup from custom pg adapter to production Supabase configuration
+Value Addition: Simplified database layer by removing pg + @prisma/adapter-pg, switching to standard PrismaClient for serverless compatibility on Vercel.
+
+AI: ChatGPT 5.2 Plus
+Prompt: Configure Supabase Postgres connection for Prisma with SSL
+Value Addition: Properly structured DATABASE_URL with ?sslmode=require, enabling secure production database connectivity.
+
+AI: ChatGPT 5.2 Plus
+Prompt: Debug P1001 Supabase connection error
+Value Addition: Diagnosed network vs configuration issue, validated TCP connectivity, and identified potential prisma.config / environment override causes.
+
+AI: ChatGPT 5.2 Plus
+Prompt: Type-safe Prisma transaction without importing Prisma namespace
+Value Addition: Replaced Prisma.TransactionClient usage with inferred Tx type, eliminating build-time export errors while preserving type safety.
+
+AI: ChatGPT 5.2 Plus
+Prompt: Resolve optional vs required relation conflicts in Prisma create() (addressId issue)
+Value Addition: Identified schema-level requirement mismatch and corrected relation usage via connect, preventing type incompatibility during job creation.
+
+AI: ChatGPT 5.2 Plus
+Prompt: Fix implicit any in React Query cache update (AppointmentInfoModal image delete)
+Value Addition: Introduced strongly typed cache model for appointment and images, eliminating unsafe any and ensuring optimistic updates remain type-safe.
+
+AI: ChatGPT 5.2 Plus
+Prompt: Refactor apiClient to fully generic typed implementation
+Value Addition: Converted API wrapper to apiClient<TResponse, TBody> generic pattern, enabling fully type-safe API calls across the project.
+
+AI: ChatGPT 5.2 Plus
+Prompt: Strongly type editUser PATCH payload with optional password
+Value Addition: Introduced proper UserPayload type with optional password and removed unsafe mutation patterns.
+
+AI: ChatGPT 5.2 Plus
+Prompt: Fix Mantine Select typing without using any
+Value Addition: Eliminated (v as any) by narrowing union type and enforcing Role literal type for clean form state management.
+
+AI: ChatGPT 5.2 Plus
+Prompt: Convert User modal into reusable create/edit (upsert) modal
+Value Addition: Unified user creation and editing logic into a single component with mode-based mutation handling, reducing duplication and improving maintainability.
+
+AI: ChatGPT 5.2 Plus
+Prompt: Resolve string | undefined vs string Prisma create errors (preferredContact, addressId)
+Value Addition: Correctly aligned API validation with schema-level requirements, preventing runtime schema violations and TypeScript conflicts.
+
+AI: ChatGPT 5.2 Plus
+Prompt: Ensure Vercel runtime compatibility for Prisma routes
+Value Addition: Identified need for Node runtime (not Edge) for database routes, stabilizing serverless execution.
+
+AI: ChatGPT 5.2 Plus
+Prompt: Production database migration strategy for Supabase
+Value Addition: Implemented proper use of prisma migrate deploy and db push for hosted Postgres, ensuring schema consistency in production.

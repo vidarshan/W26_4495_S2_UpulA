@@ -12,7 +12,43 @@
 2026-02-12 6:00-7:30pm Debugged inconsistent page sizing and standardized container widths
 2026-02-12 8:00-9:00pm Generated database dump process for team collaboration
 2026-02-12 9:00-10:00pm Refactored reusable layout structure for scalability
-
+2026-02-13 10:00am-12:00pm Refactored Job–Appointment relationship logic (Prisma schema updates)
+2026-02-13 2:00-3:30pm Resolved Prisma migration constraint errors for required datetime fields
+2026-02-13 7:00-9:00pm Improved job creation transaction flow (Anytime vs Scheduled logic)
+2026-02-16 3:00-5:00pm Standardized date utilities (ISO ↔ date-only ↔ time conversions)
+2026-02-17 11:00am-1:30pm Reworked Anytime scheduling logic in Job POST route
+2026-02-17 3:30-6:00pm Fixed Prisma staff relation errors (staff vs staffId correction)
+2026-02-18 9:00-11:30pm Debugged appointment update errors (Invalid Date handling)
+2026-02-18 11:30pm-12:30am Normalized API date parsing to prevent runtime failures
+2026-02-19 2:30-4:30pm Fixed appointment PATCH route (async params resolution)
+2026-02-19 5:00-6:30pm Resolved DELETE route debugging for uploadthing integration
+2026-02-19 7:00-9:00pm Refactored line item pricing logic (unitCost vs quantity modeling)
+2026-02-19 9:00-10:30pm Streamlined API validation and frontend data normalization
+2026-02-20 3:00-5:00pm Improved appointment image upload handling (Mantine Dropzone integration)
+2026-02-22 8:00-10:30pm Planned PWA transition strategy (unified web/mobile architecture)
+2026-02-23 9:30am-11:30am Reviewed cloud scalability & CDN strategy for production readiness
+2026-02-23 1:00-3:00pm Evaluated infrastructure design for fault tolerance and automation
+2026-02-25 6:00-6:45pm Migrated client listing from useEffect to TanStack React Query for scalable data fetching
+2026-02-25 6:45-7:15pm Implemented query invalidation strategy for automatic client table refresh after mutations
+2026-02-25 7:15-8:00pm Refactored ClientPropertyModal into dual-mode (create + edit) upsert pattern using clientId
+2026-02-25 8:00-8:40pm Integrated useQuery inside modal to fetch relational client data (addresses, notes)
+2026-02-25 8:40-9:10pm Standardized API layer with strongly typed createClient and updateClient methods
+2026-02-25 9:10-9:35pm Introduced typed DTOs (CreateClientPayload, ClientWithRelations) for frontend-backend consistency
+2026-02-25 9:35-10:00pm Fixed modal hydration issues by normalizing API response structure and correcting effect dependencies
+2026-02-25 10:00-10:20pm Refactored mutation lifecycle to prevent premature form reset and ensure success-driven UI updates
+2026-02-25 6:45-7:45pm Debugged client edit form not populating and resolved React Query data unwrapping issues
+2026-02-25 7:45-8:15pm Fixed PATCH vs POST mutation issue caused by stale clientId closure
+2026-02-25 8:15-9:00pm Designed transaction-safe PATCH endpoint for updating clients with nested addresses
+2026-02-25 9:00-9:35pm Resolved "Missing required fields" error by fixing double JSON stringification in apiClient
+2026-02-25 9:35-9:50pm Fixed Mantine Notifications integration in RootLayout to prevent runtime crash
+2026-02-25 6:30-7:15pm Migrated database from local Postgres to Supabase production instance
+2026-02-25 7:15-8:00pm Reconfigured Prisma client for Vercel deployment (standardized PrismaClient setup)
+2026-02-25 8:00-8:30pm Debugged P1001 Supabase connection error and validated SSL/network configuration
+2026-02-25 8:30-9:15pm Fixed Prisma client generation issues on Vercel (postinstall prisma generate adjustment)
+2026-02-25 9:15-10:40pm Refactored apiClient to fully generic typed implementation (TResponse/TBody pattern) and eliminated unsafe any usage across API routes and cache updates
+2026-02-25 10:40-11:20pm Resolved Prisma create() type conflicts (required vs optional relations such as addressId, preferredContact)
+2026-02-25 11:20-11:50pm Converted User modal into reusable strongly typed upsert component
+2026-02-25 11:50pm-12:15am Hardened optimistic updates and image deletion flow in AppointmentInfoModal
 
 -- Progress Report 1 --
 2026-01-27 4:30pm-6:30pm Setup authentication with next js
