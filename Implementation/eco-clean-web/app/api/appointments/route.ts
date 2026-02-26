@@ -1,11 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import randomColor from "randomcolor";
-import { Appointment, Job, Client } from "@prisma/client";
 
-type AppointmentWithJobClient = Appointment & {
-  job: Job & {
-    client: Client;
+type AppointmentWithJobClient = {
+  id: string;
+  jobId: string;
+  status: string;
+  startTime: Date;
+  endTime: Date;
+  job: {
+    title: string;
+    client: {
+      firstName: string;
+      // add more client fields if you use them in extendedProps
+      // lastName?: string;
+      // email?: string;
+    };
   };
 };
 
@@ -47,7 +57,7 @@ export async function GET(req: NextRequest) {
       orderBy: { startTime: "asc" },
     })) as AppointmentWithJobClient[];
 
-    const events = appointments.map((appt) => {
+    const events = appointments.map((appt: AppointmentWithJobClient) => {
       const color = randomColor({ luminosity: "dark" });
 
       return {
