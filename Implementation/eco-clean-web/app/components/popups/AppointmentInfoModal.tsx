@@ -19,7 +19,7 @@ import {
 import { DateInput, TimeInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-
+import { notifications } from "@mantine/notifications";
 import Loader from "../UI/Loader";
 import { useDashboardUI } from "@/stores/store";
 import { useAppointment } from "@/hooks/useAppointment";
@@ -173,6 +173,11 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
     form.resetDirty();
     onSuccess?.();
     closeAppointment();
+    notifications.show({
+      title: `Success`,
+      message: "Updated the appointment",
+      color: "green",
+    });
   };
 
   const apptKey = ["appointment", selectedApptId] as const;

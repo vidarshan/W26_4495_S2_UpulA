@@ -21,7 +21,7 @@ import NewJobModal from "../components/popups/JobModal";
 import AppointmentInfoModal from "../components/popups/AppointmentInfoModal";
 import ConfirmCancellationModal from "../components/popups/ConfirmCancellationModal";
 import { useCalendarStore, useDashboardUI } from "@/stores/store";
-
+import { notifications } from "@mantine/notifications";
 import { rescheduleAppointment } from "@/lib/api/appointments";
 import { APP_TZ } from "@/lib/dateTime";
 import luxonPlugin from "@fullcalendar/luxon3";
@@ -71,8 +71,18 @@ export default function DashboardClient() {
       const updated = await rescheduleAppointment(info.event.id, start, end);
       info.view.calendar.refetchEvents();
       qc.setQueryData(["appointment", id], updated);
+      notifications.show({
+        title: `Success`,
+        message: "Created new appointment",
+        color: "green",
+      });
     } catch (err) {
       console.error(err);
+      notifications.show({
+        title: `Error`,
+        message: "Appointment creation failed",
+        color: "red",
+      });
       info.revert();
     }
   };
@@ -102,7 +112,17 @@ export default function DashboardClient() {
 
       info.view.calendar.refetchEvents();
       qc.setQueryData(["appointment", id], updated);
+      notifications.show({
+        title: `Success`,
+        message: "Moved the appointment",
+        color: "green",
+      });
     } catch (err) {
+      notifications.show({
+        title: `Error`,
+        message: "Appointment creation failed",
+        color: "red",
+      });
       console.error(err);
       info.revert();
     }

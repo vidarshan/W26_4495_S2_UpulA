@@ -36,6 +36,7 @@ import { CalendarSelection } from "@/types";
 import { DateTime } from "luxon";
 import { APP_TZ } from "@/lib/dateTime";
 import { useUploadThing } from "@/lib/uploadthing";
+import { notifications } from "@mantine/notifications";
 
 interface Props {
   opened: boolean;
@@ -305,6 +306,11 @@ export default function NewJobModal({
     onSuccess();
     form.reset();
     onClose();
+    notifications.show({
+      title: `Success`,
+      message: "Moved the appointment",
+      color: "green",
+    });
   };
 
   const renderAppointments = () =>
