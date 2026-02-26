@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "vercel-build": "npx prisma generate && node -e \"process.exit(process.env.RUN_MIGRATIONS==='true'?0:1)\" || true && npx prisma migrate deploy && next build"
   },
   "prisma": {
     "seed": "npx ts-node prisma/seed.ts"
