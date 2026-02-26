@@ -2,6 +2,53 @@ import { Client } from "@/app/components/tables/ClientTable";
 import { ListResponse } from "@/app/types/api";
 import { Address } from "@/types";
 
+export type CreateClientPayload = {
+  title?: string;
+  firstName: string;
+  lastName: string;
+  companyName?: string;
+  phone: string;
+  email: string;
+  preferredContact: string;
+  leadSource?: string;
+  note?: string;
+  addresses: {
+    id?: string;
+    street1: string;
+    street2?: string;
+    city: string;
+    province: string;
+    postalCode: string;
+    country: string;
+  }[];
+};
+
+export type ClientWithRelations = {
+  id: string;
+  title?: string | null;
+  firstName: string;
+  lastName: string;
+  companyName?: string | null;
+  phone: string;
+  email: string;
+  preferredContact: string;
+  leadSource?: string | null;
+  createdAt: string;
+  addresses: {
+    id: string;
+    street1: string;
+    street2?: string | null;
+    city: string;
+    province: string;
+    postalCode: string;
+    country: string;
+  }[];
+  notes?: {
+    id: string;
+    content: string;
+  }[];
+};
+
 export type GetClientsParams = {
   q?: string;
   page?: number;
@@ -74,4 +121,21 @@ export function getClients(query: string) {
 
 export function getClientAddresses(clientId: string) {
   return apiClient<ListResponse<Address>>(`/api/clients/${clientId}/addresses`);
+}
+
+export function updateClient(id: string, payload: CreateClientPayload) {
+  return apiClient<ClientWithRelations, CreateClientPayload>(
+    `/api/clients/${id}`,
+    {
+      method: "PATCH",
+      body: payload,
+    },
+  );
+}
+
+export function createClient(payload: CreateClientPayload) {
+  return apiClient<ClientWithRelations>("/api/clients", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }

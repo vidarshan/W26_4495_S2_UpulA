@@ -19,6 +19,8 @@ import { IoFilterOutline, IoSearchOutline } from "react-icons/io5";
 import Loader from "../UI/Loader";
 import { useClients } from "@/hooks/useClient";
 import { useState } from "react";
+import ClientPropertyModal from "../popups/ClientModal";
+import { useQueryClient } from "@tanstack/react-query";
 
 export type Client = {
   id: string;
@@ -65,20 +67,30 @@ export const getClientName = (c: Client) => `${c.firstName} ${c.lastName}`;
 
 export default function ClientsTable() {
   const router = useRouter();
-
+  const [opened, setOpened] = useState(false);
+  const queryClient = useQueryClient();
   const [query, setQuery] = useState("");
+  const [selectedClientId, setSelectedClientId] = useState<
+    string | undefined
+  >();
   const [sort, setSort] = useState<"newest" | "oldest">("newest");
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 10,
   });
 
-  const { clients, meta, loading } = useClients({
+  const { data, isLoading } = useClients({
     query,
     page: pagination.page,
     limit: pagination.limit,
     sort,
   });
+
+  const clients = data?.data ?? [];
+  const meta = data?.meta ?? {
+    page: 1,
+    totalPages: 1,
+  };
 
   const renderPreferredContact = (method?: "call" | "sms" | "email") => {
     if (!method) return "—";
@@ -97,6 +109,17 @@ export default function ClientsTable() {
 
   return (
     <Box>
+      <ClientPropertyModal
+        opened={opened}
+        onClose={() => {
+          setOpened(false);
+          setSelectedClientId(undefined);
+        }}
+        clientId={selectedClientId}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ["clients"] });
+        }}
+      />
       <Group justify="space-between" mb="md">
         <Box></Box>
         <Group gap="sm">
@@ -121,9 +144,9 @@ export default function ClientsTable() {
         </Group>
       </Group>
 
-      {loading ? (
+      {isLoading ? (
         <Loader />
-      ) : !loading && !clients.length ? (
+      ) : !isLoading && !clients.length ? (
         <Center py="md">
           <Text c="dimmed">No matching clients</Text>
         </Center>
@@ -143,15 +166,16 @@ export default function ClientsTable() {
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {clients.map((client) => (
+                {clients.map((client: Client) => (
                   <Table.Tr
                     key={client.id}
-                    onClick={() => router.push(`/clients/${client.id}`)}
+                    onClick={() => {
+                      setSelectedClientId(client.id);
+                      setOpened(true);
+                    }}
                     style={{ cursor: "pointer" }}
                   >
-                    <Table.Td>
-                     {getClientName(client)}
-                    </Table.Td>
+                    <Table.Td>{getClientName(client)}</Table.Td>
 
                     <Table.Td>{renderValue(client.companyName)}</Table.Td>
 

@@ -1,4 +1,5 @@
 import { Client, MetaData } from "@/app/components/tables/ClientTable";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
 export function useClients({
@@ -12,19 +13,9 @@ export function useClients({
   limit?: number;
   sort: "newest" | "oldest";
 }) {
-  const [clients, setClients] = useState<Client[]>([]);
-  const [meta, setMeta] = useState<MetaData>({
-    limit: 0,
-    page: 0,
-    total: 0,
-    totalPages: 0,
-  });
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    const fetchClients = async () => {
-      setLoading(true);
-
+  return useQuery({
+    queryKey: ["clients", { query, page, limit, sort }],
+    queryFn: async () => {
       const params = new URLSearchParams();
       if (query) params.set("q", query);
       if (page) params.set("page", String(page));
@@ -32,15 +23,13 @@ export function useClients({
       params.set("sort", sort);
 
       const res = await fetch(`/api/clients?${params}`);
-      const data = await res.json();
 
-      setClients(data.data);
-      setMeta(data.meta);
-      setLoading(false);
-    };
+      if (!res.ok) {
+        throw new Error("Failed to fetch clients");
+      }
 
-    fetchClients();
-  }, [query, page, limit, sort]);
-
-  return { clients, loading, meta };
+      return res.json();
+    },
+    placeholderData: keepPreviousData,
+  });
 }

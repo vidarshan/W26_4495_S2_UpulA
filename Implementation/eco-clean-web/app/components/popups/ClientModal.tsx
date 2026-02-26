@@ -1,4 +1,5 @@
 "use client";
+import { createClient, updateClient } from "@/lib/api/client";
 import {
   Modal,
   TextInput,
@@ -16,6 +17,8 @@ import {
   Radio,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import {
   IoAttachOutline,
   IoGlobeOutline,
@@ -24,14 +27,74 @@ import {
   IoTextOutline,
 } from "react-icons/io5";
 
+type AddressForm = {
+  id?: string; // include for edit
+  street1: string;
+  street2?: string;
+  city: string;
+  province: string;
+  postalCode: string;
+  country: string;
+  billingSameAsProperty: boolean;
+};
+
+type ClientForm = {
+  title: string;
+  firstName: string;
+  lastName: string;
+  company: string;
+  phone: string;
+  email: string;
+  preferredContact: string;
+  leadSource: string;
+  note: string;
+  addresses: AddressForm[];
+};
+
 type Props = {
   opened: boolean;
   onClose: () => void;
+  onSuccess?: () => void;
+  clientId?: string;
 };
 
+export default function ClientPropertyModal({
+  opened,
+  onClose,
+  clientId,
+  onSuccess,
+}: Props) {
+  const { data: client, isLoading: clientLoading } = useQuery({
+    queryKey: ["client", clientId],
+    enabled: opened && !!clientId,
+    queryFn: async () => {
+      const res = await fetch(`/api/clients/${clientId}`);
+      if (!res.ok) throw new Error("Failed to fetch client");
+      const json = await res.json();
+      return json.data ?? json;
+    },
+  });
 
+  const queryClient = useQueryClient();
 
-export default function ClientPropertyModal({ opened, onClose }: Props) {
+  const mutation = useMutation({
+    mutationFn: async ({ id, payload }: { id?: string; payload: any }) => {
+      return id ? updateClient(id, payload) : createClient(payload);
+    },
+    onSuccess: async (_data, variables) => {
+      await queryClient.invalidateQueries({ queryKey: ["clients"] });
+      if (variables?.id) {
+        await queryClient.invalidateQueries({
+          queryKey: ["client", variables.id],
+        });
+      }
+      onSuccess?.();
+      onClose();
+      form.reset();
+    },
+    onError: (error) => console.error(error),
+  });
+
   const form = useForm({
     initialValues: {
       title: "No title",
@@ -72,32 +135,97 @@ export default function ClientPropertyModal({ opened, onClose }: Props) {
     },
   });
 
-  const handleSubmit = async (values: typeof form.values) => {
+  const handleSubmit = async (values: ClientForm) => {
     try {
       form.clearErrors();
 
-      const res = await fetch("/api/clients", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(values),
-      });
+      const payload = {
+        title: values.title,
+        firstName: values.firstName,
+        lastName: values.lastName,
+        companyName: values.company,
+        phone: values.phone,
+        email: values.email,
+        preferredContact: values.preferredContact,
+        leadSource: values.leadSource,
+        note: values.note,
+        addresses: values.addresses.map((a) => ({
+          id: a.id,
+          street1: a.street1,
+          street2: a.street2,
+          city: a.city,
+          province: a.province,
+          postalCode: a.postalCode,
+          country: a.country,
+        })),
+      };
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.message || "Something went wrong");
-      }
-
+      mutation.mutate({ id: clientId, payload });
       form.reset();
-      onClose?.();
-    } catch (error) {
-      console.log(error);
-
+      onSuccess?.();
+      onClose();
+    } catch (err) {
+      console.error(err);
     }
   };
 
+  useEffect(() => {
+    if (!opened) return;
+
+    // create mode
+    if (!clientId) {
+      form.setValues({
+        title: "No title",
+        firstName: "",
+        lastName: "",
+        company: "",
+        phone: "",
+        email: "",
+        preferredContact: "email",
+        leadSource: "",
+        note: "",
+        addresses: [
+          {
+            street1: "",
+            street2: "",
+            city: "",
+            province: "",
+            postalCode: "",
+            country: "Canada",
+            billingSameAsProperty: true,
+          },
+        ],
+      });
+      return;
+    }
+
+    // edit mode
+    if (!client) return;
+
+    form.setValues({
+      title: client.title ?? "No title",
+      firstName: client.firstName ?? "",
+      lastName: client.lastName ?? "",
+      company: client.companyName ?? "", // IMPORTANT: companyName -> company
+      phone: client.phone ?? "",
+      email: client.email ?? "",
+      preferredContact: client.preferredContact ?? "email",
+      leadSource: client.leadSource ?? "",
+      note: client.notes?.[0]?.content ?? "",
+      addresses: (client.addresses?.length ? client.addresses : []).map(
+        (a: any) => ({
+          id: a.id,
+          street1: a.street1 ?? "",
+          street2: a.street2 ?? "",
+          city: a.city ?? "",
+          province: a.province ?? "",
+          postalCode: a.postalCode ?? "",
+          country: a.country ?? "Canada",
+          billingSameAsProperty: false, // since API has isBilling; set however you want
+        }),
+      ),
+    });
+  }, [opened, clientId, client]);
 
   return (
     <Modal
@@ -105,7 +233,7 @@ export default function ClientPropertyModal({ opened, onClose }: Props) {
       centered
       opened={opened}
       onClose={onClose}
-      title="Add client"
+      title={client ? "Edit client" : "Add client"}
       radius="lg"
     >
       <form onSubmit={form.onSubmit((values) => handleSubmit(values))}>
@@ -341,7 +469,7 @@ export default function ClientPropertyModal({ opened, onClose }: Props) {
             <Button variant="default" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit">Create</Button>
+            <Button type="submit">{client ? "Update" : "Create"}</Button>
           </Group>
         </Stack>
       </form>

@@ -27,7 +27,7 @@ import {
   IoPeopleOutline,
   IoPersonOutline,
 } from "react-icons/io5";
-import ClientPropertyModal from "../components/ClientModal";
+import ClientPropertyModal from "../components/popups/ClientModal";
 import NewJobModal from "../components/popups/JobModal";
 import { useDashboardUI } from "@/stores/store";
 import UserUpsertModal from "../components/popups/UserModal";
