@@ -115,7 +115,9 @@ export default function EnterAvailabilityPage() {
             <DateInput
               placeholder="mm/dd/yyyy"
               value={form.values.effectiveDate}
-              onChange={(date) => form.setFieldValue("effectiveDate", date)}
+              onChange={(d) => {
+                form.setFieldValue("effectiveDate", d ? new Date(d) : null);
+              }}
               error={form.errors.effectiveDate}
             />
           </div>
