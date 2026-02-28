@@ -152,6 +152,93 @@ model AppointmentImage {
   appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
 }
 
+model StaffProfile {
+  id            String             @id @default(uuid())
+  userId        String             @unique
+  user          User               @relation(fields: [userId], references: [id])
+  postalCode    String?
+  hourlyRate    Float              @default(0)
+  availabilities StaffAvailability[]
+}
+
+model Assignment {
+  id                String           @id @default(uuid())
+  appointmentId     String
+  staffId           String
+  status            AssignmentStatus @default(PENDING)
+
+  // Timing & Travel
+  plannedStart      DateTime?        // Includes estimated travel
+  plannedEnd        DateTime?
+  actualStart       DateTime?        // Captured via staff clock-in
+  actualEnd         DateTime?        // Captured via staff clock-out
+  breakMinutes      Int              @default(0)
+
+  // Payroll Snapshots
+  hourlyRateAtTime  Float?           // Lock the rate in case staff gets a raise later
+
+  notes             String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  // Relations
+  appointment       Appointment      @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  staff             User             @relation(fields: [staffId], references: [id])
+  timesheetEntry    TimesheetEntry?
+}
+
+model StaffAvailability {
+  id            String       @id @default(uuid())
+  staffProfileId String
+  dayOfWeek     Int          // 0-6 (Sunday-Saturday)
+  startMinute   Int          // Minutes from midnight (e.g., 480 for 8:00 AM)
+  endMinute     Int          // Minutes from midnight
+  effectiveFrom DateTime?
+  effectiveTo   DateTime?
+  createdAt     DateTime     @default(now())
+
+  staffProfile  StaffProfile @relation(fields: [staffProfileId], references: [id], onDelete: Cascade)
+}
+
+model Leave {
+  id        String    @id @default(uuid())
+  staffId   String
+  type      LeaveType
+  startAt   DateTime
+  endAt     DateTime
+  reason    String?
+  createdAt DateTime  @default(now())
+
+  staff     User      @relation(fields: [staffId], references: [id])
+}
+
+model TimesheetPeriod {
+  id        String          @id @default(uuid())
+  startDate DateTime
+  endDate   DateTime
+  status    TimesheetStatus @default(OPEN)
+  createdAt DateTime        @default(now())
+  lockedAt  DateTime?
+  entries   TimesheetEntry[]
+}
+
+model TimesheetEntry {
+  id            String          @id @default(uuid())
+  periodId      String
+  staffId       String
+  assignmentId  String?         @unique
+  workDate      DateTime
+  minutesWorked Int
+  hourlyRate    Float?
+  notes         String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  period        TimesheetPeriod @relation(fields: [periodId], references: [id])
+  staff         User            @relation(fields: [staffId], references: [id])
+  assignment    Assignment?     @relation(fields: [assignmentId], references: [id])
+}
+
 enum Role {
   ADMIN
   STAFF
@@ -168,4 +255,26 @@ enum AppointmentStatus {
   COMPLETED
   CANCELLED
   LATE
+}
+
+enum AssignmentStatus {
+  PENDING
+  EN_ROUTE
+  ON_SITE
+  COMPLETED
+  SICK_LEAVE
+}
+
+enum LeaveType {
+  SICK
+  VACATION
+  PERSONAL
+  UNPAID
+}
+
+enum TimesheetStatus {
+  OPEN
+  SUBMITTED
+  APPROVED
+  LOCKED
 }
