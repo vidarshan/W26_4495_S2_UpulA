@@ -85,3 +85,49 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { jobId, startTime, endTime, status, staffIds } = body;
+
+    // 1. Basic Validation
+    if (!jobId || !startTime || !endTime) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    // 2. Transaction to link Appointment and Staff (Assignment)
+    const newAppointment = await prisma.$transaction(async (tx) => {
+      const appt = await tx.appointment.create({
+        data: {
+          jobId,
+          startTime: new Date(startTime),
+          endTime: new Date(endTime),
+          status: status || "SCHEDULED",
+          // Note: If using the original implicit many-to-many relation:
+          staff: staffIds ? { connect: staffIds.map((id: string) => ({ id })) } : undefined,
+        },
+      });
+
+      // 3. Optional: If using the new Assignment model, create those here too
+      if (staffIds && Array.isArray(staffIds)) {
+        await tx.assignment.createMany({
+          data: staffIds.map((sid: string) => ({
+            appointmentId: appt.id,
+            staffId: sid,
+            status: "PENDING",
+            plannedStart: new Date(startTime),
+            plannedEnd: new Date(endTime),
+          })),
+        });
+      }
+
+      return appt;
+    });
+
+    return NextResponse.json(newAppointment, { status: 201 });
+  } catch (error) {
+    console.error("POST Appointment Error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}

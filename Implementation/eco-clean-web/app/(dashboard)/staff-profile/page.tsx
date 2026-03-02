@@ -16,19 +16,49 @@ import {
 } from '@mantine/core';
 import { useRouter } from 'next/navigation';
 import { IoSettingsOutline } from 'react-icons/io5';
+import { useEffect, useState } from 'react';
 
 export default function StaffProfilePage() {
-  // Replace with real data later (session / API)
-  const staff = {
-    name: 'Upul Atapattu',
-    staffId: 'STF-0001',
-    phone: '+1 (604) 555-0199',
-    address: '12667 110A Avenue, Surrey, BC',
-    postalCode: 'V3V 0A1',
-    emergencyContact: 'Ayesha — +1 (604) 555-0123',
-  };
-
+  const [staff, setStaff] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
+
+  useEffect(() => {
+    async function fetchProfile() {
+      try {
+        // In a real app, you'd get the ID from the session.
+        // For testing, use the ID you used in Postman.
+        const response = await fetch(
+          '/api/staff/3b32d468-9f20-4808-9f25-bffabed6a9cb',
+        );
+        const result = await response.json();
+
+        // Map the database fields to your UI
+        setStaff({
+          name: result.name,
+          staffId: result.id.slice(0, 8).toUpperCase(), // Shortened UUID for display
+          phone: result.phone || 'Not Provided',
+          address: result.staffProfile?.postalCode || 'No Postal Code',
+          postalCode: result.staffProfile?.postalCode || '',
+          emergencyContact: 'Not Set',
+        });
+      } catch (error) {
+        console.error('Failed to load profile:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchProfile();
+  }, []);
+
+  // 1. ADD THIS GUARD HERE
+  if (loading) {
+    return (
+      <Container size="lg" py="xl" style={{ display: 'flex', justifyContent: 'center' }}>
+        <Text>Loading profile...</Text>
+      </Container>
+    );
+  }
 
   return (
     <Container size="lg" py="xl">

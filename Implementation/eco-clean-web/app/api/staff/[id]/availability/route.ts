@@ -3,19 +3,27 @@ import { prisma } from '@/lib/prisma';
 import { getAuthSession } from '@/lib/session';
 import { NextResponse } from 'next/server';
 
-// GET: Retrieve all availability rules for a specific staff profile
+/**
+ * GET: Retrieve all availability rules for a specific staff profile.
+ * Path: /api/staff/[id]/availability
+ */
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  const session = await getAuthSession();
-  //   if (!session || session.user.role !== "ADMIN") {
-  //     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  //   const session = await getAuthSession();
+
+  //   // Match security pattern from existing users route
+  //   if (!session || session.user.role !== 'ADMIN') {
+  //     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   //   }
 
   try {
+    // UNWRAP the params before using them
+    const { id: staffProfileId } = await params;
+
     const availabilities = await prisma.staffAvailability.findMany({
-      where: { staffProfileId: params.id },
+      where: { staffProfileId },
       orderBy: [{ dayOfWeek: 'asc' }, { startMinute: 'asc' }],
     });
 
@@ -29,22 +37,28 @@ export async function GET(
   }
 }
 
-// POST: Add a new availability window
+/**
+ * POST: Create a new availability window for a staff member.
+ */
 export async function POST(
   req: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   //   const session = await getAuthSession();
-  //   if (!session || session.user.role !== "ADMIN") {
-  //     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  //   if (!session || session.user.role !== 'ADMIN') {
+  //     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   //   }
+
+  // 1. UNWRAP the params to avoid "undefined" errors
+  const { id: staffProfileId } = await params;
 
   try {
     const body = await req.json();
     const { dayOfWeek, startMinute, endMinute, effectiveFrom, effectiveTo } =
       body;
 
-    // Validation: Ensure minutes are within a 24-hour range (0-1440)
+    // 2. Business Logic Validation
     if (
       dayOfWeek < 0 ||
       dayOfWeek > 6 ||
@@ -57,12 +71,14 @@ export async function POST(
       );
     }
 
+    // 3. Database Operation
     const newAvailability = await prisma.staffAvailability.create({
       data: {
-        staffProfileId: params.id,
+        staffProfileId: staffProfileId, // Correctly unwrapped string
         dayOfWeek,
         startMinute,
         endMinute,
+        // Handle optional dates safely
         effectiveFrom: effectiveFrom ? new Date(effectiveFrom) : null,
         effectiveTo: effectiveTo ? new Date(effectiveTo) : null,
       },
@@ -78,15 +94,16 @@ export async function POST(
   }
 }
 
-// PATCH/PUT: Update an existing availability window
-// Note: Usually, you'd send the availability ID in the body or use a deeper route
+/**
+ * PATCH: Update an existing availability window.
+ */
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   //   const session = await getAuthSession();
-  //   if (!session || session.user.role !== "ADMIN") {
-  //     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  //   if (!session || session.user.role !== 'ADMIN') {
+  //     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   //   }
 
   try {
@@ -104,7 +121,7 @@ export async function PATCH(
       where: { id: availabilityId },
       data: {
         ...updateData,
-        // Ensure dates are correctly parsed if provided
+        // Ensure standard Date objects for Prisma
         effectiveFrom: updateData.effectiveFrom
           ? new Date(updateData.effectiveFrom)
           : undefined,
