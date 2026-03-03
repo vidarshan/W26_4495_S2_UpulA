@@ -48,7 +48,15 @@
 2026-02-25 9:15-10:40pm Refactored apiClient to fully generic typed implementation (TResponse/TBody pattern) and eliminated unsafe any usage across API routes and cache updates
 2026-02-25 10:40-11:20pm Resolved Prisma create() type conflicts (required vs optional relations such as addressId, preferredContact)
 2026-02-25 11:20-11:50pm Converted User modal into reusable strongly typed upsert component
-2026-02-25 11:50pm-12:15am Hardened optimistic updates and image deletion flow in AppointmentInfoModal
+2026-02-25 11:50-12:15am Hardened optimistic updates and image deletion flow in AppointmentInfoModal
+2026-02-26 10:00-12:00pm Implemented calendar component and connected appointment data to dynamic scheduling view
+2026-02-26 1:00-3:00pm Integrated full-stack Users management including create, edit, and role handling with API validation
+2026-02-26 4:00-6:00pm Implemented Clients full-stack flow and connected client selection to appointment scheduling
+2026-02-26 7:00-9:00pm Structured Staff management and ensured correct staff assignment logic across appointments
+2026-02-27 9:30-11:30am Refactored calendar time rendering to align with UTC (TIMESTAMPTZ) scheduling logic
+2026-02-27 12:30-2:00pm Resolved Prisma schema inconsistencies and validated relational integrity for users, clients, and staff
+2026-02-27 3:00-5:00pm Stabilized navigation and layout structure for new management screens (Users, Clients, Staff)
+2026-02-27 6:30-8:30pm Evaluated mobile app architecture and explored PWA replacement strategy for long-term simplification
 
 -- Progress Report 1 --
 2026-01-27 4:30pm-6:30pm Setup authentication with next js
