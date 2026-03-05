@@ -13,6 +13,7 @@ import {
   mantineHtmlProps,
 } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
+import PWARegister from "./_pwa_register";
 
 export const metadata = {
   title: "Eco Clean | Admin",
@@ -49,6 +50,7 @@ export default function RootLayout({
         <MantineProvider theme={{ defaultRadius: "md", primaryColor: "green" }}>
           <Notifications position="top-right" />
           <QueryProvider>
+            <PWARegister />
             <Providers>{children}</Providers>
           </QueryProvider>
         </MantineProvider>
