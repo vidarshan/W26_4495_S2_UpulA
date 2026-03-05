@@ -13,6 +13,7 @@ import {
 } from "@mantine/core";
 import { useRouter } from "next/navigation";
 import { IoCloseCircle } from "react-icons/io5";
+import { getSession } from "next-auth/react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -37,8 +38,15 @@ export default function LoginPage() {
       return;
     }
 
+    const session = await getSession();
+
+    if (session?.user?.role === "ADMIN") {
+      router.push("/admin");
+    } else {
+      router.push("/tasks");
+    }
+
     setLoading(false);
-    router.push("/");
   }
 
   return (
