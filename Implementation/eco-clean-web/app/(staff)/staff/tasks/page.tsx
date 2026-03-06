@@ -32,7 +32,8 @@ import {
   IoPersonOutline,
   IoTimeOutline,
 } from "react-icons/io5";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
+import { getServerSession } from "next-auth";
 
 type Appointment = {
   id: string;
@@ -55,7 +56,9 @@ type Appointment = {
 };
 
 const Page = () => {
-  const staffId = "217bc07d-cf36-4294-b64f-0c625e43f711";
+  const { data: session } = useSession();
+  console.log(session);
+  const staffId = session?.user?.id;
   const [opened, { open, close }] = useDisclosure(false);
   const router = useRouter();
 
@@ -73,7 +76,7 @@ const Page = () => {
     queryKey: ["staff-tasks", staffId, range.start, range.end],
     queryFn: () =>
       getStaffAppointments({
-        staffId,
+        staffId: staffId!,
         start: range.start,
         end: range.end,
       }),
