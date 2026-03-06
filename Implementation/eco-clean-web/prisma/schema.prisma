@@ -14,6 +14,7 @@ model User {
   createdAt            DateTime      @default(now())
   password             String
   assignedAppointments Appointment[] @relation("AppointmentStaff")
+  workSessions         AppointmentWorkSession[]
 }
 
 model Client {
@@ -91,6 +92,7 @@ model Appointment {
   images         AppointmentImage[]
   notes          VisitNote[]
   staff          User[]             @relation("AppointmentStaff")
+  workSessions   AppointmentWorkSession[]
 
   @@index([startTime])
   @@index([endTime])
@@ -150,6 +152,21 @@ model AppointmentImage {
   url           String
   fileKey       String?
   appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+}
+
+model AppointmentWorkSession {
+  id            String      @id @default(uuid())
+  appointmentId String
+  staffId       String?
+  startedAt     DateTime    @db.Timestamptz(6)
+  endedAt       DateTime?   @db.Timestamptz(6)
+  createdAt     DateTime    @default(now()) @db.Timestamptz(6)
+
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  staff         User?       @relation(fields: [staffId], references: [id])
+
+  @@index([appointmentId])
+  @@index([staffId])
 }
 
 enum Role {

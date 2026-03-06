@@ -9,9 +9,9 @@ interface Props {
 }
 const TopBar = ({ back, onClick, title }: Props) => {
   return (
-    <Box pos="sticky" top={0} style={{ zIndex: 888 }}>
+    <Box pos="sticky" top={0} style={{ zIndex: 100 }}>
       {back ? (
-        <Flex bg="blue" py={6} align="center">
+        <Flex bg="white" py={6} align="center">
           <ThemeIcon
             variant="transparent"
             color="dark"
@@ -26,7 +26,7 @@ const TopBar = ({ back, onClick, title }: Props) => {
           </Text>
         </Flex>
       ) : (
-        <Flex bg="blue" py={6} align="center">
+        <Flex bg="white" py={6} align="center">
           <ThemeIcon
             variant="transparent"
             color="dark"

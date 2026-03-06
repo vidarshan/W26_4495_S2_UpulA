@@ -85,3 +85,44 @@ export async function getAppointmentById(id: string) {
 
   return res.json();
 }
+
+export async function startAppointment(id: string, staffId?: string) {
+  const res = await fetch(`/api/appointments/${id}/start`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ staffId }),
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(json?.error || "Failed to start appointment");
+  }
+
+  return json;
+}
+
+export async function pauseAppointment(id: string) {
+  const res = await fetch(`/api/appointments/${id}/pause`, {
+    method: "POST",
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(json?.error || "Failed to pause appointment");
+  }
+
+  return json;
+}
+
+export async function completeAppointment(id: string) {
+  const res = await fetch(`/api/appointments/${id}/complete`, {
+    method: "POST",
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(json?.error || "Failed to complete appointment");
+  }
+
+  return json;
+}

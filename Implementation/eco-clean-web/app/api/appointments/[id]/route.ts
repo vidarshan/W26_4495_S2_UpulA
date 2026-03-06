@@ -26,6 +26,9 @@ export async function GET(
         staff: true,
         notes: true,
         images: true,
+        workSessions: {
+          orderBy: { startedAt: "asc" },
+        },
         job: {
           include: {
             client: true,

@@ -11,14 +11,14 @@ import {
   Flex,
   Group,
   Loader,
+  Progress,
   SimpleGrid,
   Stack,
   Text,
   ThemeIcon,
-  Title,
 } from "@mantine/core";
 import { useParams, useRouter } from "next/navigation";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { DateTime } from "luxon";
 import { APP_TZ } from "@/lib/dateTime";
 import {
@@ -33,6 +33,13 @@ import {
   IoDocumentTextOutline,
   IoLocationOutline,
 } from "react-icons/io5";
+import {
+  completeAppointment,
+  pauseAppointment,
+  startAppointment,
+} from "@/lib/api/appointments";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { notifications } from "@mantine/notifications";
 
 function formatAddress(address?: {
   street1?: string | null;
@@ -68,18 +75,22 @@ function buildDirectionsUrl(address?: {
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(fullAddress)}`;
 }
 
-function formatDuration(startIso: string, endIso: string) {
-  const start = DateTime.fromISO(startIso);
-  const end = DateTime.fromISO(endIso);
-  const diff = end.diff(start, ["hours", "minutes"]);
+function getElapsedSeconds(
+  sessions: { startedAt: string; endedAt: string | null }[],
+  nowMs: number,
+) {
+  return sessions.reduce((sum, s) => {
+    const startMs = new Date(s.startedAt).getTime();
+    const endMs = s.endedAt ? new Date(s.endedAt).getTime() : nowMs;
+    return sum + Math.max(0, Math.floor((endMs - startMs) / 1000));
+  }, 0);
+}
 
-  const hours = Math.floor(diff.hours);
-  const minutes = Math.floor(diff.minutes);
-
-  const hh = String(hours).padStart(2, "0");
-  const mm = String(minutes).padStart(2, "0");
-
-  return `${hh}:${mm}:00`;
+function formatSeconds(total: number) {
+  const hrs = String(Math.floor(total / 3600)).padStart(2, "0");
+  const mins = String(Math.floor((total % 3600) / 60)).padStart(2, "0");
+  const secs = String(total % 60).padStart(2, "0");
+  return `${hrs}:${mins}:${secs}`;
 }
 
 const Page = () => {
@@ -93,6 +104,89 @@ const Page = () => {
     error,
   } = useAppointmentDetails(appointmentId);
 
+  // ✅ ALL HOOKS MUST BE HERE, BEFORE RETURNS
+  const [nowMs, setNowMs] = useState(Date.now());
+  const qc = useQueryClient();
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNowMs(Date.now());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const refreshAppointment = (updated: any) => {
+    qc.setQueryData(["appointment-details", appointmentId], updated);
+    qc.invalidateQueries({ queryKey: ["appointment-details", appointmentId] });
+    qc.invalidateQueries({ queryKey: ["staff-tasks"] });
+  };
+
+  const startMutation = useMutation({
+    mutationFn: () =>
+      startAppointment(appointment!.id, appointment?.staff?.[0]?.id),
+    onSuccess: (updated) => {
+      refreshAppointment(updated);
+      notifications.show({
+        title: "Started",
+        message: "Job started successfully",
+        color: "green",
+        position: "top-center",
+      });
+    },
+    onError: (err: any) => {
+      notifications.show({
+        title: "Error",
+        message: err?.message || "Failed to start job",
+        color: "red",
+        position: "top-center",
+      });
+    },
+  });
+
+  const pauseMutation = useMutation({
+    mutationFn: () => pauseAppointment(appointment!.id),
+    onSuccess: (updated) => {
+      refreshAppointment(updated);
+      notifications.show({
+        title: "Paused",
+        message: "Job paused successfully",
+        color: "yellow",
+        position: "top-center",
+      });
+    },
+    onError: (err: any) => {
+      notifications.show({
+        title: "Error",
+        message: err?.message || "Failed to pause job",
+        color: "red",
+        position: "top-center",
+      });
+    },
+  });
+
+  const completeMutation = useMutation({
+    mutationFn: () => completeAppointment(appointment!.id),
+    onSuccess: (updated) => {
+      refreshAppointment(updated);
+      notifications.show({
+        title: "Completed",
+        message: "Job marked as completed",
+        color: "green",
+        position: "top-center",
+      });
+    },
+    onError: (err: any) => {
+      notifications.show({
+        title: "Error",
+        message: err?.message || "Failed to complete job",
+        color: "red",
+        position: "top-center",
+      });
+    },
+  });
+
+  // ✅ RETURNS AFTER ALL HOOKS
   if (isLoading) {
     return (
       <Container h="100vh" py="md">
@@ -138,6 +232,25 @@ const Page = () => {
   const visitInstructions = appointment.job.visitInstructions?.trim();
   const fullAddress = formatAddress(appointment.job.address);
 
+  const sessions = appointment.workSessions ?? [];
+  const isRunning = sessions.some((s) => !s.endedAt);
+  const elapsedSeconds = getElapsedSeconds(sessions, nowMs);
+
+  const scheduledSeconds = Math.max(
+    0,
+    Math.floor(
+      (new Date(appointment.endTime).getTime() -
+        new Date(appointment.startTime).getTime()) /
+        1000,
+    ),
+  );
+  const overtimeSeconds = Math.max(0, elapsedSeconds - scheduledSeconds);
+
+  const progressPct =
+    scheduledSeconds > 0
+      ? Math.min(100, Math.round((elapsedSeconds / scheduledSeconds) * 100))
+      : 0;
+  const isOvertime = elapsedSeconds > scheduledSeconds;
   return (
     <Container p={0} bg="#f5f6f7" mih="100vh">
       <TopBar back onClick={() => router.back()} title="Back" />
@@ -164,14 +277,29 @@ const Page = () => {
             </Badge>
           </Group>
 
+          <Text size="sm" c={isRunning ? "green" : "dimmed"} fw={600}>
+            {appointment.status === "COMPLETED"
+              ? "Completed"
+              : isRunning
+                ? "Currently running"
+                : "Paused / not started"}
+          </Text>
+
           <Stack gap={0} align="center" my="md">
             <Text fw={800} fz={44} lh={1}>
-              00:00:00
+              {formatSeconds(elapsedSeconds)}
             </Text>
+
             <Text fw={700} fz={34} lh={1.1}>
-              {formatDuration(appointment.startTime, appointment.endTime)}
+              {formatSeconds(scheduledSeconds)}
             </Text>
           </Stack>
+          <Progress value={progressPct} />
+          <Text mt={6} fw={600} size="xs" c={isOvertime ? "red" : "dimmed"}>
+            {isOvertime
+              ? `Overtime by ${formatSeconds(overtimeSeconds)}`
+              : `${progressPct}% of scheduled duration used`}
+          </Text>
 
           <Flex
             justify="space-between"
@@ -220,6 +348,9 @@ const Page = () => {
             size="md"
             color="green"
             fullWidth
+            disabled={isRunning || appointment.status === "COMPLETED"}
+            loading={startMutation.isPending}
+            onClick={() => startMutation.mutate()}
           >
             Start Job
           </Button>
@@ -230,10 +361,25 @@ const Page = () => {
             size="md"
             color="lime"
             fullWidth
+            disabled={!isRunning || appointment.status === "COMPLETED"}
+            loading={pauseMutation.isPending}
+            onClick={() => pauseMutation.mutate()}
           >
             Pause Job
           </Button>
         </SimpleGrid>
+
+        <Button
+          mt="sm"
+          radius="xl"
+          color="blue"
+          fullWidth
+          disabled={appointment.status === "COMPLETED"}
+          loading={completeMutation.isPending}
+          onClick={() => completeMutation.mutate()}
+        >
+          Complete Job
+        </Button>
 
         <Card radius="xl" withBorder shadow="xs" p="lg">
           <Group mb="md" gap="xs">
