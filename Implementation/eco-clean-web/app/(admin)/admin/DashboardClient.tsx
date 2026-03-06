@@ -4,8 +4,11 @@ import {
   Box,
   Button,
   Container,
+  Flex,
   Group,
+  Paper,
   SegmentedControl,
+  Select,
   Text,
 } from "@mantine/core";
 import FullCalendar from "@fullcalendar/react";
@@ -14,7 +17,12 @@ import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin, {
   EventResizeDoneArg,
 } from "@fullcalendar/interaction";
-import { IoArrowBackOutline, IoArrowForwardOutline } from "react-icons/io5";
+import {
+  IoArrowBackOutline,
+  IoArrowForwardOutline,
+  IoPersonOutline,
+  IoToggleOutline,
+} from "react-icons/io5";
 import { useEffect, useRef, useState } from "react";
 import { DateSelectArg, EventClickArg, EventDropArg } from "@fullcalendar/core";
 import NewJobModal from "../../components/popups/JobModal";
@@ -159,60 +167,86 @@ export default function DashboardClient() {
       <h1>Dashboard</h1>
 
       <Box>
-        <Group justify="space-between" mb="lg">
-          <Text fw={600} c="dimmed">
-            {currentTitle}
-          </Text>
+        <Paper mb="xs" p="sm" radius="lg" withBorder>
+          <Group justify="space-between" mb="lg">
+            <Text fw={600} c="dimmed">
+              {currentTitle}
+            </Text>
 
-          <SegmentedControl
-            value={view}
-            onChange={(value) => {
-              setView(value);
-              const calendarApi = calendarRef.current?.getApi();
+            <SegmentedControl
+              value={view}
+              radius="xl"
+              color="green"
+              onChange={(value) => {
+                setView(value);
+                const calendarApi = calendarRef.current?.getApi();
 
-              if (value === "month") {
-                calendarApi?.changeView("dayGridMonth");
-              }
-              if (value === "week") {
-                calendarApi?.changeView("timeGridWeek");
-              }
-              if (value === "day") {
-                calendarApi?.changeView("timeGridDay");
-              }
-            }}
-            data={[
-              { label: "Month", value: "month" },
-              { label: "Week", value: "week" },
-              { label: "Day", value: "day" },
-            ]}
-          />
+                if (value === "month") {
+                  calendarApi?.changeView("dayGridMonth");
+                }
+                if (value === "week") {
+                  calendarApi?.changeView("timeGridWeek");
+                }
+                if (value === "day") {
+                  calendarApi?.changeView("timeGridDay");
+                }
+              }}
+              data={[
+                { label: "Month", value: "month" },
+                { label: "Week", value: "week" },
+                { label: "Day", value: "day" },
+              ]}
+            />
 
-          <Group>
-            <Button.Group>
-              <Button
-                leftSection={<IoArrowBackOutline />}
-                variant="default"
-                onClick={() => calendarRef.current?.getApi().prev()}
-              >
-                Prev
-              </Button>
-              <Button
-                variant="default"
-                onClick={() => calendarRef.current?.getApi().today()}
-              >
-                Today
-              </Button>
-              <Button
-                rightSection={<IoArrowForwardOutline />}
-                variant="default"
-                onClick={() => calendarRef.current?.getApi().next()}
-              >
-                Next
-              </Button>
-            </Button.Group>
+            <Group>
+              <Button.Group>
+                <Button
+                  radius="xl"
+                  leftSection={<IoArrowBackOutline />}
+                  variant="default"
+                  onClick={() => calendarRef.current?.getApi().prev()}
+                >
+                  Prev
+                </Button>
+                <Button
+                  radius="xl"
+                  variant="default"
+                  onClick={() => calendarRef.current?.getApi().today()}
+                >
+                  Today
+                </Button>
+                <Button
+                  radius="xl"
+                  rightSection={<IoArrowForwardOutline />}
+                  variant="default"
+                  onClick={() => calendarRef.current?.getApi().next()}
+                >
+                  Next
+                </Button>
+              </Button.Group>
+            </Group>
           </Group>
-        </Group>
-        {}
+          <Group justify="space-between">
+            <Flex gap="xs">
+              <Select
+                size="xs"
+                radius="xl"
+                leftSection={<IoToggleOutline />}
+                placeholder="Select status"
+                data={["Scheduled", "Cancelled", "Completed"]}
+                allowDeselect={false}
+              />
+              <Select
+                size="xs"
+                radius="xl"
+                leftSection={<IoPersonOutline />}
+                placeholder="Select member"
+                data={["Scheduled", "Cancelled", "Completed"]}
+                allowDeselect={false}
+              />{" "}
+            </Flex>
+          </Group>
+        </Paper>
         <FullCalendar
           height="75vh"
           editable

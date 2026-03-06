@@ -40,6 +40,7 @@ import {
 } from "@/lib/api/appointments";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { notifications } from "@mantine/notifications";
+import { WorkSession } from "@/types";
 
 function formatAddress(address?: {
   street1?: string | null;
@@ -233,7 +234,7 @@ const Page = () => {
   const fullAddress = formatAddress(appointment.job.address);
 
   const sessions = appointment.workSessions ?? [];
-  const isRunning = sessions.some((s) => !s.endedAt);
+  const isRunning = sessions.some((s: WorkSession) => !s.endedAt);
   const elapsedSeconds = getElapsedSeconds(sessions, nowMs);
 
   const scheduledSeconds = Math.max(

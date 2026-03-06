@@ -62,12 +62,19 @@ export default function DashboardShell({
           <Stack gap="xs">
             <Flex justify="center"></Flex>
             <Flex align="center" justify="center">
-              <Popover opened={opened} position="right" withArrow shadow="md">
+              <Popover
+                radius="xl"
+                opened={opened}
+                position="right"
+                withArrow
+                shadow="md"
+              >
                 <Popover.Target>
                   <ActionIcon
                     variant="filled"
                     mb="sm"
                     size="xl"
+                    radius="xl"
                     onClick={() => setOpened((o) => !o)}
                     aria-label="Toggle sidebar"
                   >
@@ -87,6 +94,7 @@ export default function DashboardShell({
                       <ActionIcon
                         variant="light"
                         size="xl"
+                        radius="xl"
                         onClick={() => {
                           setOpened(false);
                           setJobPopoverOpened(true);
@@ -103,6 +111,7 @@ export default function DashboardShell({
                       <ActionIcon
                         variant="light"
                         color="orange"
+                        radius="xl"
                         size="xl"
                         onClick={() => {
                           setOpened(false);
@@ -119,6 +128,7 @@ export default function DashboardShell({
                     <Flex direction="column" align="center">
                       <ActionIcon
                         variant="light"
+                        radius="xl"
                         color="violet"
                         size="xl"
                         onClick={() => {
@@ -143,7 +153,7 @@ export default function DashboardShell({
                 href="/admin"
                 bdrs="md"
                 leftSection={<IoHomeOutline />}
-                active={pathname === "/"}
+                active={pathname === "/admin"}
               />
             </Tooltip>
             <Tooltip label="Clients" position="right" withArrow>

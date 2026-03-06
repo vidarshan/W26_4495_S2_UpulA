@@ -125,8 +125,8 @@ export default function ClientsTable() {
         <Group gap="sm">
           <TextInput
             placeholder="Search clients"
+            radius="xl"
             leftSection={<IoSearchOutline size={16} />}
-            radius="md"
             onChange={(e) => handleSearch(e.target.value)}
           />
 
@@ -139,7 +139,7 @@ export default function ClientsTable() {
               { value: "oldest", label: "Oldest" },
             ]}
             onChange={(value) => setSort(value as "newest" | "oldest")}
-            radius="md"
+            radius="xl"
           />
         </Group>
       </Group>

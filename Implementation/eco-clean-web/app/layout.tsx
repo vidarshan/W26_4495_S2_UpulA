@@ -47,7 +47,7 @@ export default function RootLayout({
         <ColorSchemeScript />
       </head>
       <body className={`${manrope.variable} antialiased`}>
-        <MantineProvider theme={{ defaultRadius: "md", primaryColor: "green" }}>
+        <MantineProvider theme={{ defaultRadius: "xl", primaryColor: "green" }}>
           <Notifications position="top-right" />
           <QueryProvider>
             <PWARegister />
