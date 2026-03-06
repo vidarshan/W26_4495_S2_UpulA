@@ -27,7 +27,7 @@ import { useForm } from "@mantine/form";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { IoAddOutline, IoImageOutline } from "react-icons/io5";
-import { createJob, JobFormValues } from "@/lib/api/jobs";
+import { createJob, CreateJobPayload, JobFormValues } from "@/lib/api/jobs";
 import { getClientAddresses, getClients } from "@/lib/api/client";
 import { getStaff } from "@/lib/api/users";
 import { Staff } from "@/app/types/staff";
@@ -95,6 +95,38 @@ function jsDateToHHmm(d: Date) {
   return dt.isValid ? dt.toFormat("HH:mm") : "";
 }
 
+function toYMD(d: Date | null) {
+  if (!d) return "";
+  const dt = DateTime.fromJSDate(d, { zone: APP_TZ });
+  return dt.isValid ? dt.toFormat("yyyy-LL-dd") : "";
+}
+
+type AppointmentApiPayload = {
+  date: string;
+  startTime: string | null;
+  endTime: string | null;
+  staffIds: string[];
+  note?: string | null;
+  images?: Array<{ url: string; fileKey?: string | null }>;
+};
+
+const mapAppt = (appt: AppointmentForm): AppointmentApiPayload => {
+  const date = toYMD(appt.startDate);
+
+  return {
+    date,
+    startTime: appt.startTime?.trim() ? appt.startTime.trim() : null,
+    endTime: appt.endTime?.trim() ? appt.endTime.trim() : null,
+    staffIds: Array.isArray(appt.staffId) ? appt.staffId : [], // ✅ required array
+    note: appt.notes?.trim() ? appt.notes.trim() : null,
+    images: appt.uploadedImages?.length
+      ? appt.uploadedImages.map((img) => ({
+          url: img.url,
+          fileKey: img.fileKey ?? null,
+        }))
+      : undefined,
+  };
+};
 function blankAppointment(): AppointmentForm {
   return {
     id: crypto.randomUUID(),
@@ -277,29 +309,54 @@ export default function NewJobModal({
   }, [form.values.jobType, form.values.recurrence.endType]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSubmit = async (values: JobFormValuesWithRecurrence) => {
-    const mapAppt = (appt: AppointmentForm) => ({
-      id: appt.id,
-      startDate: appt.startDate,
-      startTime: appt.startTime,
-      endTime: appt.endTime,
-      staffId: appt.staffId?.length ? appt.staffId : undefined,
-      notes: appt.notes?.trim() ? appt.notes : undefined,
-      images: appt.uploadedImages?.length
-        ? appt.uploadedImages.map((img) => ({
-            url: img.url,
-            fileKey: img.fileKey,
-          }))
-        : undefined,
-    });
+    const visitInstructions =
+      values.visitInstructions && values.visitInstructions.trim().length
+        ? values.visitInstructions.trim()
+        : undefined;
 
-    const payload = {
-      ...values,
-      recurrence:
-        values.jobType === "RECURRING" ? values.recurrence : undefined,
-      appointments:
-        values.jobType === "RECURRING"
-          ? [mapAppt(values.appointments[0])]
-          : values.appointments.map(mapAppt),
+    const appointments =
+      values.jobType === "RECURRING"
+        ? [mapAppt(values.appointments[0])]
+        : values.appointments.map(mapAppt);
+
+    const payload: CreateJobPayload = {
+      title: values.title,
+      clientId: values.clientId,
+      addressId: values.addressId,
+      jobType: values.jobType,
+      isAnytime: values.isAnytime,
+      ...(visitInstructions ? { visitInstructions } : {}),
+
+      lineItems: values.lineItems.map((li) => ({
+        name: li.name,
+        quantity: li.quantity,
+        unitCost: li.unitCost ?? null,
+        unitPrice: li.unitPrice ?? null,
+        ...(li.description?.trim()
+          ? { description: li.description.trim() }
+          : {}),
+      })),
+
+      ...(values.jobType === "RECURRING"
+        ? {
+            recurrence: {
+              frequency: values.recurrence.frequency,
+              interval: values.recurrence.interval,
+              endType: values.recurrence.endType,
+              endsAfter:
+                values.recurrence.endType === "after"
+                  ? values.recurrence.endsAfter
+                  : null,
+              endsOn:
+                values.recurrence.endType === "on" && values.recurrence.endsOn
+                  ? DateTime.fromJSDate(values.recurrence.endsOn, {
+                      zone: APP_TZ,
+                    }).toFormat("yyyy-LL-dd")
+                  : null,
+            },
+          }
+        : {}),
+      appointments,
     };
 
     await createJob(payload);

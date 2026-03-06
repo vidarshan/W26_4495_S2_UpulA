@@ -17,9 +17,9 @@ import interactionPlugin, {
 import { IoArrowBackOutline, IoArrowForwardOutline } from "react-icons/io5";
 import { useEffect, useRef, useState } from "react";
 import { DateSelectArg, EventClickArg, EventDropArg } from "@fullcalendar/core";
-import NewJobModal from "../components/popups/JobModal";
-import AppointmentInfoModal from "../components/popups/AppointmentInfoModal";
-import ConfirmCancellationModal from "../components/popups/ConfirmCancellationModal";
+import NewJobModal from "../../components/popups/JobModal";
+import AppointmentInfoModal from "../../components/popups/AppointmentInfoModal";
+import ConfirmCancellationModal from "../../components/popups/ConfirmCancellationModal";
 import { useCalendarStore, useDashboardUI } from "@/stores/store";
 import { notifications } from "@mantine/notifications";
 import { rescheduleAppointment } from "@/lib/api/appointments";

@@ -15,18 +15,16 @@ function toDateTimeUtc(input: IsoOrDate): DateTime {
 }
 
 // ISO/Date (UTC instant) -> date-only (JS Date at local midnight, representing APP_TZ day)
-export function isoToDateOnly(iso: string | Date): Date | null {
-  if (!iso) return null;
-  const d = typeof iso === "string" ? new Date(iso) : iso;
-  if (Number.isNaN(d.getTime())) return null;
-
-  // local date (no time)
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+export function isoToDateOnly(iso: string): Date {
+  // Interpret the ISO instant in APP_TZ, then return a JS Date representing local midnight
+  const dt = DateTime.fromISO(iso, { zone: "utc" }).setZone(APP_TZ);
+  return dt.startOf("day").toJSDate();
 }
+
 // ISO/Date (UTC instant) -> "HH:mm" in APP_TZ
-export function isoToHHmm(input: IsoOrDate): string {
-  const dt = toDateTimeUtc(input).setZone(APP_TZ);
-  if (!dt.isValid) throw new Error(`isoToHHmm invalid: ${String(input)}`);
+export function isoToHHmm(iso: string): string {
+  // Interpret the ISO instant in APP_TZ and format time
+  const dt = DateTime.fromISO(iso, { zone: "utc" }).setZone(APP_TZ);
   return dt.toFormat("HH:mm");
 }
 
@@ -38,22 +36,13 @@ function ensureDate(d: Date | string): Date {
   return new Date(dt.year, dt.month - 1, dt.day);
 }
 
-export function dateOnlyAndHHmmToIso(dateOnly: Date | string, hhmm: string) {
-  const safeDate = ensureDate(dateOnly);
-  const [hour, minute] = hhmm.split(":").map(Number);
+export function dateOnlyAndHHmmToIso(dateOnly: Date, hhmm: string): string {
+  const [h, m] = hhmm.split(":").map(Number);
 
-  const dtLocal = DateTime.fromObject(
-    {
-      year: safeDate.getFullYear(),
-      month: safeDate.getMonth() + 1,
-      day: safeDate.getDate(),
-      hour,
-      minute,
-      second: 0,
-      millisecond: 0,
-    },
-    { zone: APP_TZ },
-  );
+  // Treat dateOnly as a calendar date in APP_TZ (ignore its internal UTC instant)
+  const d = DateTime.fromJSDate(dateOnly, { zone: APP_TZ }).startOf("day");
+  const local = d.set({ hour: h, minute: m, second: 0, millisecond: 0 });
 
-  return dtLocal.toUTC().toISO()!;
+  // Store/send as UTC ISO
+  return local.toUTC().toISO()!;
 }

@@ -26,12 +26,12 @@ import {
   IoLogOutOutline,
   IoPeopleOutline,
   IoPersonOutline,
-  IoPersonCircleOutline
+  IoPersonCircleOutline,
 } from "react-icons/io5";
-import ClientPropertyModal from "../components/popups/ClientModal";
-import NewJobModal from "../components/popups/JobModal";
+import ClientPropertyModal from "../../components/popups/ClientModal";
+import NewJobModal from "../../components/popups/JobModal";
 import { useDashboardUI } from "@/stores/store";
-import UserUpsertModal from "../components/popups/UserModal";
+import UserUpsertModal from "../../components/popups/UserModal";
 
 export default function DashboardShell({
   children,
@@ -140,7 +140,7 @@ export default function DashboardShell({
               <NavLink
                 onClick={() => setOpened(false)}
                 component={Link}
-                href="/"
+                href="/admin"
                 bdrs="md"
                 leftSection={<IoHomeOutline />}
                 active={pathname === "/"}
@@ -150,31 +150,31 @@ export default function DashboardShell({
               <NavLink
                 onClick={() => setOpened(false)}
                 component={Link}
-                href="/clients"
+                href="/admin/clients"
                 bdrs="md"
                 leftSection={<IoPeopleOutline />}
-                active={pathname.startsWith("/clients")}
+                active={pathname.startsWith("/admin/clients")}
               />
             </Tooltip>
             <Tooltip label="Employees" position="right" withArrow>
               <NavLink
                 onClick={() => setOpened(false)}
                 component={Link}
-                href="/employees"
+                href="/admin/employees"
                 bdrs="md"
                 leftSection={<IoBriefcaseOutline />}
-                active={pathname.startsWith("/employees")}
+                active={pathname.startsWith("/admin/employees")}
               />
             </Tooltip>
 
-             <Tooltip label="Staff" position="right" withArrow>
+            <Tooltip label="Staff" position="right" withArrow>
               <NavLink
                 onClick={() => setOpened(false)}
                 component={Link}
-                href="/staff-profile"
+                href="/admin/staff-profile"
                 bdrs="md"
-                leftSection={<IoPersonCircleOutline  />}
-                active={pathname.startsWith("/staff-profile")}
+                leftSection={<IoPersonCircleOutline />}
+                active={pathname.startsWith("/admin/staff-profile")}
               />
             </Tooltip>
 
@@ -182,10 +182,10 @@ export default function DashboardShell({
               <NavLink
                 onClick={() => setOpened(false)}
                 component={Link}
-                href="/settings"
+                href="/admin/settings"
                 bdrs="md"
                 leftSection={<IoCogOutline />}
-                active={pathname.startsWith("/settings")}
+                active={pathname.startsWith("/admin/settings")}
               />
             </Tooltip>
 

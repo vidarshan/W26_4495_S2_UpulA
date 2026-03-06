@@ -1,7 +1,7 @@
 {
   "name": "Eco Clean",
   "short_name": "EcoClean",
-  "start_url": "/",
+  "start_url": "/tasks",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#0ea5e9",
