@@ -1,4 +1,4 @@
-import { Flex, Text, ThemeIcon } from "@mantine/core";
+import { Box, Flex, Text, ThemeIcon } from "@mantine/core";
 import React from "react";
 import { IoArrowBack, IoMenuOutline } from "react-icons/io5";
 
@@ -9,7 +9,7 @@ interface Props {
 }
 const TopBar = ({ back, onClick, title }: Props) => {
   return (
-    <>
+    <Box pos="sticky" top={0} style={{ zIndex: 888 }}>
       {back ? (
         <Flex bg="blue" py={6} align="center">
           <ThemeIcon
@@ -41,7 +41,7 @@ const TopBar = ({ back, onClick, title }: Props) => {
           </Text>
         </Flex>
       )}
-    </>
+    </Box>
   );
 };
 

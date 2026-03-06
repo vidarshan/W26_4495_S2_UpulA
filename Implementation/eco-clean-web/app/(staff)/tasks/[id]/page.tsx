@@ -1,188 +1,348 @@
 "use client";
+
 import TopBar from "@/app/components/pwa/TopBar";
+import { useAppointmentDetails } from "@/hooks/useAppointmentDetails";
 import {
-  ActionIcon,
   Badge,
   Box,
   Button,
+  Card,
   Container,
-  Divider,
   Flex,
   Group,
-  Paper,
+  Loader,
   SimpleGrid,
   Stack,
   Text,
+  ThemeIcon,
   Title,
 } from "@mantine/core";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import React from "react";
+import { DateTime } from "luxon";
+import { APP_TZ } from "@/lib/dateTime";
 import {
+  IoArrowBackOutline,
   IoCallOutline,
   IoChatbubbleEllipsesOutline,
   IoMapOutline,
   IoPauseOutline,
-  IoPersonOutline,
-  IoPlay,
   IoPlayOutline,
-  IoTextSharp,
+  IoPersonOutline,
+  IoTimeOutline,
+  IoDocumentTextOutline,
+  IoLocationOutline,
 } from "react-icons/io5";
 
-const page = () => {
-  const router = useRouter();
+function formatAddress(address?: {
+  street1?: string | null;
+  street2?: string | null;
+  city?: string | null;
+  province?: string | null;
+  postalCode?: string | null;
+  country?: string | null;
+}) {
+  if (!address) return "";
 
-  let appt = {
-    id: "8ffe23ee-059b-4353-b5e9-df7ede4c50e2",
-    startTime: "2026-03-03T18:30:00.000Z",
-    endTime: "2026-03-03T22:30:00.000Z",
-    status: "SCHEDULED",
-    createdAt: "2026-03-06T00:28:59.077Z",
-    completionSent: false,
-    reminder1dSent: false,
-    reminder5dSent: false,
-    jobId: "91cde303-a28e-4c97-bdc7-836dac455500",
-    timeSpent: null,
-    completedAt: null,
-    job: {
-      id: "91cde303-a28e-4c97-bdc7-836dac455500",
-      title: "fvdfvdf",
-      type: "ONE_OFF",
-      clientId: "5a4f94a2-31f0-4739-81a7-785b932ea856",
-      addressId: "c1862bb0-395f-4bff-b050-c5f8c8f047ac",
-      createdAt: "2026-03-06T00:28:59.071Z",
-      updatedAt: "2026-03-06T00:28:59.071Z",
-      isAnytime: false,
-      visitInstructions: null,
-      client: {
-        id: "5a4f94a2-31f0-4739-81a7-785b932ea856",
-        title: "Mr.",
-        firstName: "Test Fname",
-        lastName: "Test Lname",
-        companyName: "",
-        email: "test@gmail.com",
-        phone: "7786682326",
-        preferredContact: "email",
-        leadSource: "",
-        createdAt: "2026-02-17T00:44:52.131Z",
-        updatedAt: "2026-02-26T07:34:02.319Z",
-      },
-      address: {
-        id: "c1862bb0-395f-4bff-b050-c5f8c8f047ac",
-        clientId: "5a4f94a2-31f0-4739-81a7-785b932ea856",
-        street1: "5017 Chambers St",
-        street2: null,
-        city: "Vancouver",
-        province: "BC",
-        postalCode: "V5R 3L8",
-        country: "Canada",
-        isPrimary: false,
-        isBilling: false,
-        createdAt: "2026-02-17T00:44:52.140Z",
-      },
-    },
-    staff: [
-      {
-        id: "217bc07d-cf36-4294-b64f-0c625e43f711",
-        name: "Staff",
-        email: "staff@gmail.com",
-      },
-    ],
-    images: [],
-    notes: [],
-  };
+  return [
+    address.street1,
+    address.street2,
+    address.city,
+    address.province,
+    address.postalCode,
+    address.country,
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
+
+function buildDirectionsUrl(address?: {
+  street1?: string | null;
+  street2?: string | null;
+  city?: string | null;
+  province?: string | null;
+  postalCode?: string | null;
+  country?: string | null;
+}) {
+  const fullAddress = formatAddress(address);
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(fullAddress)}`;
+}
+
+function formatDuration(startIso: string, endIso: string) {
+  const start = DateTime.fromISO(startIso);
+  const end = DateTime.fromISO(endIso);
+  const diff = end.diff(start, ["hours", "minutes"]);
+
+  const hours = Math.floor(diff.hours);
+  const minutes = Math.floor(diff.minutes);
+
+  const hh = String(hours).padStart(2, "0");
+  const mm = String(minutes).padStart(2, "0");
+
+  return `${hh}:${mm}:00`;
+}
+
+const Page = () => {
+  const router = useRouter();
+  const params = useParams<{ id: string }>();
+  const appointmentId = params?.id;
+
+  const {
+    data: appointment,
+    isLoading,
+    error,
+  } = useAppointmentDetails(appointmentId);
+
+  if (isLoading) {
+    return (
+      <Container h="100vh" py="md">
+        <Flex direction="column" h="100%" justify="center" align="center">
+          <Loader />
+          <Text fw={700} mt="sm">
+            Fetching...
+          </Text>
+        </Flex>
+      </Container>
+    );
+  }
+
+  if (error || !appointment) {
+    return (
+      <Container py="md">
+        <Button
+          variant="subtle"
+          leftSection={<IoArrowBackOutline />}
+          onClick={() => router.back()}
+        >
+          Back
+        </Button>
+        <Text c="red" mt="md">
+          Failed to load appointment details.
+        </Text>
+      </Container>
+    );
+  }
+
+  const start = DateTime.fromISO(appointment.startTime).setZone(APP_TZ);
+  const end = DateTime.fromISO(appointment.endTime).setZone(APP_TZ);
+
+  const clientName = [
+    appointment.job.client.title,
+    appointment.job.client.firstName,
+    appointment.job.client.lastName,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const phone = appointment.job.client.phone;
+  const visitInstructions = appointment.job.visitInstructions?.trim();
+  const fullAddress = formatAddress(appointment.job.address);
 
   return (
-    <Container p={0}>
-      <TopBar back={true} onClick={() => router.back()} title="Back" />
-      <Paper p="xs" m="sm" withBorder>
-        <Flex mb="sm" justify="space-between">
-          <Text fw={600}>{appt.job.title}</Text>
-          <Badge>{appt.job.type === "ONE_OFF" ? "One Off" : "Recurring"}</Badge>
-        </Flex>
-        <Title ta="center" order={1}>
-          00:00:00
-        </Title>
-        <Divider />
-        <Title ta="center" order={1}>
-          02:00:00
-        </Title>
-        <Stack gap={6} mt="sm">
-          <Text size="xs">Start {appt.startTime}</Text>
-          <Text size="xs">End {appt.endTime}</Text>
-        </Stack>
-      </Paper>
+    <Container p={0} bg="#f5f6f7" mih="100vh">
+      <TopBar back onClick={() => router.back()} title="Back" />
 
-      <SimpleGrid m="sm" cols={2}>
-        <Button leftSection={<IoPlayOutline />} radius="xl" fullWidth>
-          Start Job
-        </Button>
-        <Button leftSection={<IoPauseOutline />} radius="xl" fullWidth>
-          Pause Job
-        </Button>
-      </SimpleGrid>
-      <Divider label="Client Details" />
-      <Paper m="sm" p="xs" withBorder>
-        <Text fw={500}>
-          Name: {appt.job.client.title}
-          {appt.job.client.firstName} {appt.job.client.lastName}
-        </Text>
-        {/* <Text>
-          {appt.job.client.phone} {appt.job.client.email}
-        </Text> */}
-        <Text>{appt.job.client.companyName}</Text>
+      <Stack gap="md" p="md">
+        <Card radius="xl" withBorder shadow="xs" p="lg">
+          <Group justify="space-between" align="start" mb="sm">
+            <Box>
+              <Text fw={700} size="lg">
+                {appointment.job.title}
+              </Text>
+              <Text size="sm" c="dimmed">
+                {start.toFormat("cccc, LLL d")}
+              </Text>
+            </Box>
 
-        <Group mt="sm" justify="space-between" gap={8}>
-          <Button radius="xl" size="xs" leftSection={<IoCallOutline />}>
-            Call
-          </Button>
-          <Button
-            radius="xl"
-            size="xs"
-            color="blue"
-            leftSection={<IoChatbubbleEllipsesOutline />}
+            <Badge
+              size="lg"
+              radius="xl"
+              color={appointment.job.type === "ONE_OFF" ? "green" : "blue"}
+              variant="filled"
+            >
+              {appointment.job.type === "ONE_OFF" ? "ONE OFF" : "RECURRING"}
+            </Badge>
+          </Group>
+
+          <Stack gap={0} align="center" my="md">
+            <Text fw={800} fz={44} lh={1}>
+              00:00:00
+            </Text>
+            <Text fw={700} fz={34} lh={1.1}>
+              {formatDuration(appointment.startTime, appointment.endTime)}
+            </Text>
+          </Stack>
+
+          <Flex
+            justify="space-between"
+            align="center"
+            mt="md"
+            p="sm"
+            style={{
+              borderRadius: 12,
+              background: "#f8f9fa",
+            }}
           >
-            Message
-          </Button>
-        </Group>
-      </Paper>
-      <Divider label="Visit Instructions" />
-      <Paper m="sm" p="xs" withBorder>
-        dd
-      </Paper>
+            <Group gap="xs" align="flex-start">
+              <ThemeIcon variant="light" radius="xl" color="green">
+                <IoTimeOutline size={16} />
+              </ThemeIcon>
+              <Box>
+                <Text size="xs" c="dimmed">
+                  Start
+                </Text>
+                <Text fw={600} size="sm">
+                  {start.toFormat("h:mm a")}
+                </Text>
+              </Box>
+            </Group>
 
-      <Divider label="Directions" />
-      <Paper m="sm" p="xs" withBorder>
-        <Group justify="space-between">
-          <Box>
-            <Text size="xs" fw={500}>
-              {appt.job.address.street1}
-            </Text>
-            <Text size="xs" fw={500}>
-              {appt.job.address.street2}
-            </Text>
+            <Group gap="xs" align="flex-start">
+              <ThemeIcon variant="light" radius="xl" color="green">
+                <IoTimeOutline size={16} />
+              </ThemeIcon>
+              <Box>
+                <Text size="xs" c="dimmed">
+                  End
+                </Text>
+                <Text fw={600} size="sm">
+                  {end.toFormat("h:mm a")}
+                </Text>
+              </Box>
+            </Group>
+          </Flex>
+        </Card>
 
-            <Text size="xs" fw={500}>
-              {appt.job.address.city}
-            </Text>
-            <Text size="xs" fw={500}>
-              {appt.job.address.province}
-            </Text>
-            <Text size="xs" fw={500}>
-              {appt.job.address.postalCode}
-            </Text>
-          </Box>
+        <SimpleGrid cols={2} spacing="md">
           <Button
-            leftSection={<IoMapOutline />}
+            leftSection={<IoPlayOutline />}
             radius="xl"
+            size="md"
             color="green"
-            size="xs"
+            fullWidth
           >
-            Get Directions
+            Start Job
           </Button>
-        </Group>
-      </Paper>
+
+          <Button
+            leftSection={<IoPauseOutline />}
+            radius="xl"
+            size="md"
+            color="lime"
+            fullWidth
+          >
+            Pause Job
+          </Button>
+        </SimpleGrid>
+
+        <Card radius="xl" withBorder shadow="xs" p="lg">
+          <Group mb="md" gap="xs">
+            <ThemeIcon radius="xl" variant="light" color="blue">
+              <IoPersonOutline size={16} />
+            </ThemeIcon>
+            <Text fw={700}>Client Details</Text>
+          </Group>
+
+          <Stack gap={4}>
+            <Text fw={600}>{clientName}</Text>
+
+            {appointment.job.client.companyName ? (
+              <Text size="sm" c="dimmed">
+                {appointment.job.client.companyName}
+              </Text>
+            ) : null}
+
+            {appointment.job.client.email ? (
+              <Text size="sm" c="dimmed">
+                {appointment.job.client.email}
+              </Text>
+            ) : null}
+          </Stack>
+
+          <Group mt="md" grow>
+            <Button
+              component="a"
+              radius="xl"
+              color="green"
+              leftSection={<IoCallOutline />}
+              href={phone ? `tel:${phone}` : undefined}
+              disabled={!phone}
+            >
+              Call
+            </Button>
+
+            <Button
+              component="a"
+              radius="xl"
+              color="blue"
+              leftSection={<IoChatbubbleEllipsesOutline />}
+              href={phone ? `sms:${phone}` : undefined}
+              disabled={!phone}
+            >
+              Message
+            </Button>
+          </Group>
+        </Card>
+
+        <Card radius="xl" withBorder shadow="xs" p="lg">
+          <Group mb="md" gap="xs">
+            <ThemeIcon radius="xl" variant="light" color="grape">
+              <IoDocumentTextOutline size={16} />
+            </ThemeIcon>
+            <Text fw={700}>Visit Instructions</Text>
+          </Group>
+
+          <Text size="sm" c={visitInstructions ? "dark" : "dimmed"}>
+            {visitInstructions || "No visit instructions provided."}
+          </Text>
+        </Card>
+
+        <Card radius="xl" withBorder shadow="xs" p="lg">
+          <Group mb="md" gap="xs">
+            <ThemeIcon radius="xl" variant="light" color="teal">
+              <IoLocationOutline size={16} />
+            </ThemeIcon>
+            <Text fw={700}>Directions</Text>
+          </Group>
+
+          <Flex justify="space-between" align="center" gap="md">
+            <Box style={{ flex: 1 }}>
+              <Text size="sm" fw={600}>
+                {appointment.job.address.street1}
+              </Text>
+
+              {appointment.job.address.street2 ? (
+                <Text size="sm">{appointment.job.address.street2}</Text>
+              ) : null}
+
+              <Text size="sm">
+                {appointment.job.address.city},{" "}
+                {appointment.job.address.province}
+              </Text>
+
+              <Text size="sm">{appointment.job.address.postalCode}</Text>
+            </Box>
+
+            <Button
+              leftSection={<IoMapOutline />}
+              radius="xl"
+              color="green"
+              onClick={() => {
+                const url = buildDirectionsUrl(appointment.job.address);
+                window.open(url, "_blank");
+              }}
+            >
+              Directions
+            </Button>
+          </Flex>
+
+          <Text size="xs" c="dimmed" mt="sm">
+            {fullAddress}
+          </Text>
+        </Card>
+      </Stack>
     </Container>
   );
 };
 
-export default page;
+export default Page;

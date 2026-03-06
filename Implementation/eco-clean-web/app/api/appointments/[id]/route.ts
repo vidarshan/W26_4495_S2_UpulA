@@ -26,7 +26,14 @@ export async function GET(
         staff: true,
         notes: true,
         images: true,
-        job: { include: { client: true } },
+        job: {
+          include: {
+            client: true,
+            address: true,
+            lineItems: true,
+            recurrence: true,
+          },
+        },
       },
     });
 

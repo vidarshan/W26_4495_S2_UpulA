@@ -71,3 +71,17 @@ export async function getStaffAppointments({
 
   return res.json();
 }
+
+export async function getAppointmentById(id: string) {
+  const res = await fetch(`/api/appointments/${id}`, {
+    method: "GET",
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.error || "Failed to fetch appointment");
+  }
+
+  return res.json();
+}

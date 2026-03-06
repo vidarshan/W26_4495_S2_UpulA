@@ -147,10 +147,6 @@ const page = () => {
                 withBorder
                 radius="md"
                 onClick={() => router.push(`/tasks/${task.id}`)}
-                // onClick={() => {
-                //   const url = buildDirectionsUrl(task.job.address);
-                //   window.open(url, "_blank");
-                // }}
               >
                 <Stack gap={4}>
                   <Text fw={600}>{task.title}</Text>
