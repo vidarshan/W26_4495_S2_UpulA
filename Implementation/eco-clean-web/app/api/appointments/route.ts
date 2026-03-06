@@ -17,6 +17,7 @@ export async function GET(req: NextRequest) {
     const startParam = searchParams.get("start");
     const endParam = searchParams.get("end");
     const staffId = searchParams.get("staffId");
+    const view = searchParams.get("view"); // "calendar" | "tasks"
 
     if (!startParam || !endParam) {
       return NextResponse.json(
@@ -44,12 +45,20 @@ export async function GET(req: NextRequest) {
         ...(staffId ? { staff: { some: { id: staffId } } } : {}),
       },
       include: {
-        job: { include: { client: true } },
-        staff: { select: { id: true, name: true } },
+        job: { include: { client: true, address: true } },
+        staff: { select: { id: true, name: true, email: true } },
+        images: true,
+        notes: true,
       },
       orderBy: { startTime: "asc" },
     });
 
+    // Staff tasks screen / detailed list
+    if (view === "tasks") {
+      return NextResponse.json(appointments);
+    }
+
+    // FullCalendar feed
     const events = appointments.map((a) => ({
       id: a.id,
       title: `${a.job.title} - ${a.job.client.firstName}`,
@@ -65,6 +74,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(events);
   } catch (error) {
     console.error("GET /api/appointments error:", error);
+
     return NextResponse.json(
       { error: "Failed to fetch appointments" },
       { status: 500 },

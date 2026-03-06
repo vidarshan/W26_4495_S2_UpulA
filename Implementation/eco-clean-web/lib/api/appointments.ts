@@ -43,3 +43,31 @@ export async function rescheduleAppointment(
 
   return res.json();
 }
+
+export async function getStaffAppointments({
+  staffId,
+  start,
+  end,
+}: {
+  staffId: string;
+  start: string;
+  end: string;
+}) {
+  const params = new URLSearchParams({
+    staffId,
+    start,
+    end,
+    view: "tasks",
+  });
+
+  const res = await fetch(`/api/appointments?${params.toString()}`, {
+    method: "GET",
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to fetch staff appointments");
+  }
+
+  return res.json();
+}

@@ -2,23 +2,33 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ActionIcon, Group, Paper, Text } from "@mantine/core";
+import {
+  ActionIcon,
+  Center,
+  Flex,
+  Group,
+  Paper,
+  Stack,
+  Text,
+} from "@mantine/core";
 import {
   IoCalendarClearOutline,
   IoCheckboxOutline,
+  IoMagnet,
   IoPersonOutline,
 } from "react-icons/io5";
+import { JSX } from "react";
 
 type Tab = {
   href: string;
   label: string;
-  Icon: React.ComponentType<{ size?: number }>;
+  Icon: JSX.Element;
 };
 
 const TABS: Tab[] = [
-  { href: "/tasks", label: "Tasks", Icon: IoCheckboxOutline },
-  { href: "/calendar", label: "Calendar", Icon: IoCalendarClearOutline },
-  { href: "/profile", label: "Profile", Icon: IoPersonOutline },
+  { href: "/tasks", label: "Tasks", Icon: <IoCheckboxOutline /> },
+  { href: "/calendar", label: "Calendar", Icon: <IoCalendarClearOutline /> },
+  { href: "/profile", label: "Profile", Icon: <IoPersonOutline /> },
 ];
 
 export default function BottomBar() {
@@ -43,30 +53,18 @@ export default function BottomBar() {
             pathname === href || (href !== "/" && pathname?.startsWith(href));
 
           return (
-            <ActionIcon
-              key={href}
-              component={Link}
-              href={href}
-              variant={active ? "filled" : "subtle"}
-              size="xl"
-              radius="xl"
-              aria-label={label}
+            <Flex
+              key={label}
+              gap={6}
+              align="center"
+              justify="center"
+              direction="column"
             >
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: 4,
-                  paddingTop: 2,
-                }}
-              >
-                <Icon size={20} />
-                <Text size="xs" fw={active ? 600 : 500}>
-                  {label}
-                </Text>
-              </div>
-            </ActionIcon>
+              <ActionIcon variant="light">{Icon}</ActionIcon>
+              <Text c="green" fw={800} size="xs">
+                {label}
+              </Text>
+            </Flex>
           );
         })}
       </Group>
