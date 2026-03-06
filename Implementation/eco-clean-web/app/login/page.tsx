@@ -43,7 +43,7 @@ export default function LoginPage() {
     if (session?.user?.role === "ADMIN") {
       router.push("/admin");
     } else {
-      router.push("/tasks");
+      router.push("/staff/tasks");
     }
 
     setLoading(false);

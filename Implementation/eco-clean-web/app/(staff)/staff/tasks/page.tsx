@@ -3,6 +3,7 @@
 import {
   Badge,
   Box,
+  Button,
   Card,
   Chip,
   Container,
@@ -10,6 +11,7 @@ import {
   Flex,
   Group,
   Loader,
+  NavLink,
   Stack,
   Text,
   ThemeIcon,
@@ -22,7 +24,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getStaffAppointments } from "@/lib/api/appointments";
 import { useRouter } from "next/navigation";
 import { useDisclosure } from "@mantine/hooks";
-import TopBar from "../../components/pwa/TopBar";
+import TopBar from "../../../components/pwa/TopBar";
 import {
   IoCheckmarkCircleOutline,
   IoLocationOutline,
@@ -30,6 +32,7 @@ import {
   IoPersonOutline,
   IoTimeOutline,
 } from "react-icons/io5";
+import { signOut } from "next-auth/react";
 
 type Appointment = {
   id: string;
@@ -112,10 +115,14 @@ const Page = () => {
 
   return (
     <Container p={0} bg="#f5f6f7" mih="100vh">
-      <Drawer size="xs" opened={opened} onClose={close} title="Eco Clean">
-        <Text size="sm" c="dimmed">
-          Menu content here
-        </Text>
+      <Drawer size="60%" opened={opened} onClose={close} title="Eco Clean">
+        <Button
+          radius="xl"
+          onClick={() => signOut({ callbackUrl: "/login" })}
+          fullWidth
+        >
+          Logout
+        </Button>
       </Drawer>
 
       <TopBar back={false} onClick={open} title="Eco Clean" />
@@ -191,7 +198,7 @@ const Page = () => {
                   shadow="xs"
                   p="lg"
                   style={{ cursor: "pointer" }}
-                  onClick={() => router.push(`/tasks/${task.id}`)}
+                  onClick={() => router.push(`/staff/tasks/${task.id}`)}
                 >
                   <Group justify="space-between" align="start" mb="sm">
                     <Box style={{ flex: 1 }}>
