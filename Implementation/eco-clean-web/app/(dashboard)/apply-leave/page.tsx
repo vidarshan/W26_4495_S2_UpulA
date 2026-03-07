@@ -5,44 +5,40 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin, { DateClickArg } from "@fullcalendar/interaction";
-import { useRouter } from "next/navigation";
-
 
 import {
-  Badge,
   Box,
   Button,
   Card,
   Container,
   Divider,
   Group,
-  NumberInput,
   Select,
   Stack,
   Table,
   Text,
   Textarea,
-  TextInput,
   Title,
+  Alert,
 } from "@mantine/core";
 import { DateInput, TimeInput } from "@mantine/dates";
 
 type Mode = "balances" | "request";
-
 type Balance = { policy: string; hours: number };
 
 export default function ApplyLeavePage() {
   const [mode, setMode] = useState<Mode>("balances");
-
-  // Calendar selection -> populates form
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
 
-  // Form state (mock)
   const [leaveType, setLeaveType] = useState<string | null>("FULL_DAY");
   const [reason, setReason] = useState<string | null>("UNPAID_SICK");
   const [startTime, setStartTime] = useState<string>("08:00");
   const [endTime, setEndTime] = useState<string>("12:00");
   const [comments, setComments] = useState<string>("");
+
+  const [submitting, setSubmitting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
   const balances: Balance[] = [
     { policy: "SICK_HOURLY_BC", hours: 0 },
@@ -51,20 +47,17 @@ export default function ApplyLeavePage() {
   ];
 
   const hoursAvailable = useMemo(() => {
-    // Example: show the matching policy’s hours
     if (reason === "UNPAID_SICK") return 40;
     if (reason === "PAID_SICK") return 0;
     return 101.33;
   }, [reason]);
 
   const hoursScheduled = useMemo(() => {
-    // Simple placeholder calc. You can compute properly later.
     return leaveType === "FULL_DAY" ? 8 : 3.5;
   }, [leaveType]);
 
   const events = useMemo(
     () => [
-      // Mock shifts + holiday like your screenshot
       { title: "Shift : 8 hrs", start: "2026-02-02" },
       { title: "Shift : 8 hrs", start: "2026-02-03" },
       { title: "Shift : 8 hrs", start: "2026-02-06" },
@@ -76,9 +69,67 @@ export default function ApplyLeavePage() {
 
   const onDateClick = (arg: DateClickArg) => {
     setSelectedDate(arg.date);
-    // Optional: also switch to request mode when they click a day
-    // setMode("request");
   };
+
+  function combineDateAndTime(date: Date, time: string) {
+    const [hours, minutes] = time.split(":").map(Number);
+    const combined = new Date(date);
+    combined.setHours(hours, minutes, 0, 0);
+    return combined;
+  }
+
+  async function handleSubmitLeave() {
+    setSubmitting(true);
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    try {
+      if (!selectedDate) {
+        setErrorMessage("Please select a date.");
+        setSubmitting(false);
+        return;
+      }
+
+      if (!reason) {
+        setErrorMessage("Please select a reason.");
+        setSubmitting(false);
+        return;
+      }
+
+      // TODO: replace with real logged-in staff id
+      const staffId = "PUT_REAL_STAFF_ID_HERE";
+
+      const startAt = combineDateAndTime(selectedDate, startTime);
+      const endAt = combineDateAndTime(selectedDate, endTime);
+
+      const response = await fetch(`/api/staff/${staffId}/leave`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          type: reason, // or use separate leave-type enum if needed
+          startAt: startAt.toISOString(),
+          endAt: endAt.toISOString(),
+          reason: comments || reason,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to submit leave request");
+      }
+
+      setSuccessMessage("Leave request submitted successfully.");
+      setMode("balances");
+      setComments("");
+    } catch (error: any) {
+      setErrorMessage(error.message || "Something went wrong.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
     <Container size="xl" py="xl">
@@ -87,7 +138,6 @@ export default function ApplyLeavePage() {
       </Title>
 
       <Group align="flex-start" gap="xl" wrap="nowrap">
-        {/* Left: Calendar */}
         <Box style={{ flex: 1, minWidth: 720 }}>
           <Card withBorder radius="md" p="md">
             <FullCalendar
@@ -106,8 +156,19 @@ export default function ApplyLeavePage() {
           </Card>
         </Box>
 
-        {/* Right: Side card that toggles */}
         <Box style={{ width: 380, minWidth: 320 }}>
+          {errorMessage && (
+            <Alert color="red" mb="md">
+              {errorMessage}
+            </Alert>
+          )}
+
+          {successMessage && (
+            <Alert color="green" mb="md">
+              {successMessage}
+            </Alert>
+          )}
+
           {mode === "balances" ? (
             <BalancesCard
               balances={balances}
@@ -129,17 +190,8 @@ export default function ApplyLeavePage() {
               hoursScheduled={hoursScheduled}
               hoursAvailable={hoursAvailable}
               onPrevious={() => setMode("balances")}
-              onSubmit={() => {
-                // TODO: POST to your API
-                console.log("Submit leave request", {
-                  selectedDate,
-                  leaveType,
-                  reason,
-                  startTime,
-                  endTime,
-                  comments,
-                });
-              }}
+              onSubmit={handleSubmitLeave}
+              submitting={submitting}
             />
           )}
         </Box>
@@ -197,27 +249,21 @@ function BalancesCard({
 
 function LeaveRequestCard(props: {
   selectedDate: Date | null;
-
   leaveType: string | null;
   setLeaveType: (v: string | null) => void;
-
   reason: string | null;
   setReason: (v: string | null) => void;
-
   startTime: string;
   setStartTime: (v: string) => void;
-
   endTime: string;
   setEndTime: (v: string) => void;
-
   comments: string;
   setComments: (v: string) => void;
-
   hoursScheduled: number;
   hoursAvailable: number;
-
   onPrevious: () => void;
   onSubmit: () => void;
+  submitting: boolean;
 }) {
   const {
     selectedDate,
@@ -235,6 +281,7 @@ function LeaveRequestCard(props: {
     hoursAvailable,
     onPrevious,
     onSubmit,
+    submitting,
   } = props;
 
   return (
@@ -253,7 +300,6 @@ function LeaveRequestCard(props: {
               value={selectedDate}
               onChange={() => {}}
               placeholder="DD/MM/YYYY"
-              // readOnly feel: we keep it visible; selection comes from calendar
               readOnly
             />
           </Box>
@@ -368,6 +414,7 @@ function LeaveRequestCard(props: {
             radius="md"
             color="dark"
             onClick={onSubmit}
+            loading={submitting}
             styles={{ root: { width: 160, height: 56, fontWeight: 800 } }}
           >
             Submit
