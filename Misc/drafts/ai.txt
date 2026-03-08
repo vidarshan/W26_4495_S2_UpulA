@@ -1,3 +1,39 @@
+AI: ChatGPT 5.3 Plus
+Prompt: Implementing Progressive Web App (PWA) in Next.js application
+Value Addition: Enabled installable web application with manifest configuration and service worker support
+
+AI: ChatGPT 5.3 Plus
+Prompt: Generating PWA icon sizes (192x192, 512x512, maskable icons) from base logo
+Value Addition: Created compliant icon assets required for PWA installation and mobile compatibility
+
+AI: ChatGPT 5.3 Plus
+Prompt: Debugging manifest.webmanifest not appearing in browser devtools
+Value Addition: Resolved manifest placement and configuration issues for proper PWA recognition
+
+AI: ChatGPT 5.3 Plus
+Prompt: Implementing role-based routing for admin vs staff users in Next.js
+Value Addition: Enabled conditional navigation and protected routes based on user role
+
+AI: ChatGPT 5.3 Plus
+Prompt: Redirecting authenticated users to role-specific root pages
+Value Addition: Created structured routing logic for admin dashboard vs staff task interface
+
+AI: ChatGPT 5.3 Plus
+Prompt: Building mobile-friendly task interface for PWA staff workflow
+Value Addition: Designed simplified navigation structure suitable for mobile task execution
+
+AI: ChatGPT 5.3 Plus
+Prompt: Designing bottom navigation bar for PWA interface
+Value Addition: Improved usability for mobile staff users with thumb-access navigation
+
+AI: ChatGPT 5.3 Plus
+Prompt: Testing PWA functionality on local network mobile devices
+Value Addition: Enabled real-device testing through local network hosting configuration
+
+AI: ChatGPT 5.3 Plus
+Prompt: Fixing timezone inconsistencies between database and frontend display
+Value Addition: Ensured accurate appointment scheduling using consistent UTC timestamp handling
+
 AI: ChatGPT 5.2 (Go Plan)
 Prompt: Prisma client.findMany with filtering, sorting, pagination
 Value Addition: Built scalable backend query logic with dynamic orderBy and efficient skip/take pagination
