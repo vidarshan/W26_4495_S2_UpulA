@@ -119,7 +119,7 @@ function jsDateToHHmm(d: Date) {
   return dt.isValid ? dt.toFormat("HH:mm") : "";
 }
 
-function toYMD(d: Date | null) {
+export function toYMD(d: Date | null) {
   if (!d) return "";
   const dt = DateTime.fromJSDate(d, { zone: APP_TZ });
   return dt.isValid ? dt.toFormat("yyyy-LL-dd") : "";
@@ -350,7 +350,6 @@ export default function NewJobModal({
   }, [form.values.jobType, form.values.recurrence.endType]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSubmit = async (values: JobFormValuesWithRecurrence) => {
-    console.log(values);
     const visitInstructions =
       values.visitInstructions && values.visitInstructions.trim().length
         ? values.visitInstructions.trim()
@@ -415,7 +414,7 @@ export default function NewJobModal({
       appointments,
     };
 
-    // await createJob(payload);
+    await createJob(payload);
     onSuccess();
     form.reset();
     onClose();

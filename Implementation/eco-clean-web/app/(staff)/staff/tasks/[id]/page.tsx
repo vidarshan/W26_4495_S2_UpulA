@@ -8,9 +8,12 @@ import {
   Button,
   Card,
   Container,
+  Drawer,
   Flex,
   Group,
+  Image,
   Loader,
+  Paper,
   Progress,
   SimpleGrid,
   Stack,
@@ -32,6 +35,7 @@ import {
   IoTimeOutline,
   IoDocumentTextOutline,
   IoLocationOutline,
+  IoPinOutline,
 } from "react-icons/io5";
 import {
   completeAppointment,
@@ -41,6 +45,18 @@ import {
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { notifications } from "@mantine/notifications";
 import { WorkSession } from "@/types";
+import { useDisclosure } from "@mantine/hooks";
+
+export function formatPrettyDate(input: Date | string | null | undefined) {
+  if (!input) return "";
+
+  const dt =
+    typeof input === "string"
+      ? DateTime.fromISO(input, { zone: "utc" }).setZone(APP_TZ)
+      : DateTime.fromJSDate(input, { zone: APP_TZ });
+
+  return dt.isValid ? dt.toFormat("MMM d, yyyy") : "";
+}
 
 function formatAddress(address?: {
   street1?: string | null;
@@ -98,6 +114,8 @@ const Page = () => {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const appointmentId = params?.id;
+  const [imgOpened, setImgOpened] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const {
     data: appointment,
@@ -218,6 +236,10 @@ const Page = () => {
     );
   }
 
+  const openImagePreview = (imgUrl: string) => {
+    setSelectedImage(imgUrl);
+    setImgOpened(true);
+  };
   const start = DateTime.fromISO(appointment.startTime).setZone(APP_TZ);
   const end = DateTime.fromISO(appointment.endTime).setZone(APP_TZ);
 
@@ -231,6 +253,7 @@ const Page = () => {
 
   const phone = appointment.job.client.phone;
   const visitInstructions = appointment.job.visitInstructions?.trim();
+  const notes = appointment.job.notes;
   const fullAddress = formatAddress(appointment.job.address);
 
   const sessions = appointment.workSessions ?? [];
@@ -252,10 +275,36 @@ const Page = () => {
       ? Math.min(100, Math.round((elapsedSeconds / scheduledSeconds) * 100))
       : 0;
   const isOvertime = elapsedSeconds > scheduledSeconds;
+
   return (
     <Container p={0} bg="#f5f6f7" mih="100vh">
       <TopBar back onClick={() => router.back()} title="Back" />
-
+      <Drawer
+        opened={imgOpened}
+        overlayProps={{ backgroundOpacity: 0.55, blur: 3 }}
+        onClose={() => {
+          setImgOpened(false);
+          setSelectedImage(null);
+        }}
+        position="bottom"
+        size="90%"
+        radius="lg"
+        title="Image Preview"
+        padding="md"
+      >
+        {selectedImage ? (
+          <Flex justify="center" align="center" h="100%">
+            <Image
+              src={selectedImage}
+              alt="Preview"
+              fit="contain"
+              radius="md"
+              mah="75vh"
+              w="100%"
+            />
+          </Flex>
+        ) : null}
+      </Drawer>
       <Stack gap="md" p="md">
         <Card radius="xl" withBorder shadow="xs" p="lg">
           <Group justify="space-between" align="start" mb="sm">
@@ -436,12 +485,72 @@ const Page = () => {
             <ThemeIcon radius="xl" variant="light" color="grape">
               <IoDocumentTextOutline size={16} />
             </ThemeIcon>
-            <Text fw={700}>Visit Instructions</Text>
+            <Text fw={700}>Notes</Text>
           </Group>
 
-          <Text size="sm" c={visitInstructions ? "dark" : "dimmed"}>
-            {visitInstructions || "No visit instructions provided."}
-          </Text>
+          <Stack gap="sm">
+            {notes.length ? (
+              notes.map((note) => (
+                <Paper key={note.id} radius="lg" p="xs" withBorder>
+                  <Group justify="space-between" align="flex-start" mb={8}>
+                    <Box style={{ flex: 1 }}>
+                      <Text fw={700} size="sm">
+                        {note.title?.trim() || "Untitled note"}
+                      </Text>
+                    </Box>
+
+                    <Text size="xs" c="dimmed" mt={2}>
+                      {formatPrettyDate(note.createdAt)}
+                    </Text>
+                  </Group>
+
+                  <Text size="sm" c="dark.7" lh={1.5}>
+                    {note.content}
+                  </Text>
+                  {note.category ? (
+                    <Badge
+                      variant="light"
+                      radius="xl"
+                      size="sm"
+                      mr="xs"
+                      color={note.isPinned ? "yellow" : "gray"}
+                    >
+                      {note.category.replaceAll("_", " ")}{" "}
+                      {note.isPinned && "• Pinned"}
+                    </Badge>
+                  ) : null}
+
+                  {note.isClientVisible ? (
+                    <Badge  variant="light" radius="xl" size="sm" color="blue">
+                      Client visible
+                    </Badge>
+                  ) : null}
+                  {note.images?.length ? (
+                    <Group mt="sm" gap="xs">
+                      {note.images.map((img) => (
+                        <>
+                          <Image
+                            onClick={() => openImagePreview(img.url)}
+                            key={img.id}
+                            src={img.url}
+                            alt="note image"
+                            w={76}
+                            h={76}
+                            radius="md"
+                            fit="cover"
+                          />
+                        </>
+                      ))}
+                    </Group>
+                  ) : null}
+                </Paper>
+              ))
+            ) : (
+              <Text size="sm" c="dimmed">
+                No notes provided.
+              </Text>
+            )}
+          </Stack>
         </Card>
 
         <Card radius="xl" withBorder shadow="xs" p="lg">
