@@ -19,6 +19,7 @@ import {
   Radio,
   Text,
   Image,
+  Checkbox,
 } from "@mantine/core";
 import { DateInput, TimeInput } from "@mantine/dates";
 import { Dropzone } from "@mantine/dropzone";
@@ -56,6 +57,30 @@ type LineItem = {
 
 type UploadedImage = { url: string; fileKey: string };
 
+type JobNoteCategory =
+  | "GENERAL"
+  | "ACCESS"
+  | "CLEANING"
+  | "SAFETY"
+  | "SUPPLIES"
+  | "CLIENT_PREFERENCE";
+
+type UploadedNoteImage = {
+  url: string;
+  fileKey: string;
+};
+
+type JobNoteInput = {
+  id: string; // local form id
+  title: string;
+  content: string;
+  category: JobNoteCategory | "";
+  isClientVisible: boolean;
+  isPinned: boolean;
+  images: File[];
+  uploadedImages: UploadedNoteImage[];
+};
+
 type AppointmentForm = {
   id: string;
   startDate: Date | null;
@@ -63,7 +88,6 @@ type AppointmentForm = {
   endTime: string; // "HH:mm"
   staffId: string[];
   notes: string;
-  images: File[]; // local picked files (optional)
   uploadedImages: UploadedImage[]; // ✅ persisted (url + fileKey)
 };
 
@@ -83,7 +107,7 @@ type JobFormValuesWithRecurrence = {
   jobType: "ONE_OFF" | "RECURRING";
   isAnytime: boolean;
   visitInstructions: string;
-
+  notes: JobNoteInput[];
   recurrence: RecurrenceForm;
   appointments: AppointmentForm[];
   lineItems: LineItem[];
@@ -127,6 +151,20 @@ const mapAppt = (appt: AppointmentForm): AppointmentApiPayload => {
       : undefined,
   };
 };
+
+function blankJobNote(): JobNoteInput {
+  return {
+    id: crypto.randomUUID(),
+    title: "",
+    content: "",
+    category: "",
+    isClientVisible: false,
+    isPinned: false,
+    images: [],
+    uploadedImages: [],
+  };
+}
+
 function blankAppointment(): AppointmentForm {
   return {
     id: crypto.randomUUID(),
@@ -135,7 +173,6 @@ function blankAppointment(): AppointmentForm {
     endTime: "",
     staffId: [],
     notes: "",
-    images: [],
     uploadedImages: [],
   };
 }
@@ -157,6 +194,7 @@ export default function NewJobModal({
       jobType: "ONE_OFF",
       isAnytime: false,
       visitInstructions: "",
+      notes: [blankJobNote()],
       lineItems: [
         {
           id: crypto.randomUUID(),
@@ -196,6 +234,9 @@ export default function NewJobModal({
       title: (v) => (!v.trim() ? "Title is required" : null),
       clientId: (v) => (!v ? "Client is required" : null),
       addressId: (v) => (!v ? "Address is required" : null),
+      notes: {
+        content: (v) => (!v.trim() ? "Note content is required" : null),
+      },
       recurrence: {
         interval: (v, values) =>
           values.jobType === "RECURRING" && (!v || v < 1)
@@ -309,6 +350,7 @@ export default function NewJobModal({
   }, [form.values.jobType, form.values.recurrence.endType]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSubmit = async (values: JobFormValuesWithRecurrence) => {
+    console.log(values);
     const visitInstructions =
       values.visitInstructions && values.visitInstructions.trim().length
         ? values.visitInstructions.trim()
@@ -319,6 +361,20 @@ export default function NewJobModal({
         ? [mapAppt(values.appointments[0])]
         : values.appointments.map(mapAppt);
 
+    const notes = values.notes
+      .filter((note) => note.content.trim() || note.title.trim())
+      .map((note) => ({
+        title: note.title.trim() || undefined,
+        content: note.content.trim() || "",
+        category: note.category || undefined,
+        isClientVisible: note.isClientVisible,
+        isPinned: note.isPinned,
+        images: note.uploadedImages.map((img) => ({
+          url: img.url,
+          fileKey: img.fileKey,
+        })),
+      }));
+
     const payload: CreateJobPayload = {
       title: values.title,
       clientId: values.clientId,
@@ -326,7 +382,7 @@ export default function NewJobModal({
       jobType: values.jobType,
       isAnytime: values.isAnytime,
       ...(visitInstructions ? { visitInstructions } : {}),
-
+      notes,
       lineItems: values.lineItems.map((li) => ({
         name: li.name,
         quantity: li.quantity,
@@ -359,7 +415,7 @@ export default function NewJobModal({
       appointments,
     };
 
-    await createJob(payload);
+    // await createJob(payload);
     onSuccess();
     form.reset();
     onClose();
@@ -369,6 +425,128 @@ export default function NewJobModal({
       color: "green",
     });
   };
+
+  const addJobNote = () => {
+    form.setFieldValue("notes", [...form.values.notes, blankJobNote()]);
+  };
+
+  const removeJobNote = (id: string) => {
+    form.setFieldValue(
+      "notes",
+      form.values.notes.filter((note) => note.id !== id),
+    );
+  };
+
+  const renderJobNotes = () =>
+    form.values.notes.map((note, index) => (
+      <Card withBorder mt="sm" key={note.id}>
+        <Grid>
+          <Grid.Col span={6}>
+            <TextInput
+              label="Note title"
+              placeholder="e.g. Gate access"
+              {...form.getInputProps(`notes.${index}.title`)}
+            />
+          </Grid.Col>
+
+          <Grid.Col span={6}>
+            <Select
+              label="Category"
+              placeholder="Select category"
+              data={[
+                { value: "GENERAL", label: "General" },
+                { value: "ACCESS", label: "Access" },
+                { value: "CLEANING", label: "Cleaning" },
+                { value: "SAFETY", label: "Safety" },
+                { value: "SUPPLIES", label: "Supplies" },
+                { value: "CLIENT_PREFERENCE", label: "Client Preference" },
+              ]}
+              {...form.getInputProps(`notes.${index}.category`)}
+            />
+          </Grid.Col>
+
+          <Grid.Col span={12}>
+            <Textarea
+              label="Content"
+              placeholder="Enter note details"
+              minRows={3}
+              {...form.getInputProps(`notes.${index}.content`)}
+            />
+          </Grid.Col>
+
+          <Grid.Col span={12}>
+            <Group>
+              <Checkbox
+                label="Visible to client"
+                checked={form.values.notes[index].isClientVisible}
+                onChange={(event) =>
+                  form.setFieldValue(
+                    `notes.${index}.isClientVisible`,
+                    event.currentTarget.checked,
+                  )
+                }
+              />
+              <Checkbox
+                label="Pinned"
+                checked={form.values.notes[index].isPinned}
+                onChange={(event) =>
+                  form.setFieldValue(
+                    `notes.${index}.isPinned`,
+                    event.currentTarget.checked,
+                  )
+                }
+              />
+            </Group>
+          </Grid.Col>
+          <Grid.Col span={12}>
+            <Dropzone
+              accept={["image/png", "image/jpeg", "image/webp"]}
+              maxFiles={10}
+              onDrop={async (files) => {
+                const existing = note.images || [];
+                const nextFiles = [...existing, ...files].slice(0, 10);
+                form.setFieldValue(`notes.${index}.images`, nextFiles);
+
+                const uploaded = await startUpload(files);
+
+                const imgs: UploadedNoteImage[] = (uploaded ?? []).map((u) => ({
+                  url: u.url,
+                  fileKey: u.key,
+                }));
+
+                form.setFieldValue(`notes.${index}.uploadedImages`, [
+                  ...(note.uploadedImages || []),
+                  ...imgs,
+                ]);
+              }}
+            >
+              <Flex direction="column" align="center">
+                <IoImageOutline size={24} />
+                <Text mt="xs" size="xs">
+                  Drag note images here or click to upload
+                </Text>
+                {isUploading && (
+                  <Text mt="xs" size="xs" c="dimmed">
+                    Uploading...
+                  </Text>
+                )}
+              </Flex>
+            </Dropzone>
+          </Grid.Col>
+          <Grid.Col span={12}>
+            <Button
+              color="red"
+              variant="light"
+              type="button"
+              onClick={() => removeJobNote(note.id)}
+              disabled={form.values.notes.length === 1}
+            >
+              Remove Note
+            </Button>
+          </Grid.Col>
+        </Grid>
+      </Card>
+    ));
 
   const renderAppointments = () =>
     form.values.appointments.map((appt, index) => (
@@ -416,14 +594,6 @@ export default function NewJobModal({
             />
           </Grid.Col>
 
-          <Grid.Col span={12}>
-            <Textarea
-              label="Notes"
-              placeholder="Enter notes"
-              {...form.getInputProps(`appointments.${index}.notes`)}
-            />
-          </Grid.Col>
-
           {appt.uploadedImages?.length ? (
             <Group mt="xs">
               {appt.uploadedImages.map((img) => (
@@ -441,45 +611,6 @@ export default function NewJobModal({
               ))}
             </Group>
           ) : null}
-
-          <Grid.Col span={12}>
-            <Dropzone
-              accept={["image/png", "image/jpeg", "image/webp"]}
-              maxFiles={10}
-              onDrop={async (files) => {
-                // keep local files (optional)
-                const existing = appt.images || [];
-                const nextFiles = [...existing, ...files].slice(0, 10);
-                form.setFieldValue(`appointments.${index}.images`, nextFiles);
-
-                // upload immediately
-                const uploaded = await startUpload(files);
-
-                const imgs: UploadedImage[] = (uploaded ?? []).map((u) => ({
-                  url: u.url,
-                  fileKey: u.key, // ✅ UploadThing's key
-                }));
-
-                // append uploaded images (url + fileKey)
-                form.setFieldValue(`appointments.${index}.uploadedImages`, [
-                  ...(appt.uploadedImages || []),
-                  ...imgs,
-                ]);
-              }}
-            >
-              <Flex direction="column" align="center">
-                <IoImageOutline size={24} />
-                <Text mt="xs" size="xs">
-                  Drag images here or click to upload (max 10)
-                </Text>
-                {isUploading && (
-                  <Text mt="xs" size="xs" c="dimmed">
-                    Uploading...
-                  </Text>
-                )}
-              </Flex>
-            </Dropzone>
-          </Grid.Col>
         </Grid>
       </Card>
     ));
@@ -500,7 +631,12 @@ export default function NewJobModal({
             ]}
           />
 
-          <TextInput mt="sm" label="Title" {...form.getInputProps("title")} />
+          <TextInput
+            mt="sm"
+            label="Title"
+            placeholder="Job Title"
+            {...form.getInputProps("title")}
+          />
 
           <Grid mt="sm">
             <Grid.Col span={6}>
@@ -681,8 +817,6 @@ export default function NewJobModal({
             </Card>
           )}
 
-          <Divider my="sm" />
-
           <Group align="center" justify="space-between">
             <Text fw={500}>Appointments</Text>
             <Button
@@ -696,7 +830,14 @@ export default function NewJobModal({
 
           {renderAppointments()}
         </Paper>
-
+        <Divider my="sm" />
+        <Group align="center" justify="space-between">
+          <Text fw={500}>Notes</Text>
+          <Button leftSection={<IoAddOutline />} size="xs" onClick={addJobNote}>
+            Add Notes
+          </Button>
+        </Group>
+        {renderJobNotes()}
         <Group justify="right" mt="md">
           <Button variant="default" onClick={onClose} type="button">
             Cancel

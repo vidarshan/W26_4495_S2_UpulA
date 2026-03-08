@@ -7,14 +7,15 @@ datasource db {
 }
 
 model User {
-  id                   String        @id @default(uuid())
+  id                   String                   @id @default(uuid())
   name                 String
-  email                String        @unique
+  email                String                   @unique
   role                 Role
-  createdAt            DateTime      @default(now())
+  createdAt            DateTime                 @default(now())
   password             String
-  assignedAppointments Appointment[] @relation("AppointmentStaff")
+  assignedAppointments Appointment[]            @relation("AppointmentStaff")
   workSessions         AppointmentWorkSession[]
+  jobNotesAuthored     JobNote[]                @relation("JobNoteAuthor")
 }
 
 model Client {
@@ -122,19 +123,36 @@ model JobLineItem {
 }
 
 model JobNote {
-  id        String         @id @default(uuid())
-  jobId     String
-  content   String?
-  createdAt DateTime       @default(now())
-  job       Job            @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  images    JobNoteImage[]
+  id              String          @id @default(uuid())
+  jobId           String
+  title           String?
+  content         String?
+  category        JobNoteCategory?
+  isClientVisible Boolean         @default(false)
+  isPinned        Boolean         @default(false)
+  createdAt       DateTime        @default(now())
+  createdById     String?
+
+  job             Job             @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  createdBy       User?           @relation("JobNoteAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+  images          JobNoteImage[]
+}
+
+enum JobNoteCategory {
+  GENERAL
+  ACCESS
+  CLEANING
+  SAFETY
+  SUPPLIES
+  CLIENT_PREFERENCE
 }
 
 model JobNoteImage {
-  id     String  @id @default(uuid())
-  noteId String
-  url    String
-  note   JobNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  id      String  @id @default(uuid())
+  noteId  String
+  url     String
+  fileKey String?
+  note    JobNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
 }
 
 model VisitNote {
