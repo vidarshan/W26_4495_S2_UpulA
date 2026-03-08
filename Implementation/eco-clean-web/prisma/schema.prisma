@@ -195,16 +195,47 @@ model Assignment {
 }
 
 model StaffAvailability {
-  id             String    @id @default(uuid())
-  staffProfileId String
-  dayOfWeek      Int // 0-6 (Sunday-Saturday)
-  startMinute    Int // Minutes from midnight (e.g., 480 for 8:00 AM)
-  endMinute      Int // Minutes from midnight
-  effectiveFrom  DateTime?
-  effectiveTo    DateTime?
-  createdAt      DateTime  @default(now())
+  id              String    @id @default(uuid())
+  staffProfileId  String
+  effectiveFrom   DateTime
+  createdAt       DateTime  @default(now())
 
-  staffProfile StaffProfile @relation(fields: [staffProfileId], references: [id], onDelete: Cascade)
+  // Monday
+  monActive       Boolean   @default(false)
+  monS1           Boolean   @default(false) // Morning Shift
+  monS2           Boolean   @default(false) // Afternoon Shift
+
+  // Tuesday
+  tueActive       Boolean   @default(false)
+  tueS1           Boolean   @default(false)
+  tueS2           Boolean   @default(false)
+
+  // Wednesday
+  wedActive       Boolean   @default(false)
+  wedS1           Boolean   @default(false)
+  wedS2           Boolean   @default(false)
+
+  // Thursday
+  thuActive       Boolean   @default(false)
+  thuS1           Boolean   @default(false)
+  thuS2           Boolean   @default(false)
+
+  // Friday
+  friActive       Boolean   @default(false)
+  friS1           Boolean   @default(false)
+  friS2           Boolean   @default(false)
+
+  // Saturday
+  satActive       Boolean   @default(false)
+  satS1           Boolean   @default(false)
+  satS2           Boolean   @default(false)
+
+  // Sunday
+  sunActive       Boolean   @default(false)
+  sunS1           Boolean   @default(false)
+  sunS2           Boolean   @default(false)
+
+  staffProfile    StaffProfile @relation(fields: [staffProfileId], references: [id], onDelete: Cascade)
 }
 
 model Leave {
