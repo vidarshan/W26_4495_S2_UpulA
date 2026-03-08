@@ -35,6 +35,20 @@ export async function GET(
             address: true,
             lineItems: true,
             recurrence: true,
+            notes: {
+              include: {
+                images: true,
+                createdBy: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    role: true,
+                  },
+                },
+              },
+              orderBy: [{ isPinned: "desc" }, { createdAt: "desc" }],
+            },
           },
         },
       },

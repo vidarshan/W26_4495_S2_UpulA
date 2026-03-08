@@ -1,4 +1,5 @@
 export const runtime = "nodejs";
+
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { AppointmentStatus, JobType, Prisma } from "@prisma/client";
@@ -11,99 +12,13 @@ const APP_TZ = process.env.APP_TZ ?? "America/Vancouver";
 // Infer tx type from prisma.$transaction callback signature
 type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
 
-type IncomingBody =
-  | string
-  | {
-      title?: string;
-      clientId?: string;
-      addressId?: string;
-      jobType?: JobType; // "ONE_OFF" | "RECURRING"
-      isAnytime?: boolean;
-      visitInstructions?: string | null;
-
-      lineItems?: Array<{
-        id?: string; // ignored
-        name?: string;
-        quantity?: number;
-        unitCost?: number;
-        unitPrice?: number;
-        description?: string | null;
-      }>;
-
-      appointments?: Array<{
-        id?: string; // ignored
-        // you send ISO datetime like "2026-02-25T08:00:00.000Z"
-        startDate?: string;
-        startTime?: string | null; // "07:00"
-        endTime?: string | null; // "09:30"
-        staffId?: string[]; // ["userId1", ...]
-        notes?: string | null;
-        images?: Array<{ url: string; fileKey?: string }>;
-      }>;
-
-      recurrence?: {
-        frequency: "weekly" | "monthly";
-        interval: number;
-        endType: "after" | "on";
-        endsAfter?: number | null;
-        endsOn?: string | null; // "YYYY-MM-DD"
-      } | null;
-    };
-
-type Body = {
-  title?: string;
-  clientId?: string;
-  staffId?: string | null;
-  addressId?: string | null;
-
-  jobType?: "ONE_OFF" | "RECURRING";
-
-  startDate?: string; // e.g. "2026-02-25"
-  startTime?: string | null; // e.g. "13:30"
-  endTime?: string | null; // e.g. "15:00"
-  isAnytime?: boolean;
-
-  recurrence?: {
-    frequency: "weekly" | "monthly";
-    interval: number;
-    endType: "after" | "on";
-    endsAfter?: number | null;
-    endsOn?: string | null; // "YYYY-MM-DD"
-  } | null;
-
-  visitInstructions?: string | null;
-};
-
-function buildStartEnd(
-  baseIsoOrDate: string,
-  startTime?: string | null,
-  endTime?: string | null,
-  isAnytime?: boolean,
-) {
-  // baseIsoOrDate is coming from JSON.stringify(Date) => ISO with Z
-  const base = DateTime.fromISO(baseIsoOrDate, { zone: APP_TZ });
-  if (!base.isValid) return null;
-
-  // pick defaults
-  const sStr = !isAnytime ? startTime || "09:00" : "09:00";
-  const eStr = !isAnytime ? endTime || "" : "";
-
-  const [sh, sm] = sStr.split(":").map(Number);
-  let start = base.set({ hour: sh, minute: sm, second: 0, millisecond: 0 });
-
-  let end: DateTime;
-  if (eStr) {
-    const [eh, em] = eStr.split(":").map(Number);
-    end = base.set({ hour: eh, minute: em, second: 0, millisecond: 0 });
-  } else {
-    end = start.plus({ hours: 1 });
-  }
-
-  if (end <= start) end = start.plus({ minutes: 30 });
-
-  // store UTC in DB (timestamptz will normalize)
-  return { start: start.toUTC().toJSDate(), end: end.toUTC().toJSDate() };
-}
+type JobNoteCategory =
+  | "GENERAL"
+  | "ACCESS"
+  | "CLEANING"
+  | "SAFETY"
+  | "SUPPLIES"
+  | "CLIENT_PREFERENCE";
 
 type CreateJobBody = {
   title: string;
@@ -112,6 +27,15 @@ type CreateJobBody = {
   jobType: JobType;
   isAnytime?: boolean;
   visitInstructions?: string | null;
+
+  notes?: Array<{
+    title?: string | null;
+    content: string;
+    category?: JobNoteCategory | null;
+    isClientVisible?: boolean;
+    isPinned?: boolean;
+    images?: Array<{ url: string; fileKey?: string | null }>;
+  }>;
 
   lineItems?: Array<{
     name: string;
@@ -122,10 +46,10 @@ type CreateJobBody = {
   }>;
 
   appointments: Array<{
-    date: string; // ✅ "YYYY-MM-DD"
-    startTime: string | null; // ✅ "HH:mm"
-    endTime: string | null; // ✅ "HH:mm"
-    staffIds: string[]; // ✅ always array
+    date: string; // "YYYY-MM-DD"
+    startTime: string | null; // "HH:mm"
+    endTime: string | null; // "HH:mm"
+    staffIds: string[];
     note?: string | null;
     images?: Array<{ url: string; fileKey?: string | null }>;
   }>;
@@ -135,11 +59,11 @@ type CreateJobBody = {
     interval: number;
     endType: "after" | "on";
     endsAfter?: number | null;
-    endsOn?: string | null; // ✅ "YYYY-MM-DD"
+    endsOn?: string | null; // "YYYY-MM-DD"
   } | null;
 };
 
-function must(condition: any, msg: string) {
+function must(condition: unknown, msg: string) {
   if (!condition) throw new Error(msg);
 }
 
@@ -148,46 +72,118 @@ function mustString(v: unknown, msg: string) {
   return v.trim();
 }
 
+function normalizeNotes(rawNotes: unknown) {
+  if (!Array.isArray(rawNotes)) return [];
+
+  const allowedCategories = new Set<JobNoteCategory>([
+    "GENERAL",
+    "ACCESS",
+    "CLEANING",
+    "SAFETY",
+    "SUPPLIES",
+    "CLIENT_PREFERENCE",
+  ]);
+
+  return rawNotes
+    .filter(
+      (note): note is Record<string, unknown> =>
+        !!note && typeof note === "object",
+    )
+    .map((note) => {
+      const title =
+        typeof note.title === "string" && note.title.trim().length
+          ? note.title.trim()
+          : null;
+
+      const content =
+        typeof note.content === "string" ? note.content.trim() : "";
+
+      const category =
+        typeof note.category === "string" &&
+        allowedCategories.has(note.category as JobNoteCategory)
+          ? (note.category as JobNoteCategory)
+          : null;
+
+      const isClientVisible = !!note.isClientVisible;
+      const isPinned = !!note.isPinned;
+
+      const images = Array.isArray(note.images)
+        ? note.images
+            .filter(
+              (img): img is Record<string, unknown> =>
+                !!img &&
+                typeof img === "object" &&
+                typeof img.url === "string" &&
+                img.url.trim().length > 0,
+            )
+            .map((img) => ({
+              url: String(img.url).trim(),
+              fileKey:
+                typeof img.fileKey === "string" && img.fileKey.trim().length
+                  ? img.fileKey.trim()
+                  : null,
+            }))
+        : [];
+
+      return {
+        title,
+        content,
+        category,
+        isClientVisible,
+        isPinned,
+        images,
+      };
+    })
+    .filter((note) => note.content.length > 0);
+}
+
 export async function POST(req: NextRequest) {
   try {
     const raw = await req.text();
     console.log("RAW:", raw);
 
-    let body: unknown;
+    let parsed: unknown;
 
     try {
-      body = JSON.parse(raw);
-      // handle double-encoded JSON: "\"{...}\""
-      if (typeof body === "string") {
-        body = JSON.parse(body);
+      parsed = JSON.parse(raw);
+      if (typeof parsed === "string") {
+        parsed = JSON.parse(parsed);
       }
     } catch {
       return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
     }
 
-    if (!body || typeof body !== "object") {
+    if (!parsed || typeof parsed !== "object") {
       return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
     }
-    const b = body as Record<string, any>;
+
+    const b = parsed as Record<string, unknown>;
 
     const title = mustString(b.title, "Missing title");
     const clientId = mustString(b.clientId, "Missing clientId");
     const addressId = mustString(b.addressId, "Missing addressId");
-    const jobType = mustString(b.jobType, "Missing jobType") as
-      | "ONE_OFF"
-      | "RECURRING";
-
+    const jobType = mustString(b.jobType, "Missing jobType") as JobType;
     const isAnytime = !!b.isAnytime;
-    const lineItems = b.lineItems ?? [];
-    const appointments = b.appointments ?? [];
+
+    const lineItems = Array.isArray(b.lineItems) ? b.lineItems : [];
+    const appointments = Array.isArray(b.appointments) ? b.appointments : [];
+    const notes = normalizeNotes(b.notes);
+
+    if (jobType !== "ONE_OFF" && jobType !== "RECURRING") {
+      return NextResponse.json({ error: "Invalid jobType" }, { status: 400 });
+    }
 
     if (jobType === "ONE_OFF") {
-      must(
-        Array.isArray(appointments) && appointments.length >= 1,
-        "ONE_OFF requires at least 1 appointment",
-      );
+      must(appointments.length >= 1, "ONE_OFF requires at least 1 appointment");
       for (const [i, a] of appointments.entries()) {
-        must(a?.date, `appointments[${i}].date is required`);
+        must(
+          a &&
+            typeof a === "object" &&
+            "date" in a &&
+            typeof (a as Record<string, unknown>).date === "string" &&
+            (a as Record<string, unknown>).date,
+          `appointments[${i}].date is required`,
+        );
       }
     }
 
@@ -196,25 +192,39 @@ export async function POST(req: NextRequest) {
         appointments.length >= 1,
         "RECURRING requires a base appointment in appointments[0]",
       );
-      must(appointments[0]?.date, "RECURRING requires appointments[0].date");
-      must(b.recurrence, "RECURRING requires recurrence object");
-      must(b.recurrence!.interval >= 1, "recurrence.interval must be >= 1");
-      if (b.recurrence!.endType === "after") {
+
+      const base = appointments[0] as Record<string, unknown>;
+      must(
+        typeof base.date === "string" && base.date,
+        "RECURRING requires appointments[0].date",
+      );
+
+      const recurrence = b.recurrence as
+        | Record<string, unknown>
+        | null
+        | undefined;
+      must(recurrence, "RECURRING requires recurrence object");
+      must(
+        typeof recurrence?.interval === "number" && recurrence.interval >= 1,
+        "recurrence.interval must be >= 1",
+      );
+
+      if (recurrence?.endType === "after") {
         must(
-          (b.recurrence!.endsAfter ?? 0) >= 1,
+          typeof recurrence.endsAfter === "number" && recurrence.endsAfter >= 1,
           "recurrence.endsAfter must be >= 1",
         );
       }
-      if (b.recurrence!.endType === "on") {
+
+      if (recurrence?.endType === "on") {
         must(
-          b.recurrence!.endsOn,
+          typeof recurrence.endsOn === "string" && recurrence.endsOn,
           "recurrence.endsOn is required when endType='on'",
         );
       }
     }
 
     const result = await prisma.$transaction(async (tx: Tx) => {
-      // 1) Create Job
       const job = await tx.job.create({
         data: {
           title,
@@ -227,29 +237,52 @@ export async function POST(req: NextRequest) {
             b.visitInstructions.trim()
               ? b.visitInstructions.trim()
               : null,
+          notes: notes.length
+            ? {
+                create: notes.map((note) => ({
+                  title: note.title,
+                  content: note.content,
+                  category: note.category,
+                  isClientVisible: note.isClientVisible,
+                  isPinned: note.isPinned,
+                  createdById: null, // wire auth user id later if needed
+                  images: note.images.length
+                    ? {
+                        create: note.images.map((img) => ({
+                          url: img.url,
+                          fileKey: img.fileKey,
+                        })),
+                      }
+                    : undefined,
+                })),
+              }
+            : undefined,
         },
       });
 
-      // 2) Line items
       if (lineItems.length) {
         await tx.jobLineItem.createMany({
           data: lineItems
             .filter(
-              (li: LineItem) =>
-                li?.name?.trim() &&
-                typeof li.quantity === "number" &&
-                li.quantity > 0,
+              (li: unknown): li is LineItem =>
+                !!li &&
+                typeof li === "object" &&
+                typeof (li as Record<string, unknown>).name === "string" &&
+                !!(li as Record<string, unknown>).name &&
+                typeof (li as Record<string, unknown>).quantity === "number" &&
+                ((li as Record<string, unknown>).quantity as number) > 0,
             )
             .map((li: LineItem) => {
               const qty = Math.trunc(Number(li.quantity));
               const unitPrice = li.unitPrice ?? null;
               const total = unitPrice != null ? qty * unitPrice : null;
+
               return {
                 jobId: job.id,
                 name: li.name.trim(),
                 quantity: qty,
                 unitCost: li.unitCost ?? null,
-                unitPrice: unitPrice ?? null,
+                unitPrice,
                 total,
                 description: li.description ?? null,
               };
@@ -257,14 +290,17 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      // helper: create one appointment + note/images/staff
-      const createOne = async (a: CreateJobBody["appointments"][number]) => {
+      const createOne = async (
+        a: CreateJobBody["appointments"][number],
+        opts?: { createVisitNoteAndImages?: boolean },
+      ) => {
         const win = buildUtcWindowFromLocal(
           a.date,
           a.startTime,
           a.endTime,
           isAnytime,
         );
+
         must(win, `Invalid appointment date/time: ${a.date}`);
 
         const created = await tx.appointment.create({
@@ -274,47 +310,52 @@ export async function POST(req: NextRequest) {
             endTime: win!.endUtc,
             status: AppointmentStatus.SCHEDULED,
             staff: a.staffIds?.length
-              ? { connect: a.staffIds.map((id) => ({ id })) }
+              ? {
+                  connect: a.staffIds.map((id) => ({ id })),
+                }
               : undefined,
           },
         });
 
-        if (a.note?.trim()) {
-          await tx.visitNote.create({
-            data: {
-              appointmentId: created.id,
-              content: a.note.trim(),
-              isClientVisible: false,
-            },
-          });
-        }
-
-        const imgs = a.images ?? [];
-        if (imgs.length) {
-          await tx.appointmentImage.createMany({
-            data: imgs
-              .filter((img) => !!img?.url)
-              .map((img) => ({
+        if (opts?.createVisitNoteAndImages !== false) {
+          if (a.note?.trim()) {
+            await tx.visitNote.create({
+              data: {
                 appointmentId: created.id,
-                url: img.url,
-                fileKey: img.fileKey ?? null,
-              })),
-          });
+                content: a.note.trim(),
+                isClientVisible: false,
+              },
+            });
+          }
+
+          const imgs = a.images ?? [];
+          if (imgs.length) {
+            await tx.appointmentImage.createMany({
+              data: imgs
+                .filter((img) => !!img?.url)
+                .map((img) => ({
+                  appointmentId: created.id,
+                  url: img.url,
+                  fileKey: img.fileKey ?? null,
+                })),
+            });
+          }
         }
 
         return created;
       };
 
-      // 3) Appointments
-      if (b.jobType === "ONE_OFF") {
-        for (const a of appointments) await createOne(a);
+      if (jobType === "ONE_OFF") {
+        for (const rawAppt of appointments) {
+          const a = rawAppt as CreateJobBody["appointments"][number];
+          await createOne(a);
+        }
       }
 
-      if (b.jobType === "RECURRING") {
-        const rec = b.recurrence!;
-        const base = appointments[0];
+      if (jobType === "RECURRING") {
+        const rec = b.recurrence as NonNullable<CreateJobBody["recurrence"]>;
+        const base = appointments[0] as CreateJobBody["appointments"][number];
 
-        // store recurrence
         await tx.recurrence.create({
           data: {
             jobId: job.id,
@@ -327,8 +368,6 @@ export async function POST(req: NextRequest) {
           },
         });
 
-        // Build base local cursor (DST-safe) using Luxon
-        const APP_TZ = process.env.APP_TZ ?? "America/Vancouver";
         const baseLocal = DateTime.fromFormat(base.date, "yyyy-LL-dd", {
           zone: APP_TZ,
         });
@@ -345,7 +384,6 @@ export async function POST(req: NextRequest) {
         });
         must(cursor.isValid, "Invalid base start time");
 
-        // duration based on base
         const baseWin = buildUtcWindowFromLocal(
           base.date,
           base.startTime,
@@ -353,6 +391,7 @@ export async function POST(req: NextRequest) {
           isAnytime,
         );
         must(baseWin, "Invalid base appointment window");
+
         const durationMs = baseWin!.durationMs;
 
         const endOnLocal =
@@ -363,7 +402,7 @@ export async function POST(req: NextRequest) {
             : null;
 
         let count = 0;
-        const max = rec.endType === "after" ? (rec.endsAfter ?? 0) : 10_000; // safety
+        const max = rec.endType === "after" ? (rec.endsAfter ?? 0) : 10_000;
 
         while (true) {
           if (rec.endType === "after") {
@@ -378,7 +417,7 @@ export async function POST(req: NextRequest) {
             .toUTC()
             .toJSDate();
 
-          await tx.appointment.create({
+          const created = await tx.appointment.create({
             data: {
               jobId: job.id,
               startTime: startUtc,
@@ -394,18 +433,41 @@ export async function POST(req: NextRequest) {
             },
           });
 
+          if (base.note?.trim()) {
+            await tx.visitNote.create({
+              data: {
+                appointmentId: created.id,
+                content: base.note.trim(),
+                isClientVisible: false,
+              },
+            });
+          }
+
+          const imgs = base.images ?? [];
+          if (imgs.length) {
+            await tx.appointmentImage.createMany({
+              data: imgs
+                .filter((img) => !!img?.url)
+                .map((img) => ({
+                  appointmentId: created.id,
+                  url: img.url,
+                  fileKey: img.fileKey ?? null,
+                })),
+            });
+          }
+
           cursor =
             rec.frequency === "weekly"
               ? cursor.plus({ weeks: rec.interval })
               : cursor.plus({ months: rec.interval });
 
           count++;
-          if (count > 10_000)
+          if (count > 10_000) {
             throw new Error("Recurrence too large; aborting for safety");
+          }
         }
       }
 
-      // Return fully included job (including staff inside appointments)
       return tx.job.findUnique({
         where: { id: job.id },
         include: {
@@ -413,6 +475,15 @@ export async function POST(req: NextRequest) {
           address: true,
           lineItems: true,
           recurrence: true,
+          notes: {
+            include: {
+              images: true,
+              createdBy: {
+                select: { id: true, name: true, email: true, role: true },
+              },
+            },
+            orderBy: [{ isPinned: "desc" }, { createdAt: "desc" }],
+          },
           appointments: {
             include: {
               staff: {

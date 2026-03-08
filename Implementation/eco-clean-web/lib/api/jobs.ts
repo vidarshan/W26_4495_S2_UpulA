@@ -8,7 +8,23 @@ export type CreateJobPayload = {
   jobType: "ONE_OFF" | "RECURRING";
   isAnytime: boolean;
   visitInstructions?: string;
-
+  notes?: {
+    title?: string;
+    content: string;
+    category?:
+      | "GENERAL"
+      | "ACCESS"
+      | "CLEANING"
+      | "SAFETY"
+      | "SUPPLIES"
+      | "CLIENT_PREFERENCE";
+    isClientVisible?: boolean;
+    isPinned?: boolean;
+    images?: {
+      url: string;
+      fileKey?: string;
+    }[];
+  }[];
   lineItems: Array<{
     name: string;
     quantity: number;

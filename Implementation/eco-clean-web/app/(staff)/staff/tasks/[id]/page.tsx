@@ -8,13 +8,17 @@ import {
   Button,
   Card,
   Container,
+  Drawer,
   Flex,
   Group,
+  Image,
   Loader,
+  Paper,
   Progress,
   SimpleGrid,
   Stack,
   Text,
+  Textarea,
   ThemeIcon,
 } from "@mantine/core";
 import { useParams, useRouter } from "next/navigation";
@@ -32,15 +36,21 @@ import {
   IoTimeOutline,
   IoDocumentTextOutline,
   IoLocationOutline,
+  IoPinOutline,
 } from "react-icons/io5";
 import {
   completeAppointment,
   pauseAppointment,
+  saveVisitNote,
   startAppointment,
 } from "@/lib/api/appointments";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { notifications } from "@mantine/notifications";
 import { WorkSession } from "@/types";
+import { useDisclosure } from "@mantine/hooks";
+import { useUploadThing } from "@/lib/uploadthing";
+import { Dropzone } from "@mantine/dropzone";
+import formatPrettyDate from "@/lib/utils/formatPrettyDate";
 
 function formatAddress(address?: {
   street1?: string | null;
@@ -63,6 +73,28 @@ function formatAddress(address?: {
     .filter(Boolean)
     .join(", ");
 }
+
+type AppointmentImage = {
+  id: string;
+  url: string;
+  fileKey?: string | null;
+};
+
+export type NoteImage = {
+  id: string;
+  url: string;
+};
+
+export type Note = {
+  id: string;
+  title?: string | null;
+  content: string;
+  category?: string | null;
+  isPinned?: boolean;
+  isClientVisible?: boolean;
+  createdAt: string | Date;
+  images?: NoteImage[];
+};
 
 function buildDirectionsUrl(address?: {
   street1?: string | null;
@@ -98,12 +130,53 @@ const Page = () => {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const appointmentId = params?.id;
+  const [imgOpened, setImgOpened] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const {
     data: appointment,
     isLoading,
     error,
   } = useAppointmentDetails(appointmentId);
+
+  const [visitNote, setVisitNote] = useState("");
+  const [visitImages, setVisitImages] = useState<File[]>([]);
+  const [uploadedVisitImages, setUploadedVisitImages] = useState<
+    { url: string; fileKey: string }[]
+  >([]);
+  const { startUpload, isUploading } = useUploadThing("appointmentImages");
+
+  const saveVisitNoteMutation = useMutation({
+    mutationFn: async () =>
+      await saveVisitNote(appointment.id, {
+        content: visitNote,
+        images: uploadedVisitImages.map((img) => ({
+          url: img.url,
+          fileKey: img.fileKey,
+        })),
+      }),
+    onSuccess: (updated) => {
+      refreshAppointment(updated);
+      setVisitNote("");
+      setVisitImages([]);
+      setUploadedVisitImages([]);
+
+      notifications.show({
+        title: "Saved",
+        message: "Visit note saved successfully",
+        color: "green",
+        position: "top-center",
+      });
+    },
+    onError: (err: any) => {
+      notifications.show({
+        title: "Error",
+        message: err?.message || "Failed to save visit note",
+        color: "red",
+        position: "top-center",
+      });
+    },
+  });
 
   // ✅ ALL HOOKS MUST BE HERE, BEFORE RETURNS
   const [nowMs, setNowMs] = useState(Date.now());
@@ -218,6 +291,10 @@ const Page = () => {
     );
   }
 
+  const openImagePreview = (imgUrl: string) => {
+    setSelectedImage(imgUrl);
+    setImgOpened(true);
+  };
   const start = DateTime.fromISO(appointment.startTime).setZone(APP_TZ);
   const end = DateTime.fromISO(appointment.endTime).setZone(APP_TZ);
 
@@ -231,6 +308,7 @@ const Page = () => {
 
   const phone = appointment.job.client.phone;
   const visitInstructions = appointment.job.visitInstructions?.trim();
+  const notes = appointment.job.notes;
   const fullAddress = formatAddress(appointment.job.address);
 
   const sessions = appointment.workSessions ?? [];
@@ -252,10 +330,36 @@ const Page = () => {
       ? Math.min(100, Math.round((elapsedSeconds / scheduledSeconds) * 100))
       : 0;
   const isOvertime = elapsedSeconds > scheduledSeconds;
+
   return (
     <Container p={0} bg="#f5f6f7" mih="100vh">
       <TopBar back onClick={() => router.back()} title="Back" />
-
+      <Drawer
+        opened={imgOpened}
+        overlayProps={{ backgroundOpacity: 0.55, blur: 3 }}
+        onClose={() => {
+          setImgOpened(false);
+          setSelectedImage(null);
+        }}
+        position="bottom"
+        size="90%"
+        radius="lg"
+        title="Image Preview"
+        padding="md"
+      >
+        {selectedImage ? (
+          <Flex justify="center" align="center" h="100%">
+            <Image
+              src={selectedImage}
+              alt="Preview"
+              fit="contain"
+              radius="md"
+              mah="75vh"
+              w="100%"
+            />
+          </Flex>
+        ) : null}
+      </Drawer>
       <Stack gap="md" p="md">
         <Card radius="xl" withBorder shadow="xs" p="lg">
           <Group justify="space-between" align="start" mb="sm">
@@ -436,14 +540,201 @@ const Page = () => {
             <ThemeIcon radius="xl" variant="light" color="grape">
               <IoDocumentTextOutline size={16} />
             </ThemeIcon>
-            <Text fw={700}>Visit Instructions</Text>
+            <Text fw={700}>Instructions</Text>
           </Group>
 
-          <Text size="sm" c={visitInstructions ? "dark" : "dimmed"}>
-            {visitInstructions || "No visit instructions provided."}
-          </Text>
-        </Card>
+          <Stack gap="sm">
+            {notes.length ? (
+              notes.map((note: Note) => (
+                <Paper key={note.id} radius="lg" p="xs" withBorder>
+                  <Group justify="space-between" align="flex-start" mb={8}>
+                    <Box style={{ flex: 1 }}>
+                      <Text fw={700} size="sm">
+                        {note.title?.trim() || "Untitled note"}
+                      </Text>
+                    </Box>
 
+                    <Text size="xs" c="dimmed" mt={2}>
+                      {formatPrettyDate(note.createdAt)}
+                    </Text>
+                  </Group>
+
+                  <Text size="sm" c="dark.7" lh={1.5}>
+                    {note.content}
+                  </Text>
+                  {note.category ? (
+                    <Badge
+                      variant="light"
+                      radius="xl"
+                      size="sm"
+                      mr="xs"
+                      color={note.isPinned ? "yellow" : "gray"}
+                    >
+                      {note.category.replaceAll("_", " ")}{" "}
+                      {note.isPinned && "• Pinned"}
+                    </Badge>
+                  ) : null}
+
+                  {note.isClientVisible ? (
+                    <Badge variant="light" radius="xl" size="sm" color="blue">
+                      Client visible
+                    </Badge>
+                  ) : null}
+                  {note.images?.length ? (
+                    <Group mt="sm" gap="xs">
+                      {note.images.map((img) => (
+                        <>
+                          <Image
+                            onClick={() => openImagePreview(img.url)}
+                            key={img.id}
+                            src={img.url}
+                            alt="note image"
+                            w={76}
+                            h={76}
+                            radius="md"
+                            fit="cover"
+                          />
+                        </>
+                      ))}
+                    </Group>
+                  ) : null}
+                </Paper>
+              ))
+            ) : (
+              <Text size="sm" c="dimmed">
+                No notes provided.
+              </Text>
+            )}
+          </Stack>
+        </Card>
+        <Card radius="xl" withBorder shadow="xs" p="lg">
+          <Group mb="md" gap="xs">
+            <ThemeIcon radius="xl" variant="light" color="orange">
+              <IoDocumentTextOutline size={16} />
+            </ThemeIcon>
+            <Text fw={700}>Visit History</Text>
+          </Group>
+
+          <Stack gap="sm">
+            {appointment.notes?.length ? (
+              appointment.notes.map((note: Note) => (
+                <Paper key={note.id} radius="lg" p="md" withBorder>
+                  <Group justify="space-between" mb={6}>
+                    <Text fw={600} size="sm">
+                      Visit note
+                    </Text>
+                    <Text size="xs" c="dimmed">
+                      {formatPrettyDate(note.createdAt)}
+                    </Text>
+                  </Group>
+
+                  <Text mt="sm" mb="md" size="sm">
+                    {note.content}
+                  </Text>
+                  {appointment.images?.length ? (
+                    <Group mt="sm" gap="xs">
+                      {appointment.images.map((img: AppointmentImage) => (
+                        <>
+                          <Image
+                            onClick={() => openImagePreview(img.url)}
+                            key={img.id}
+                            src={img.url}
+                            alt="note image"
+                            w={76}
+                            h={76}
+                            radius="md"
+                            fit="cover"
+                          />
+                        </>
+                      ))}
+                    </Group>
+                  ) : null}
+                </Paper>
+              ))
+            ) : (
+              <Text size="sm" c="dimmed">
+                No visit notes yet.
+              </Text>
+            )}
+          </Stack>
+        </Card>
+        <Card radius="xl" withBorder shadow="xs" p="lg">
+          <Group mb="md" gap="xs">
+            <ThemeIcon radius="xl" variant="light" color="orange">
+              <IoDocumentTextOutline size={16} />
+            </ThemeIcon>
+            <Text fw={700}>Visit Note</Text>
+          </Group>
+
+          <Stack gap="sm">
+            <Textarea
+              label="What happened during this visit?"
+              placeholder="Add visit details, issues, observations, client requests..."
+              minRows={4}
+              value={visitNote}
+              onChange={(e) => setVisitNote(e.currentTarget.value)}
+            />
+
+            {uploadedVisitImages.length ? (
+              <Group gap="xs">
+                {uploadedVisitImages.map((img) => (
+                  <Image
+                    key={img.fileKey}
+                    src={img.url}
+                    alt="visit image"
+                    w={76}
+                    h={76}
+                    radius="md"
+                    fit="cover"
+                  />
+                ))}
+              </Group>
+            ) : null}
+
+            <Dropzone
+              accept={["image/png", "image/jpeg", "image/webp"]}
+              maxFiles={10}
+              onDrop={async (files) => {
+                const uploaded = await startUpload(files);
+
+                const imgs = (uploaded ?? []).map((u) => ({
+                  url: u.url,
+                  fileKey: u.key,
+                }));
+
+                setVisitImages((prev) => [...prev, ...files].slice(0, 10));
+                setUploadedVisitImages((prev) =>
+                  [...prev, ...imgs].slice(0, 10),
+                );
+              }}
+            >
+              <Flex direction="column" align="center">
+                <IoDocumentTextOutline size={24} />
+                <Text mt="xs" size="xs">
+                  Drag visit images here or click to upload
+                </Text>
+                {isUploading && (
+                  <Text mt="xs" size="xs" c="dimmed">
+                    Uploading...
+                  </Text>
+                )}
+              </Flex>
+            </Dropzone>
+
+            <Button
+              radius="xl"
+              color="orange"
+              loading={saveVisitNoteMutation.isPending}
+              disabled={
+                isUploading ||
+                (!visitNote.trim() && !uploadedVisitImages.length)
+              }
+              onClick={() => saveVisitNoteMutation.mutate()}
+            >
+              Save Visit Note
+            </Button>
+          </Stack>
+        </Card>
         <Card radius="xl" withBorder shadow="xs" p="lg">
           <Group mb="md" gap="xs">
             <ThemeIcon radius="xl" variant="light" color="teal">
