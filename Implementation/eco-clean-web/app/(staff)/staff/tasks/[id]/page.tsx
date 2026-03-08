@@ -18,6 +18,7 @@ import {
   SimpleGrid,
   Stack,
   Text,
+  Textarea,
   ThemeIcon,
 } from "@mantine/core";
 import { useParams, useRouter } from "next/navigation";
@@ -40,23 +41,16 @@ import {
 import {
   completeAppointment,
   pauseAppointment,
+  saveVisitNote,
   startAppointment,
 } from "@/lib/api/appointments";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { notifications } from "@mantine/notifications";
 import { WorkSession } from "@/types";
 import { useDisclosure } from "@mantine/hooks";
-
-export function formatPrettyDate(input: Date | string | null | undefined) {
-  if (!input) return "";
-
-  const dt =
-    typeof input === "string"
-      ? DateTime.fromISO(input, { zone: "utc" }).setZone(APP_TZ)
-      : DateTime.fromJSDate(input, { zone: APP_TZ });
-
-  return dt.isValid ? dt.toFormat("MMM d, yyyy") : "";
-}
+import { useUploadThing } from "@/lib/uploadthing";
+import { Dropzone } from "@mantine/dropzone";
+import formatPrettyDate from "@/lib/utils/formatPrettyDate";
 
 function formatAddress(address?: {
   street1?: string | null;
@@ -79,6 +73,28 @@ function formatAddress(address?: {
     .filter(Boolean)
     .join(", ");
 }
+
+type AppointmentImage = {
+  id: string;
+  url: string;
+  fileKey?: string | null;
+};
+
+export type NoteImage = {
+  id: string;
+  url: string;
+};
+
+export type Note = {
+  id: string;
+  title?: string | null;
+  content: string;
+  category?: string | null;
+  isPinned?: boolean;
+  isClientVisible?: boolean;
+  createdAt: string | Date;
+  images?: NoteImage[];
+};
 
 function buildDirectionsUrl(address?: {
   street1?: string | null;
@@ -122,6 +138,45 @@ const Page = () => {
     isLoading,
     error,
   } = useAppointmentDetails(appointmentId);
+
+  const [visitNote, setVisitNote] = useState("");
+  const [visitImages, setVisitImages] = useState<File[]>([]);
+  const [uploadedVisitImages, setUploadedVisitImages] = useState<
+    { url: string; fileKey: string }[]
+  >([]);
+  const { startUpload, isUploading } = useUploadThing("appointmentImages");
+
+  const saveVisitNoteMutation = useMutation({
+    mutationFn: async () =>
+      await saveVisitNote(appointment.id, {
+        content: visitNote,
+        images: uploadedVisitImages.map((img) => ({
+          url: img.url,
+          fileKey: img.fileKey,
+        })),
+      }),
+    onSuccess: (updated) => {
+      refreshAppointment(updated);
+      setVisitNote("");
+      setVisitImages([]);
+      setUploadedVisitImages([]);
+
+      notifications.show({
+        title: "Saved",
+        message: "Visit note saved successfully",
+        color: "green",
+        position: "top-center",
+      });
+    },
+    onError: (err: any) => {
+      notifications.show({
+        title: "Error",
+        message: err?.message || "Failed to save visit note",
+        color: "red",
+        position: "top-center",
+      });
+    },
+  });
 
   // ✅ ALL HOOKS MUST BE HERE, BEFORE RETURNS
   const [nowMs, setNowMs] = useState(Date.now());
@@ -485,12 +540,12 @@ const Page = () => {
             <ThemeIcon radius="xl" variant="light" color="grape">
               <IoDocumentTextOutline size={16} />
             </ThemeIcon>
-            <Text fw={700}>Notes</Text>
+            <Text fw={700}>Instructions</Text>
           </Group>
 
           <Stack gap="sm">
             {notes.length ? (
-              notes.map((note) => (
+              notes.map((note: Note) => (
                 <Paper key={note.id} radius="lg" p="xs" withBorder>
                   <Group justify="space-between" align="flex-start" mb={8}>
                     <Box style={{ flex: 1 }}>
@@ -521,7 +576,7 @@ const Page = () => {
                   ) : null}
 
                   {note.isClientVisible ? (
-                    <Badge  variant="light" radius="xl" size="sm" color="blue">
+                    <Badge variant="light" radius="xl" size="sm" color="blue">
                       Client visible
                     </Badge>
                   ) : null}
@@ -552,7 +607,134 @@ const Page = () => {
             )}
           </Stack>
         </Card>
+        <Card radius="xl" withBorder shadow="xs" p="lg">
+          <Group mb="md" gap="xs">
+            <ThemeIcon radius="xl" variant="light" color="orange">
+              <IoDocumentTextOutline size={16} />
+            </ThemeIcon>
+            <Text fw={700}>Visit History</Text>
+          </Group>
 
+          <Stack gap="sm">
+            {appointment.notes?.length ? (
+              appointment.notes.map((note: Note) => (
+                <Paper key={note.id} radius="lg" p="md" withBorder>
+                  <Group justify="space-between" mb={6}>
+                    <Text fw={600} size="sm">
+                      Visit note
+                    </Text>
+                    <Text size="xs" c="dimmed">
+                      {formatPrettyDate(note.createdAt)}
+                    </Text>
+                  </Group>
+
+                  <Text mt="sm" mb="md" size="sm">
+                    {note.content}
+                  </Text>
+                  {appointment.images?.length ? (
+                    <Group mt="sm" gap="xs">
+                      {appointment.images.map((img: AppointmentImage) => (
+                        <>
+                          <Image
+                            onClick={() => openImagePreview(img.url)}
+                            key={img.id}
+                            src={img.url}
+                            alt="note image"
+                            w={76}
+                            h={76}
+                            radius="md"
+                            fit="cover"
+                          />
+                        </>
+                      ))}
+                    </Group>
+                  ) : null}
+                </Paper>
+              ))
+            ) : (
+              <Text size="sm" c="dimmed">
+                No visit notes yet.
+              </Text>
+            )}
+          </Stack>
+        </Card>
+        <Card radius="xl" withBorder shadow="xs" p="lg">
+          <Group mb="md" gap="xs">
+            <ThemeIcon radius="xl" variant="light" color="orange">
+              <IoDocumentTextOutline size={16} />
+            </ThemeIcon>
+            <Text fw={700}>Visit Note</Text>
+          </Group>
+
+          <Stack gap="sm">
+            <Textarea
+              label="What happened during this visit?"
+              placeholder="Add visit details, issues, observations, client requests..."
+              minRows={4}
+              value={visitNote}
+              onChange={(e) => setVisitNote(e.currentTarget.value)}
+            />
+
+            {uploadedVisitImages.length ? (
+              <Group gap="xs">
+                {uploadedVisitImages.map((img) => (
+                  <Image
+                    key={img.fileKey}
+                    src={img.url}
+                    alt="visit image"
+                    w={76}
+                    h={76}
+                    radius="md"
+                    fit="cover"
+                  />
+                ))}
+              </Group>
+            ) : null}
+
+            <Dropzone
+              accept={["image/png", "image/jpeg", "image/webp"]}
+              maxFiles={10}
+              onDrop={async (files) => {
+                const uploaded = await startUpload(files);
+
+                const imgs = (uploaded ?? []).map((u) => ({
+                  url: u.url,
+                  fileKey: u.key,
+                }));
+
+                setVisitImages((prev) => [...prev, ...files].slice(0, 10));
+                setUploadedVisitImages((prev) =>
+                  [...prev, ...imgs].slice(0, 10),
+                );
+              }}
+            >
+              <Flex direction="column" align="center">
+                <IoDocumentTextOutline size={24} />
+                <Text mt="xs" size="xs">
+                  Drag visit images here or click to upload
+                </Text>
+                {isUploading && (
+                  <Text mt="xs" size="xs" c="dimmed">
+                    Uploading...
+                  </Text>
+                )}
+              </Flex>
+            </Dropzone>
+
+            <Button
+              radius="xl"
+              color="orange"
+              loading={saveVisitNoteMutation.isPending}
+              disabled={
+                isUploading ||
+                (!visitNote.trim() && !uploadedVisitImages.length)
+              }
+              onClick={() => saveVisitNoteMutation.mutate()}
+            >
+              Save Visit Note
+            </Button>
+          </Stack>
+        </Card>
         <Card radius="xl" withBorder shadow="xs" p="lg">
           <Group mb="md" gap="xs">
             <ThemeIcon radius="xl" variant="light" color="teal">

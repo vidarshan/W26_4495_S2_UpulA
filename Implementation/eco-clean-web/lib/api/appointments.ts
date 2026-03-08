@@ -126,3 +126,27 @@ export async function completeAppointment(id: string) {
 
   return json;
 }
+
+export async function saveVisitNote(
+  appointmentId: string,
+  body: {
+    content: string;
+    images?: Array<{ url: string; fileKey?: string | null }>;
+  },
+) {
+  const res = await fetch(`/api/appointments/${appointmentId}/visit-note`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data?.error || "Failed to save visit note");
+  }
+
+  return data;
+}
