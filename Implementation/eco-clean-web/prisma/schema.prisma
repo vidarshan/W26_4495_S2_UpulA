@@ -273,10 +273,10 @@ enum AssignmentStatus {
 }
 
 enum LeaveType {
-  SICK
+  PAID_SICK
   VACATION
   PERSONAL
-  UNPAID
+  UNPAID_SICK
 }
 
 enum TimesheetStatus {
