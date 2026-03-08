@@ -4,53 +4,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { AppointmentStatus, JobType, Prisma } from "@prisma/client";
 import { DateTime } from "luxon";
 import { LineItem } from "@/lib/api/jobs";
+import { buildUtcWindowFromLocal } from "@/lib/dateTime";
 
 const APP_TZ = process.env.APP_TZ ?? "America/Vancouver";
-
-export function buildUtcWindowFromLocal(
-  dateYmd: string,
-  startTime: string | null,
-  endTime: string | null,
-  isAnytime: boolean,
-) {
-  // dateYmd: "YYYY-MM-DD"
-  const base = DateTime.fromFormat(dateYmd, "yyyy-LL-dd", { zone: APP_TZ });
-  if (!base.isValid) return null;
-
-  const startStr = isAnytime ? "09:00" : startTime || "09:00";
-  const [sh, sm] = startStr.split(":").map(Number);
-
-  let startLocal = base.set({
-    hour: sh,
-    minute: sm,
-    second: 0,
-    millisecond: 0,
-  });
-  if (!startLocal.isValid) return null;
-
-  let endLocal: DateTime;
-  if (isAnytime) {
-    endLocal = startLocal.plus({ hours: 1 });
-  } else if (endTime) {
-    const [eh, em] = endTime.split(":").map(Number);
-    endLocal = base.set({ hour: eh, minute: em, second: 0, millisecond: 0 });
-    if (!endLocal.isValid) return null;
-  } else {
-    endLocal = startLocal.plus({ hours: 1 });
-  }
-
-  if (endLocal <= startLocal) endLocal = startLocal.plus({ minutes: 30 });
-
-  return {
-    startUtc: startLocal.toUTC().toJSDate(),
-    endUtc: endLocal.toUTC().toJSDate(),
-    durationMs: Math.max(
-      endLocal.toUTC().toMillis() - startLocal.toUTC().toMillis(),
-      30 * 60 * 1000,
-    ),
-    startLocal, // might help for debugging
-  };
-}
 
 // Infer tx type from prisma.$transaction callback signature
 type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
@@ -213,7 +169,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
     }
     const b = body as Record<string, any>;
-
 
     const title = mustString(b.title, "Missing title");
     const clientId = mustString(b.clientId, "Missing clientId");
@@ -432,7 +387,7 @@ export async function POST(req: NextRequest) {
               staff: base.staffIds?.length
                 ? {
                     connect: base.staffIds.map(
-                      (id): Prisma.UserWhereUniqueInput => ({ id }),
+                      (id: string): Prisma.UserWhereUniqueInput => ({ id }),
                     ),
                   }
                 : undefined,

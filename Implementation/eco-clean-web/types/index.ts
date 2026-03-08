@@ -171,3 +171,7 @@ export type WorkSession = {
   appointmentId: string;
   staffId: string;
 };
+
+export type BaseAppointment = {
+  staffIds: string[];
+};
