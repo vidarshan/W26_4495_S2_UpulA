@@ -71,6 +71,11 @@ function isValidHHmm(value: string) {
   return /^([01]\d|2[0-3]):([0-5]\d)$/.test(value);
 }
 
+function ymdToLocalDate(ymd: string) {
+  const [y, m, d] = ymd.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
 export default function AppointmentInfoModal({ onSuccess }: Props) {
   const { startUpload, isUploading } = useUploadThing("appointmentImages");
   const { appointmentOpen, closeAppointment, selectedApptId } =
@@ -245,9 +250,9 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
               <DateInput
                 label="Date"
                 value={form.values.date}
-                onChange={(d) => {
-                  form.setFieldValue("date", d ? new Date(d) : null);
-                }}
+                onChange={(d) =>
+                  form.setFieldValue("date", d ? ymdToLocalDate(d) : null)
+                }
                 error={form.errors.date}
               />
 
