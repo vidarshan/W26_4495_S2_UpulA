@@ -19,6 +19,7 @@ model User {
   assignments      Assignment[]
   leaves           Leave[]
   timesheetEntries TimesheetEntry[]
+  payStatements PayStatement[]
 }
 
 model Client {
@@ -258,6 +259,8 @@ model TimesheetPeriod {
   createdAt DateTime         @default(now())
   lockedAt  DateTime?
   entries   TimesheetEntry[]
+
+  payStatements PayStatement[]
 }
 
 model TimesheetEntry {
@@ -269,12 +272,47 @@ model TimesheetEntry {
   minutesWorked Int
   hourlyRate    Float?
   notes         String?
+  payPeriodStart    DateTime
+  payPeriodEnd      DateTime
+
   createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
 
   period     TimesheetPeriod @relation(fields: [periodId], references: [id])
   staff      User            @relation(fields: [staffId], references: [id])
   assignment Assignment?     @relation(fields: [assignmentId], references: [id])
+}
+
+
+model PayStatement {
+  id                String   @id @default(uuid())
+  userId            String
+  timesheetPeriodId String
+
+  // Core Dates
+  payPeriodStart    DateTime
+  payPeriodEnd      DateTime
+  payDate           DateTime
+
+  // Core Financials
+  grossEarnings     Float
+  totalDeductions   Float
+  netEarnings       Float
+
+  // Flat Line Item Data (Optional: store breakdown as a JSON string)
+  // This replaces the separate "PayStatementLine" model entirely
+  breakdown         Json?
+
+  // Relations
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  timesheetPeriod   TimesheetPeriod @relation(fields: [timesheetPeriodId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([timesheetPeriodId])
+}
+
+enum PayLineCategory {
+  EARNING
+  DEDUCTION
 }
 
 enum Role {
