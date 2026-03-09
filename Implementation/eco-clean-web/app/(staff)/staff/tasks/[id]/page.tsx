@@ -544,8 +544,8 @@ const Page = () => {
           </Group>
 
           <Stack gap="sm">
-            {notes.length ? (
-              notes.map((note: Note) => (
+            {notes?.length ? (
+              (notes || []).map((note: Note) => (
                 <Paper key={note.id} radius="lg" p="xs" withBorder>
                   <Group justify="space-between" align="flex-start" mb={8}>
                     <Box style={{ flex: 1 }}>

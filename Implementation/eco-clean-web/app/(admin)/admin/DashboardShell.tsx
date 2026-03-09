@@ -187,18 +187,6 @@ export default function DashboardShell({
                 active={pathname.startsWith("/admin/staff-profile")}
               />
             </Tooltip>
-
-            <Tooltip label="Settings" position="right" withArrow>
-              <NavLink
-                onClick={() => setOpened(false)}
-                component={Link}
-                href="/admin/settings"
-                bdrs="md"
-                leftSection={<IoCogOutline />}
-                active={pathname.startsWith("/admin/settings")}
-              />
-            </Tooltip>
-
             <Box>
               <Divider mb="xs" />
               <NavLink

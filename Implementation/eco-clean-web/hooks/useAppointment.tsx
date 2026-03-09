@@ -1,3 +1,4 @@
+import { JobNote } from "@prisma/client";
 import { useQuery } from "@tanstack/react-query";
 
 export type VisitNote = {
@@ -20,16 +21,58 @@ export type StaffUser = {
   role?: string;
 };
 
+type JobClient = {
+  id: string;
+  title?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  companyName?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  preferredContact?: string | null;
+};
+
+type JobAddress = {
+  id: string;
+  street1?: string | null;
+  street2?: string | null;
+  city?: string | null;
+  province?: string | null;
+  postalCode?: string | null;
+  country?: string | null;
+};
+
+type JobLineItem = {
+  id: string;
+  name: string;
+  quantity: number;
+  unitCost: number;
+  unitPrice: number;
+  total: number;
+  description?: string | null;
+};
+
 export type AppointmentWithRelations = {
   id: string;
   startTime: string;
   endTime: string;
   status: "SCHEDULED" | "COMPLETED" | "CANCELLED";
   jobId: string;
-
+  job?: {
+    id: string;
+    title: string;
+    type: string;
+    isAnytime?: boolean;
+    visitInstructions?: string | null;
+    client?: JobClient | null;
+    address?: JobAddress | null;
+    lineItems?: JobLineItem[];
+    notes?: JobNote[];
+  };
   staff: StaffUser[];
   notes: VisitNote[];
   images: AppointmentImage[];
+  createdAt: string;
 };
 
 export const useAppointment = (id?: string | null) => {
