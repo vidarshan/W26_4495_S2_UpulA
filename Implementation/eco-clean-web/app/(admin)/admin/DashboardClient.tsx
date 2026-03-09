@@ -21,6 +21,9 @@ import {
   IoArrowBackOutline,
   IoArrowForwardOutline,
   IoPersonOutline,
+  IoRefreshCircle,
+  IoRefreshCircleOutline,
+  IoRefreshSharp,
   IoToggleOutline,
 } from "react-icons/io5";
 import { useEffect, useRef, useState } from "react";
@@ -226,7 +229,7 @@ export default function DashboardClient() {
               </Button.Group>
             </Group>
           </Group>
-          <Group justify="space-between">
+          <Group align="center" justify="space-between">
             <Flex gap="xs">
               <Select
                 size="xs"
@@ -244,7 +247,10 @@ export default function DashboardClient() {
                 data={["Scheduled", "Cancelled", "Completed"]}
                 allowDeselect={false}
               />{" "}
-            </Flex>
+            </Flex>{" "}
+            <Button size="xs" leftSection={<IoRefreshSharp />}>
+              Refresh
+            </Button>
           </Group>
         </Paper>
         <FullCalendar
