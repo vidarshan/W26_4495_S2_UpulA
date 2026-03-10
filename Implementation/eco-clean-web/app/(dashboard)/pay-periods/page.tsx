@@ -2,6 +2,7 @@
 
 import {
   Box,
+  Button,
   Container,
   NumberInput,
   Select,
@@ -85,6 +86,32 @@ export default function ManagePayPeriodsPage() {
   const [periodStart, setPeriodStart] = useState<string | null>('2026-02-15');
   const [rows, setRows] = useState<StaffPayRow[]>(initialRows);
 
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/admin/pay-statements', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          periodStart,
+          rows,
+        }),
+      });
+
+      if (response.ok) {
+        alert('Pay statements generated successfully!');
+      } else {
+        alert('Failed to generate pay statements.');
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   function recalculateRow(row: StaffPayRow): StaffPayRow {
     const regularAmount = row.regularHours * row.regularRate;
     const otAmount = row.otHours * row.otRate;
@@ -149,13 +176,13 @@ export default function ManagePayPeriodsPage() {
         />
       </Box>
 
-      <Box style={{ width: '100%', maxWidth: 1400, margin: '0 auto' }}>
+      <Box style={{ display: 'flex', justifyContent: 'center' }}>
         <Table
           withTableBorder
           withColumnBorders
           striped
           highlightOnHover
-          style={{ minWidth: 1600 }}
+          style={{ width: 'auto' }}
         >
           <Table.Thead>
             <Table.Tr bg="green.7">
@@ -267,6 +294,17 @@ export default function ManagePayPeriodsPage() {
             </Table.Tr>
           </Table.Tbody>
         </Table>
+      </Box>
+
+      <Box display="flex" style={{ justifyContent: 'flex-end' }} mt="xl">
+        <Button
+          color="green.7"
+          size="lg"
+          loading={loading}
+          onClick={handleSubmit}
+        >
+          Generate Pay Statements
+        </Button>
       </Box>
     </Container>
   );
