@@ -26,12 +26,12 @@ import {
   IoLogOutOutline,
   IoPeopleOutline,
   IoPersonOutline,
-  IoPersonCircleOutline
+  IoPersonCircleOutline,
 } from "react-icons/io5";
-import ClientPropertyModal from "../components/popups/ClientModal";
-import NewJobModal from "../components/popups/JobModal";
+import ClientPropertyModal from "../../components/popups/ClientModal";
+import NewJobModal from "../../components/popups/JobModal";
 import { useDashboardUI } from "@/stores/store";
-import UserUpsertModal from "../components/popups/UserModal";
+import UserUpsertModal from "../../components/popups/UserModal";
 
 export default function DashboardShell({
   children,
@@ -62,12 +62,19 @@ export default function DashboardShell({
           <Stack gap="xs">
             <Flex justify="center"></Flex>
             <Flex align="center" justify="center">
-              <Popover opened={opened} position="right" withArrow shadow="md">
+              <Popover
+                radius="xl"
+                opened={opened}
+                position="right"
+                withArrow
+                shadow="md"
+              >
                 <Popover.Target>
                   <ActionIcon
                     variant="filled"
                     mb="sm"
                     size="xl"
+                    radius="xl"
                     onClick={() => setOpened((o) => !o)}
                     aria-label="Toggle sidebar"
                   >
@@ -87,6 +94,7 @@ export default function DashboardShell({
                       <ActionIcon
                         variant="light"
                         size="xl"
+                        radius="xl"
                         onClick={() => {
                           setOpened(false);
                           setJobPopoverOpened(true);
@@ -103,6 +111,7 @@ export default function DashboardShell({
                       <ActionIcon
                         variant="light"
                         color="orange"
+                        radius="xl"
                         size="xl"
                         onClick={() => {
                           setOpened(false);
@@ -119,6 +128,7 @@ export default function DashboardShell({
                     <Flex direction="column" align="center">
                       <ActionIcon
                         variant="light"
+                        radius="xl"
                         color="violet"
                         size="xl"
                         onClick={() => {
@@ -140,41 +150,41 @@ export default function DashboardShell({
               <NavLink
                 onClick={() => setOpened(false)}
                 component={Link}
-                href="/"
+                href="/admin"
                 bdrs="md"
                 leftSection={<IoHomeOutline />}
-                active={pathname === "/"}
+                active={pathname === "/admin"}
               />
             </Tooltip>
             <Tooltip label="Clients" position="right" withArrow>
               <NavLink
                 onClick={() => setOpened(false)}
                 component={Link}
-                href="/clients"
+                href="/admin/clients"
                 bdrs="md"
                 leftSection={<IoPeopleOutline />}
-                active={pathname.startsWith("/clients")}
+                active={pathname.startsWith("/admin/clients")}
               />
             </Tooltip>
             <Tooltip label="Employees" position="right" withArrow>
               <NavLink
                 onClick={() => setOpened(false)}
                 component={Link}
-                href="/employees"
+                href="/admin/employees"
                 bdrs="md"
                 leftSection={<IoBriefcaseOutline />}
-                active={pathname.startsWith("/employees")}
+                active={pathname.startsWith("/admin/employees")}
               />
             </Tooltip>
 
-             <Tooltip label="Staff" position="right" withArrow>
+            <Tooltip label="Staff" position="right" withArrow>
               <NavLink
                 onClick={() => setOpened(false)}
                 component={Link}
-                href="/staff-profile"
+                href="/admin/staff-profile"
                 bdrs="md"
-                leftSection={<IoPersonCircleOutline  />}
-                active={pathname.startsWith("/staff-profile")}
+                leftSection={<IoPersonCircleOutline />}
+                active={pathname.startsWith("/admin/staff-profile")}
               />
             </Tooltip>
 
@@ -182,10 +192,10 @@ export default function DashboardShell({
               <NavLink
                 onClick={() => setOpened(false)}
                 component={Link}
-                href="/settings"
+                href="/admin/settings"
                 bdrs="md"
                 leftSection={<IoCogOutline />}
-                active={pathname.startsWith("/settings")}
+                active={pathname.startsWith("/admin/settings")}
               />
             </Tooltip>
 

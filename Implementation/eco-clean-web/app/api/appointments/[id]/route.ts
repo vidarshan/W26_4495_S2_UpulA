@@ -26,7 +26,17 @@ export async function GET(
         staff: true,
         notes: true,
         images: true,
-        job: { include: { client: true } },
+        workSessions: {
+          orderBy: { startedAt: "asc" },
+        },
+        job: {
+          include: {
+            client: true,
+            address: true,
+            lineItems: true,
+            recurrence: true,
+          },
+        },
       },
     });
 
@@ -56,10 +66,11 @@ export async function PATCH(
   if (!id) {
     return NextResponse.json({ error: "Missing id" }, { status: 400 });
   }
-
+  const raw = await req.text();
   let body;
   try {
-    body = await req.json();
+    body = JSON.parse(raw);
+    if (typeof body === "string") body = JSON.parse(body);
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
@@ -89,7 +100,12 @@ export async function PATCH(
     data.endTime = e;
   }
 
-  if (status) data.status = status;
+  if (
+    status &&
+    ["SCHEDULED", "COMPLETED", "CANCELLED", "LATE"].includes(status)
+  ) {
+    data.status = status;
+  }
 
   if (Array.isArray(staffIds)) {
     data.staff = { set: staffIds.map((sid: string) => ({ id: sid })) };
@@ -121,10 +137,9 @@ export async function PATCH(
 
         // Find latest note (you can filter isClientVisible if you want)
         const existing = await tx.visitNote.findFirst({
-          where: { appointmentId: id },
+          where: { appointmentId: id, isClientVisible: false },
           orderBy: { createdAt: "desc" },
         });
-
         if (!trimmed) {
           // User cleared note => delete existing latest note (or you can keep it)
           if (existing) {

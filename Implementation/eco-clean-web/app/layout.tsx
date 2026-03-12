@@ -13,9 +13,22 @@ import {
   mantineHtmlProps,
 } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
+import PWARegister from "./_pwa_register";
 
-export const metadata: Metadata = {
+export const metadata = {
   title: "Eco Clean | Admin",
+  applicationName: "Eco Clean",
+  manifest: "/manifest.webmanifest",
+  themeColor: "#0ea5e9",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Eco Clean",
+  },
+  icons: {
+    icon: "/icons/icon-192.png",
+    apple: "/icons/icon-192.png",
+  },
 };
 
 const manrope = Manrope({
@@ -34,9 +47,10 @@ export default function RootLayout({
         <ColorSchemeScript />
       </head>
       <body className={`${manrope.variable} antialiased`}>
-        <MantineProvider theme={{ defaultRadius: "md", primaryColor: "green" }}>
+        <MantineProvider theme={{ defaultRadius: "xl", primaryColor: "green" }}>
           <Notifications position="top-right" />
           <QueryProvider>
+            <PWARegister />
             <Providers>{children}</Providers>
           </QueryProvider>
         </MantineProvider>

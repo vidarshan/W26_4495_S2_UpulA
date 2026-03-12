@@ -121,7 +121,12 @@ export async function POST(req: Request) {
   const hashedPassword = await bcrypt.hash(tempPassword, 10);
 
   const user = await prisma.user.create({
-    data: { name, email, role, password: hashedPassword },
+    data: {
+      name,
+      email: email.toLowerCase().trim(),
+      role,
+      password: hashedPassword,
+    },
     select: {
       id: true,
       name: true,
@@ -134,4 +139,3 @@ export async function POST(req: Request) {
   // return tempPassword only once (admin can copy)
   return NextResponse.json({ user, tempPassword }, { status: 201 });
 }
-
