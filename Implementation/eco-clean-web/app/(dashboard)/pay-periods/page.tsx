@@ -8,6 +8,7 @@ import {
   Select,
   Table,
   Text,
+  TextInput,
   Title,
 } from '@mantine/core';
 import { useMemo, useState } from 'react';
@@ -209,7 +210,13 @@ export default function ManagePayPeriodsPage() {
           <Table.Tbody>
             {rows.map((row, index) => (
               <Table.Tr key={row.staffId}>
-                <CellText>{row.staffId}</CellText>
+                <InputCell
+                  type="text"
+                  value={row.staffId}
+                  onChange={(value) =>
+                    updateRow(index, 'staffId', String(value))
+                  }
+                />
                 <CellText>{row.staffName}</CellText>
 
                 <InputCell
@@ -336,18 +343,29 @@ function CellText({ children }: { children: React.ReactNode }) {
 function InputCell({
   value,
   onChange,
+  type = 'number',
 }: {
-  value: number;
+  value: string | number;
   onChange: (value: string | number) => void;
+  type?: 'text' | 'number';
 }) {
   return (
     <Table.Td style={{ minWidth: 110 }}>
-      <NumberInput
-        value={value}
-        onChange={onChange}
-        hideControls
-        decimalScale={2}
-      />
+      {type === 'number' ? (
+        <NumberInput
+          value={value as number}
+          onChange={onChange}
+          hideControls
+          decimalScale={2}
+          styles={{ input: { textAlign: 'right' } }}
+        />
+      ) : (
+        <TextInput
+          value={value as string}
+          onChange={(e) => onChange(e.currentTarget.value)}
+          placeholder="ID"
+        />
+      )}
     </Table.Td>
   );
 }

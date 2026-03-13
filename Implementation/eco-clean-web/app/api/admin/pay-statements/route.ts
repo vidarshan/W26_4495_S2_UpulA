@@ -21,7 +21,7 @@ export async function POST(req: Request) {
         prisma.payStatement.create({
           data: {
             userId: row.staffId, // Ensure this matches your User model ID
-            timesheetPeriodId: "some-period-id", // You'll need to pass or find this
+            timesheetPeriodId: "35aa941d-54c1-4b4d-8159-2b02ed1d39aa", // You'll need to pass or find this
             payPeriodStart: startDate,
             payPeriodEnd: endDate,
             payDate: new Date(), // Usually 'today' when generating
