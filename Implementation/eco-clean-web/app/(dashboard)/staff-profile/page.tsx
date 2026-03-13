@@ -137,7 +137,7 @@ export default function StaffProfilePage() {
         </Grid.Col>
 
         <Grid.Col span={{ base: 12, sm: 6 }}>
-          <BigActionButton onClick={() => console.log('Pay stubs')}>
+          <BigActionButton onClick={() => router.push('/your-pay')}>
             Pay Stubs
           </BigActionButton>
         </Grid.Col>
