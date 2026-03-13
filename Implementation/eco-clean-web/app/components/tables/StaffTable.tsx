@@ -114,7 +114,7 @@ export default function StaffTable() {
       ) : (
         <>
           <ScrollArea mih="60vh">
-            <Table striped highlightOnHover withTableBorder withRowBorders>
+            <Table striped highlightOnHover withRowBorders>
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th>Name</Table.Th>

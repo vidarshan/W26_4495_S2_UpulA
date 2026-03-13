@@ -7,7 +7,6 @@ import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin, { DateClickArg } from "@fullcalendar/interaction";
 import { useRouter } from "next/navigation";
 
-
 import {
   Badge,
   Box,
@@ -71,7 +70,7 @@ export default function ApplyLeavePage() {
       { title: "Shift : 8 hrs", start: "2026-02-07" },
       { title: "Family Day", start: "2026-02-16", color: "#74b816" },
     ],
-    []
+    [],
   );
 
   const onDateClick = (arg: DateClickArg) => {
@@ -167,7 +166,7 @@ function BalancesCard({
         Time Off Balances
       </Text>
 
-      <Table withRowBorders withTableBorder highlightOnHover>
+      <Table withRowBorders highlightOnHover>
         <Table.Thead>
           <Table.Tr>
             <Table.Th>Time Off Policy</Table.Th>
@@ -332,7 +331,12 @@ function LeaveRequestCard(props: {
             <Text fw={700} mb={6}>
               Hours Scheduled
             </Text>
-            <Card withBorder radius="md" p="md" style={{ background: "#868e96" }}>
+            <Card
+              withBorder
+              radius="md"
+              p="md"
+              style={{ background: "#868e96" }}
+            >
               <Text c="white" fw={800} ta="center">
                 {hoursScheduled} hours
               </Text>
@@ -343,7 +347,12 @@ function LeaveRequestCard(props: {
             <Text fw={700} mb={6}>
               Hours Available
             </Text>
-            <Card withBorder radius="md" p="md" style={{ background: "#868e96" }}>
+            <Card
+              withBorder
+              radius="md"
+              p="md"
+              style={{ background: "#868e96" }}
+            >
               <Text c="white" fw={800} ta="center">
                 {hoursAvailable.toFixed(1)} hours
               </Text>
