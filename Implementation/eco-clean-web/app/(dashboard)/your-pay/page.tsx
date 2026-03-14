@@ -131,7 +131,7 @@ export default function YourPayPage() {
           size="lg"
           radius="md"
           styles={{ root: { minWidth: 320, height: 58, backgroundColor: "#125f82", fontSize: "1.1rem", fontWeight: 500 } }}
-          onClick={() => window.open(`/api/staff/export/${data.id}`, '_blank')}
+          onClick={() => window.open('/pay')}
         >
           Download Current Statements
         </Button>
