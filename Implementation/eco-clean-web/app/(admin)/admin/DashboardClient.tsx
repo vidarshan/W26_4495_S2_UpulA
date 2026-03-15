@@ -44,6 +44,7 @@ import luxonPlugin from "@fullcalendar/luxon3";
 import { useQueryClient } from "@tanstack/react-query";
 import { useDebouncedValue } from "@mantine/hooks";
 import { useStaff } from "@/hooks/useStaff";
+import { Staff } from "@/app/components/tables/ClientTable";
 
 export default function DashboardClient() {
   const qc = useQueryClient();
@@ -377,7 +378,6 @@ export default function DashboardClient() {
               successCallback(data);
             } catch (error) {
               console.error(error);
-              failureCallback(error);
             }
           }}
           select={handleDateSelect}

@@ -34,6 +34,8 @@ import {
 } from "react-icons/io5";
 import { signOut, useSession } from "next-auth/react";
 import { getServerSession } from "next-auth";
+import { AppointmentReminderWatcher } from "@/app/components/AppointmentReminderWatcher";
+import { LocalNotificationDemo } from "@/app/components/LocalNotificationDemo";
 
 type Appointment = {
   id: string;
@@ -92,6 +94,8 @@ const Page = () => {
     return task.status !== "COMPLETED";
   });
 
+  console.log("data", tasks);
+
   const upcomingCount = tasks.filter((t) => t.status !== "COMPLETED").length;
   const completedCount = tasks.filter((t) => t.status === "COMPLETED").length;
 
@@ -120,7 +124,7 @@ const Page = () => {
     <Container p={0} bg="#f5f6f7" mih="100vh">
       <Drawer size="60%" opened={opened} onClose={close} title="Eco Clean">
         <Button
-          radius="xl"
+          radius="lg"
           onClick={() => signOut({ callbackUrl: "/login" })}
           fullWidth
         >
@@ -129,9 +133,10 @@ const Page = () => {
       </Drawer>
 
       <TopBar back={false} onClick={open} title="Eco Clean" />
-
+      <AppointmentReminderWatcher appointments={tasks} />
+      <LocalNotificationDemo />
       <Stack gap="md" p="md">
-        <Card radius="xl" withBorder shadow="xs" p="lg">
+        <Card radius="lg" withBorder shadow="xs" p="lg">
           <Group justify="space-between" align="start">
             <Box>
               <Title order={3}>My Tasks</Title>
@@ -140,7 +145,7 @@ const Page = () => {
               </Text>
             </Box>
 
-            <ThemeIcon radius="xl" size="lg" variant="light" color="green">
+            <ThemeIcon radius="lg" size="lg" variant="light" color="green">
               <IoCheckmarkCircleOutline size={18} />
             </ThemeIcon>
           </Group>
@@ -173,10 +178,10 @@ const Page = () => {
             onChange={(v) => setValue(v || "upcoming")}
           >
             <Group gap="sm">
-              <Chip radius="xl" size="md" value="upcoming">
+              <Chip radius="md" size="md" value="upcoming">
                 Upcoming
               </Chip>
-              <Chip radius="xl" size="md" value="completed">
+              <Chip radius="md" size="md" value="completed">
                 Completed
               </Chip>
             </Group>
@@ -185,7 +190,7 @@ const Page = () => {
 
         <Stack gap="md">
           {filteredTasks.length === 0 ? (
-            <Card radius="xl" withBorder shadow="xs" p="lg">
+            <Card radius="lg" withBorder shadow="xs" p="lg">
               <Text c="dimmed">No tasks found for this section.</Text>
             </Card>
           ) : (
@@ -197,7 +202,7 @@ const Page = () => {
                 <Card
                   key={task.id}
                   withBorder
-                  radius="xl"
+                  radius="lg"
                   shadow="xs"
                   p="lg"
                   style={{ cursor: "pointer" }}
@@ -214,7 +219,7 @@ const Page = () => {
                     </Box>
 
                     <Badge
-                      radius="xl"
+                      radius="lg"
                       color={
                         task.status === "COMPLETED"
                           ? "green"
@@ -230,7 +235,7 @@ const Page = () => {
 
                   <Stack gap="xs">
                     <Group gap="xs" wrap="nowrap">
-                      <ThemeIcon radius="xl" variant="light" color="green">
+                      <ThemeIcon radius="lg" variant="light" color="green">
                         <IoTimeOutline size={14} />
                       </ThemeIcon>
                       <Text size="sm">
@@ -239,7 +244,7 @@ const Page = () => {
                     </Group>
 
                     <Group gap="xs" wrap="nowrap">
-                      <ThemeIcon radius="xl" variant="light" color="blue">
+                      <ThemeIcon radius="lg" variant="light" color="blue">
                         <IoPersonOutline size={14} />
                       </ThemeIcon>
                       <Text size="sm">
@@ -248,7 +253,7 @@ const Page = () => {
                     </Group>
 
                     <Group gap="xs" wrap="nowrap" align="start">
-                      <ThemeIcon radius="xl" variant="light" color="teal">
+                      <ThemeIcon radius="lg" variant="light" color="teal">
                         <IoLocationOutline size={14} />
                       </ThemeIcon>
                       <Text size="sm" c="dimmed">

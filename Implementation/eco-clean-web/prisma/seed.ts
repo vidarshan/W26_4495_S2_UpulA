@@ -10,6 +10,7 @@ import {
 import { faker } from "@faker-js/faker";
 import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcrypt";
+
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is missing");
 }
@@ -23,6 +24,8 @@ const prisma = new PrismaClient({ adapter });
 type SeedMode = "small" | "medium" | "large";
 
 const mode = (process.argv[2] as SeedMode) || "large";
+const DEFAULT_PASSWORD = "Password123!";
+const SEED_TEST_EMAIL = process.env.SEED_TEST_EMAIL?.toLowerCase().trim();
 
 const CONFIG: Record<
   SeedMode,
@@ -71,14 +74,6 @@ const CONFIG: Record<
 
 const cfg = CONFIG[mode];
 
-/**
- * IMPORTANT:
- * If your auth requires bcrypt-hashed passwords, replace this with a hash.
- * For seed/demo purposes, this plain string is fine only if your login flow
- * does not validate hashed passwords.
- */
-const DEFAULT_PASSWORD = "Password123!";
-
 function randInt(min: number, max: number) {
   return faker.number.int({ min, max });
 }
@@ -116,7 +111,11 @@ function uniqueSeedEmail(prefix: string, i: number) {
 }
 
 function fakePhone() {
-  return faker.phone.number("(778) 300-9019");
+  const area = faker.helpers.arrayElement(["604", "778", "236", "672"]);
+  const part1 = faker.number.int({ min: 100, max: 999 });
+  const part2 = faker.number.int({ min: 1000, max: 9999 });
+
+  return `(${area}) ${part1}-${part2}`;
 }
 
 function fakePostalCode() {
@@ -281,7 +280,7 @@ async function resetDatabase() {
 
 async function createUsers() {
   const users: Prisma.UserCreateManyInput[] = [];
-  const PASSWORD = await bcrypt.hash("Password123!", 10);
+  const PASSWORD = await bcrypt.hash(DEFAULT_PASSWORD, 10);
 
   for (let i = 0; i < cfg.adminCount; i++) {
     users.push({
@@ -330,12 +329,17 @@ async function createUsers() {
 }
 
 async function createClients() {
-  const createdClients: { id: string }[] = [];
+  const createdClients: { id: string; email: string }[] = [];
 
   for (let i = 0; i < cfg.clientCount; i++) {
     const firstName = faker.person.firstName();
     const lastName = faker.person.lastName();
     const hasCompany = maybe(0.3);
+
+    const clientEmail =
+      SEED_TEST_EMAIL && i < 3
+        ? SEED_TEST_EMAIL
+        : faker.internet.email({ firstName, lastName }).toLowerCase();
 
     const client = await prisma.client.create({
       data: {
@@ -343,7 +347,7 @@ async function createClients() {
         firstName,
         lastName,
         companyName: hasCompany ? faker.company.name() : null,
-        email: faker.internet.email({ firstName, lastName }).toLowerCase(),
+        email: clientEmail,
         phone: fakePhone(),
         preferredContact: fakePreferredContact(),
         leadSource: maybe(0.75) ? fakeLeadSource() : null,
@@ -397,7 +401,7 @@ async function createClients() {
           ],
         },
       },
-      select: { id: true },
+      select: { id: true, email: true },
     });
 
     createdClients.push(client);
@@ -407,7 +411,7 @@ async function createClients() {
 }
 
 async function createJobsForClients(
-  clients: { id: string }[],
+  clients: { id: string; email: string }[],
   staff: { id: string }[],
 ) {
   let jobsCreated = 0;
@@ -644,6 +648,70 @@ async function createJobsForClients(
   };
 }
 
+async function createGuaranteedReminderTestAppointments(
+  staff: { id: string }[],
+) {
+  if (!SEED_TEST_EMAIL) {
+    console.log(
+      "ℹ️ SEED_TEST_EMAIL not set. Skipping guaranteed reminder test appointments.",
+    );
+    return 0;
+  }
+
+  const clients = await prisma.client.findMany({
+    where: { email: SEED_TEST_EMAIL },
+    take: 3,
+    include: {
+      addresses: {
+        where: { isPrimary: true },
+        take: 1,
+      },
+    },
+  });
+
+  let created = 0;
+
+  for (let i = 0; i < clients.length; i++) {
+    const client = clients[i];
+    const address = client.addresses[0];
+    if (!address) continue;
+
+    const job = await prisma.job.create({
+      data: {
+        title: `Reminder Test Job ${i + 1}`,
+        type: JobType.ONE_OFF,
+        clientId: client.id,
+        addressId: address.id,
+        isAnytime: false,
+        visitInstructions:
+          "Guaranteed seed appointment for 5-day reminder testing.",
+      },
+    });
+
+    const startTime = addHours(addDays(new Date(), 5), 9 + i);
+    const endTime = addHours(startTime, 3);
+
+    await prisma.appointment.create({
+      data: {
+        jobId: job.id,
+        startTime,
+        endTime,
+        status: AppointmentStatus.SCHEDULED,
+        reminder5dSent: false,
+        reminder1dSent: false,
+        completionSent: false,
+        staff: {
+          connect: [{ id: staff[i % staff.length].id }],
+        },
+      },
+    });
+
+    created++;
+  }
+
+  return created;
+}
+
 async function main() {
   console.log(`\n🌱 Eco Clean seed started in "${mode}" mode...\n`);
 
@@ -652,6 +720,8 @@ async function main() {
   const users = await createUsers();
   const clients = await createClients();
   const counts = await createJobsForClients(clients, users.staff);
+  const guaranteedReminderAppointments =
+    await createGuaranteedReminderTestAppointments(users.staff);
 
   const summary = {
     mode,
@@ -659,8 +729,8 @@ async function main() {
     staff: users.staff.length,
     clientUsers: users.clientUsers.length,
     clients: clients.length,
-    jobs: counts.jobsCreated,
-    appointments: counts.appointmentsCreated,
+    jobs: counts.jobsCreated + guaranteedReminderAppointments,
+    appointments: counts.appointmentsCreated + guaranteedReminderAppointments,
     visitNotes: counts.visitNotesCreated,
     appointmentImages: counts.appointmentImagesCreated,
     workSessions: counts.workSessionsCreated,
@@ -668,7 +738,9 @@ async function main() {
     jobNoteImages: counts.jobNoteImagesCreated,
     recurrences: counts.recurrencesCreated,
     lineItems: counts.lineItemsCreated,
+    guaranteedReminderAppointments,
     loginPassword: DEFAULT_PASSWORD,
+    seedTestEmail: SEED_TEST_EMAIL || "(not set)",
   };
 
   console.log("✅ Seed completed successfully\n");
@@ -679,6 +751,12 @@ async function main() {
   console.log("Staff:  staff1@ecoclean.local");
   console.log("Client: client1@ecoclean.local");
   console.log(`Password: ${DEFAULT_PASSWORD}\n`);
+
+  if (SEED_TEST_EMAIL) {
+    console.log(
+      `Guaranteed 5-day reminder test emails will go to: ${SEED_TEST_EMAIL}\n`,
+    );
+  }
 }
 
 main()
