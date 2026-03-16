@@ -134,8 +134,8 @@ export function updateClient(id: string, payload: CreateClientPayload) {
 }
 
 export function createClient(payload: CreateClientPayload) {
-  return apiClient<ClientWithRelations>("/api/clients", {
+  return apiClient<ClientWithRelations, CreateClientPayload>("/api/clients", {
     method: "POST",
-    body: JSON.stringify(payload),
+    body: payload,
   });
 }

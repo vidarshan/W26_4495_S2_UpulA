@@ -1,7 +1,7 @@
-export const runtime = "nodejs";
-import { prisma } from "@/lib/prisma";
-import { NextRequest, NextResponse } from "next/server";
-import { AppointmentStatus, JobType } from "@prisma/client";
+export const runtime = 'nodejs';
+import { prisma } from '@/lib/prisma';
+import { NextRequest, NextResponse } from 'next/server';
+import { AppointmentStatus, JobType } from '@prisma/client';
 
 // Infer tx type from prisma.$transaction callback signature
 type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
@@ -37,9 +37,9 @@ type IncomingBody =
       }>;
 
       recurrence?: {
-        frequency: "weekly" | "monthly";
+        frequency: 'weekly' | 'monthly';
         interval: number;
-        endType: "after" | "on";
+        endType: 'after' | 'on';
         endsAfter?: number | null;
         endsOn?: string | null; // "YYYY-MM-DD"
       } | null;
@@ -51,7 +51,7 @@ type Body = {
   staffId?: string | null;
   addressId?: string | null;
 
-  jobType?: "ONE_OFF" | "RECURRING";
+  jobType?: 'ONE_OFF' | 'RECURRING';
 
   startDate?: string; // e.g. "2026-02-25"
   startTime?: string | null; // e.g. "13:30"
@@ -59,9 +59,9 @@ type Body = {
   isAnytime?: boolean;
 
   recurrence?: {
-    frequency: "weekly" | "monthly";
+    frequency: 'weekly' | 'monthly';
     interval: number;
-    endType: "after" | "on";
+    endType: 'after' | 'on';
     endsAfter?: number | null;
     endsOn?: string | null; // "YYYY-MM-DD"
   } | null;
@@ -71,7 +71,7 @@ type Body = {
 
 async function readJson(req: NextRequest) {
   const raw = (await req.json()) as IncomingBody;
-  if (typeof raw === "string") {
+  if (typeof raw === 'string') {
     try {
       return JSON.parse(raw) as Exclude<IncomingBody, string>;
     } catch {
@@ -95,11 +95,11 @@ function buildStartEndUTC(
 
   if (!isAnytime) {
     if (startTime) {
-      const [h, m] = startTime.split(":");
+      const [h, m] = startTime.split(':');
       start.setUTCHours(Number(h), Number(m), 0, 0);
     }
     if (endTime) {
-      const [h, m] = endTime.split(":");
+      const [h, m] = endTime.split(':');
       end.setUTCHours(Number(h), Number(m), 0, 0);
     } else {
       end.setTime(start.getTime() + 60 * 60 * 1000);
@@ -117,11 +117,49 @@ function buildStartEndUTC(
   return { start, end };
 }
 
+async function createAssignmentsForAppointment(
+  tx: Tx,
+  appointmentId: string,
+  staffIds: string[] | undefined,
+  plannedStart: Date,
+  plannedEnd: Date,
+  notes?: string | null,
+) {
+  if (!staffIds?.length) return;
+
+  const staffProfiles = await tx.staffProfile.findMany({
+    where: {
+      userId: { in: staffIds },
+    },
+    select: {
+      userId: true,
+      hourlyRate: true,
+    },
+  });
+
+  const rateMap = new Map(
+    staffProfiles.map((sp) => [sp.userId, sp.hourlyRate]),
+  );
+
+  await tx.assignment.createMany({
+    data: staffIds.map((staffId) => ({
+      appointmentId,
+      staffId,
+      status: 'PENDING',
+      plannedStart,
+      plannedEnd,
+      hourlyRateAtTime: rateMap.get(staffId) ?? 0,
+      notes: notes?.trim() ? notes.trim() : null,
+    })),
+    skipDuplicates: true,
+  });
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await readJson(req);
     if (!body) {
-      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
     }
 
     const {
@@ -139,16 +177,16 @@ export async function POST(req: NextRequest) {
     if (!title || !clientId || !addressId || !jobType) {
       return NextResponse.json(
         {
-          error: "Missing required fields: title, clientId, addressId, jobType",
+          error: 'Missing required fields: title, clientId, addressId, jobType',
         },
         { status: 400 },
       );
     }
 
     // For ONE_OFF we need at least 1 appointment in the payload
-    if (jobType === "ONE_OFF" && appointments.length === 0) {
+    if (jobType === 'ONE_OFF' && appointments.length === 0) {
       return NextResponse.json(
-        { error: "Missing appointments (need at least one for ONE_OFF)" },
+        { error: 'Missing appointments (need at least one for ONE_OFF)' },
         { status: 400 },
       );
     }
@@ -158,26 +196,24 @@ export async function POST(req: NextRequest) {
     const baseIso =
       appt0?.startDate ??
       (() => {
-        // If recurring but no appointments array is provided, you could require a startDate field.
-        // For now, enforce appointments[0].startDate.
         return undefined;
       })();
 
-    if (jobType === "RECURRING" && !baseIso) {
+    if (jobType === 'RECURRING' && !baseIso) {
       return NextResponse.json(
-        { error: "Missing appointments[0].startDate for RECURRING" },
+        { error: 'Missing appointments[0].startDate for RECURRING' },
         { status: 400 },
       );
     }
 
-    if (jobType === "RECURRING" && !recurrence) {
+    if (jobType === 'RECURRING' && !recurrence) {
       return NextResponse.json(
-        { error: "Missing recurrence data for RECURRING" },
+        { error: 'Missing recurrence data for RECURRING' },
         { status: 400 },
       );
     }
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: Tx) => {
       // 1) Create job
       const job = await tx.job.create({
         data: {
@@ -194,7 +230,7 @@ export async function POST(req: NextRequest) {
       if (lineItems.length) {
         await tx.jobLineItem.createMany({
           data: lineItems
-            .filter((li) => li?.name && typeof li.quantity === "number")
+            .filter((li) => li?.name && typeof li.quantity === 'number')
             .map((li) => {
               const qty = Number(li.quantity ?? 0);
               const unitPrice = li.unitPrice ?? null;
@@ -228,6 +264,7 @@ export async function POST(req: NextRequest) {
           a.endTime ?? null,
           isAnytime,
         );
+
         if (!built) {
           throw new Error(`Invalid appointment.startDate: ${String(iso)}`);
         }
@@ -243,6 +280,16 @@ export async function POST(req: NextRequest) {
               : undefined,
           },
         });
+
+        // Insert assignments for this appointment's staff
+        await createAssignmentsForAppointment(
+          tx,
+          created.id,
+          a.staffId,
+          built.start,
+          built.end,
+          a.notes,
+        );
 
         // VisitNote (your model requires content)
         if (a.notes && a.notes.trim().length) {
@@ -272,16 +319,14 @@ export async function POST(req: NextRequest) {
       };
 
       // 3) Create appointments
-      if (jobType === "ONE_OFF") {
-        // Create one appointment per item in payload
-        // (If you only want the first one, change to appointments.slice(0,1))
+      if (jobType === 'ONE_OFF') {
         const fallbackIsoForAll = appointments[0].startDate!;
         for (const a of appointments) {
           await createAppointmentWithExtras(a, fallbackIsoForAll);
         }
       }
 
-      if (jobType === "RECURRING") {
+      if (jobType === 'RECURRING') {
         const { frequency, interval, endType, endsAfter, endsOn } = recurrence!;
 
         // Store recurrence row
@@ -291,19 +336,19 @@ export async function POST(req: NextRequest) {
             frequency,
             interval,
             endType,
-            endsAfter: endType === "after" ? (endsAfter ?? null) : null,
-            endsOn: endType === "on" && endsOn ? new Date(endsOn) : null,
+            endsAfter: endType === 'after' ? (endsAfter ?? null) : null,
+            endsOn: endType === 'on' && endsOn ? new Date(endsOn) : null,
           },
         });
 
         // Generate appointments
-        // base appointment defines time window
         const baseBuilt = buildStartEndUTC(
           baseIso!,
           appt0?.startTime ?? null,
           appt0?.endTime ?? null,
           isAnytime,
         );
+
         if (!baseBuilt) {
           throw new Error(
             `Invalid base appointments[0].startDate: ${String(baseIso)}`,
@@ -317,12 +362,16 @@ export async function POST(req: NextRequest) {
 
         while (true) {
           if (
-            endType === "after" &&
-            typeof endsAfter === "number" &&
+            endType === 'after' &&
+            typeof endsAfter === 'number' &&
             count >= endsAfter
-          )
+          ) {
             break;
-          if (endType === "on" && endsOn && current > new Date(endsOn)) break;
+          }
+
+          if (endType === 'on' && endsOn && current > new Date(endsOn)) {
+            break;
+          }
 
           const apptStart = new Date(current);
           const apptEnd = new Date(current);
@@ -330,23 +379,59 @@ export async function POST(req: NextRequest) {
             apptStart.getTime() + Math.max(durationMs, 30 * 60 * 1000),
           );
 
-          await tx.appointment.create({
+          const created = await tx.appointment.create({
             data: {
               jobId: job.id,
               startTime: apptStart,
               endTime: apptEnd,
               status: AppointmentStatus.SCHEDULED,
-              // Optional: apply the same staff from appt0 to all occurrences
               staff: appt0?.staffId?.length
                 ? { connect: appt0.staffId.map((id) => ({ id })) }
                 : undefined,
             },
           });
 
-          if (frequency === "weekly")
+          // Insert assignments for recurring appointments too
+          await createAssignmentsForAppointment(
+            tx,
+            created.id,
+            appt0?.staffId,
+            apptStart,
+            apptEnd,
+            appt0?.notes,
+          );
+
+          // Optional note for recurring generated appointments
+          if (appt0?.notes && appt0.notes.trim().length) {
+            await tx.visitNote.create({
+              data: {
+                appointmentId: created.id,
+                content: appt0.notes.trim(),
+                isClientVisible: false,
+              },
+            });
+          }
+
+          // Optional images copied from first appointment
+          if (appt0?.images?.length) {
+            await tx.appointmentImage.createMany({
+              data: appt0.images
+                .filter((img) => img?.url)
+                .map((img) => ({
+                  appointmentId: created.id,
+                  url: img.url,
+                  fileKey: img.fileKey ?? null,
+                })),
+            });
+          }
+
+          if (frequency === 'weekly') {
             current.setUTCDate(current.getUTCDate() + 7 * interval);
-          if (frequency === "monthly")
+          }
+
+          if (frequency === 'monthly') {
             current.setUTCMonth(current.getUTCMonth() + interval);
+          }
 
           count++;
         }
@@ -365,10 +450,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(result, { status: 201 });
   } catch (error: any) {
-    console.error("POST /api/jobs error:", error);
+    console.error('POST /api/jobs error:', error);
     return NextResponse.json(
       {
-        error: "Internal server error",
+        error: 'Internal server error',
         detail: String(error?.message ?? error),
       },
       { status: 500 },
