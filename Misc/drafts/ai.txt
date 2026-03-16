@@ -1,4 +1,40 @@
 AI: ChatGPT 5.3 Plus
+Prompt: Designing automated email reminder system for scheduled appointments
+Value Addition: Helped structure reminder architecture and scheduling logic for automated notifications
+
+AI: ChatGPT 5.3 Plus
+Prompt: Implementing cron-based reminder processing in Next.js API routes
+Value Addition: Enabled scheduled background execution for evaluating upcoming appointments and triggering reminders
+
+AI: ChatGPT 5.3 Plus
+Prompt: Designing multi-stage reminder system (5-day and 1-day reminders)
+Value Addition: Created scalable reminder logic supporting multiple notification intervals
+
+AI: ChatGPT 5.3 Plus
+Prompt: Preventing duplicate reminder emails using database flags
+Value Addition: Introduced reminder state tracking fields (reminder5dSent, reminder1dSent) to ensure idempotent notification behavior
+
+AI: ChatGPT 5.3 Plus
+Prompt: Debugging reminder logic and validating appointment time window calculations
+Value Addition: Resolved scheduling edge cases and ensured accurate reminder triggering
+
+AI: ChatGPT 5.3 Plus
+Prompt: Generating large seed datasets for development and testing
+Value Addition: Enabled efficient testing of scheduling, reminders, and role-based features using realistic test data
+
+AI: ChatGPT 5.3 Plus
+Prompt: Fixing Prisma seed script errors and type mismatches
+Value Addition: Resolved TypeScript issues and ensured successful database seeding
+
+AI: ChatGPT 5.3 Plus
+Prompt: Debugging service worker and notification readiness issues
+Value Addition: Verified correct service worker registration and ensured system readiness for notifications
+
+AI: ChatGPT 5.3 Plus
+Prompt: Validating reminder cron endpoint behavior during development
+Value Addition: Confirmed correct execution of scheduled reminder jobs and email dispatch
+
+AI: ChatGPT 5.3 Plus
 Prompt: Implementing Progressive Web App (PWA) in Next.js application
 Value Addition: Enabled installable web application with manifest configuration and service worker support
 
