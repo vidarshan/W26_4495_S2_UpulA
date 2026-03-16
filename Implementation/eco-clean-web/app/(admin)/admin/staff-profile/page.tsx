@@ -13,49 +13,119 @@ import {
   Text,
   TextInput,
   Title,
+  Loader,
+  Center,
+  Modal,
 } from '@mantine/core';
 import { useRouter } from 'next/navigation';
-import { IoSettingsOutline } from 'react-icons/io5';
+import {
+  IoSettingsOutline,
+  IoPencilOutline,
+  IoCheckmarkOutline,
+  IoCloseOutline,
+} from 'react-icons/io5';
 import { useEffect, useState } from 'react';
 
+type EmergencyContact = {
+  name: string;
+  phoneNumber: string;
+  relationship: string;
+};
+
+type StaffState = {
+  id: string;
+  name: string;
+  staffIdDisplay: string;
+  phone: string;
+  address: string;
+  postalCode: string;
+  emergencyContact: EmergencyContact;
+};
+
 export default function StaffProfilePage() {
-  const [staff, setStaff] = useState<any>(null);
+  const [staff, setStaff] = useState<StaffState | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [emergencyModalOpen, setEmergencyModalOpen] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
-    async function fetchProfile() {
-      try {
-        // In a real app, you'd get the ID from the session.
-        // For testing, use the ID you used in Postman.
-        const response = await fetch(
-          '/api/staff/3b32d468-9f20-4808-9f25-bffabed6a9cb',
-        );
-        const result = await response.json();
-
-        // Map the database fields to your UI
-        setStaff({
-          name: result.name,
-          staffId: result.id.slice(0, 8).toUpperCase(), // Shortened UUID for display
-          phone: result.phone || 'Not Provided',
-          address: result.staffProfile?.postalCode || 'No Postal Code',
-          postalCode: result.staffProfile?.postalCode || '',
-          emergencyContact: 'Not Set',
-        });
-      } catch (error) {
-        console.error('Failed to load profile:', error);
-      } finally {
-        setLoading(false);
-      }
-    }
     fetchProfile();
   }, []);
 
-  // 1. ADD THIS GUARD HERE
-  if (loading) {
+  async function fetchProfile() {
+    try {
+      const response = await fetch('/api/staff/me');
+      const result = await response.json();
+
+      if (!response.ok || !result?.id) {
+        console.error('Invalid profile response:', result);
+        return;
+      }
+
+      setStaff({
+        id: result.id,
+        name: result.name ?? '',
+        staffIdDisplay:
+          result.staffProfile?.staffId ?? result.id.slice(0, 8).toUpperCase(),
+
+        phone: result.phone ?? '',
+
+        address: result.staffProfile?.staffAddress?.street1 ?? '',
+        postalCode: result.staffProfile?.staffAddress?.postalCode ?? '',
+
+        emergencyContact: {
+          name: result.staffProfile?.emergencyContact?.name ?? '',
+          phoneNumber: result.staffProfile?.emergencyContact?.phoneNumber ?? '',
+          relationship:
+            result.staffProfile?.emergencyContact?.relationship ?? '',
+        },
+      });
+    } catch (error) {
+      console.error('Failed to load profile:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const handleSave = async () => {
+    if (!staff) return;
+
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/staff/${staff.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: staff.phone,
+          address: staff.address,
+          postalCode: staff.postalCode,
+          emergencyContact: staff.emergencyContact,
+        }),
+      });
+
+      if (res.ok) {
+        setIsEditing(false);
+        alert('Profile updated successfully!');
+      } else {
+        alert('Failed to update profile.');
+      }
+    } catch (error) {
+      alert('Error saving profile.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading || !staff) {
     return (
-      <Container size="lg" py="xl" style={{ display: 'flex', justifyContent: 'center' }}>
-        <Text>Loading profile...</Text>
+      <Container
+        size="lg"
+        py="xl"
+        style={{ display: 'flex', justifyContent: 'center' }}
+      >
+        <Loader />
       </Container>
     );
   }
@@ -64,31 +134,58 @@ export default function StaffProfilePage() {
     <Container size="lg" py="xl">
       <Group justify="space-between" mb="lg">
         <Title order={2}>Staff Profile</Title>
-
-        <ActionIcon
-          variant="subtle"
-          size="lg"
-          aria-label="Settings"
-          onClick={() => console.log('Open settings')}
-        >
-          <IoSettingsOutline size={22} />
-        </ActionIcon>
+        <Group>
+          {!isEditing ? (
+            <Button
+              leftSection={<IoPencilOutline />}
+              variant="light"
+              onClick={() => setIsEditing(true)}
+            >
+              Edit Profile
+            </Button>
+          ) : (
+            <Group gap="xs">
+              <Button
+                color="green"
+                leftSection={<IoCheckmarkOutline />}
+                loading={saving}
+                onClick={handleSave}
+              >
+                Save
+              </Button>
+              <Button
+                variant="subtle"
+                color="gray"
+                leftSection={<IoCloseOutline />}
+                onClick={() => setIsEditing(false)}
+              >
+                Cancel
+              </Button>
+            </Group>
+          )}
+          <ActionIcon variant="subtle" size="lg">
+            <IoSettingsOutline size={22} />
+          </ActionIcon>
+        </Group>
       </Group>
 
       <Card withBorder radius="md" p="xl">
         <Grid gutter="xl" align="center">
-          {/* Left column: Name / ID / Phone */}
           <Grid.Col span={{ base: 12, md: 4 }}>
             <Stack gap="md">
-              <LabeledField label="Name" value={staff.name} />
-              <LabeledField label="ID" value={staff.staffId} />
-              <LabeledField label="Phone Number" value={staff.phone} />
+              <LabeledField label="Name" value={staff.name} readOnly />
+              <LabeledField label="ID" value={staff.staffIdDisplay} readOnly />
+              <LabeledField
+                label="Phone Number"
+                value={staff.phone}
+                readOnly={!isEditing}
+                onChange={(v) => setStaff({ ...staff, phone: v })}
+              />
             </Stack>
           </Grid.Col>
 
-          {/* Center column: Photo */}
           <Grid.Col span={{ base: 12, md: 4 }}>
-            <Group justify="center">
+            <Center>
               <Box
                 w={220}
                 h={220}
@@ -99,66 +196,141 @@ export default function StaffProfilePage() {
                   border: '2px solid var(--mantine-color-blue-filled)',
                 }}
               >
-                <Avatar
-                  size={200}
-                  radius={200}
-                  color="blue"
-                  variant="light"
-                  // You can set src later: src="/some-photo.jpg"
-                >
+                <Avatar size={200} radius={200} color="blue" variant="light">
                   <Text fw={700} c="blue">
                     Photo
                   </Text>
                 </Avatar>
               </Box>
-            </Group>
+            </Center>
           </Grid.Col>
 
-          {/* Right column: Address / Postal / Emergency */}
           <Grid.Col span={{ base: 12, md: 4 }}>
             <Stack gap="md">
-              <LabeledField label="Address" value={staff.address} />
-              <LabeledField label="Postal Code" value={staff.postalCode} />
               <LabeledField
+                label="Address"
+                value={staff.address}
+                readOnly={!isEditing}
+                onChange={(v) => setStaff({ ...staff, address: v })}
+              />
+
+              <LabeledField
+                label="Postal Code"
+                value={staff.postalCode}
+                readOnly={!isEditing}
+                onChange={(v) => setStaff({ ...staff, postalCode: v })}
+              />
+
+              <ClickableLabeledField
                 label="Emergency Contact"
-                value={staff.emergencyContact}
+                value={staff.emergencyContact.name}
+                onClick={() => setEmergencyModalOpen(true)}
               />
             </Stack>
           </Grid.Col>
         </Grid>
       </Card>
 
-      {/* Bottom buttons */}
       <Grid mt="xl" gutter="lg">
         <Grid.Col span={{ base: 12, sm: 6 }}>
           <BigActionButton onClick={() => router.push('/enter-time')}>
             Enter Time
           </BigActionButton>
         </Grid.Col>
-
         <Grid.Col span={{ base: 12, sm: 6 }}>
           <BigActionButton onClick={() => console.log('Pay stubs')}>
             Pay Stubs
           </BigActionButton>
         </Grid.Col>
-
         <Grid.Col span={{ base: 12, sm: 6 }}>
           <BigActionButton onClick={() => router.push('/enter-availability')}>
             Availability
           </BigActionButton>
         </Grid.Col>
-
         <Grid.Col span={{ base: 12, sm: 6 }}>
           <BigActionButton onClick={() => router.push('/apply-leave')}>
             Apply Leave
           </BigActionButton>
         </Grid.Col>
       </Grid>
+
+      <Modal
+        opened={emergencyModalOpen}
+        onClose={() => setEmergencyModalOpen(false)}
+        title="Emergency Contact"
+        centered
+      >
+        <Stack>
+          <TextInput
+            label="Name"
+            value={staff.emergencyContact.name}
+            readOnly={!isEditing}
+            onChange={(e) =>
+              setStaff({
+                ...staff,
+                emergencyContact: {
+                  ...staff.emergencyContact,
+                  name: e.currentTarget.value,
+                },
+              })
+            }
+          />
+
+          <TextInput
+            label="Phone Number"
+            value={staff.emergencyContact.phoneNumber}
+            readOnly={!isEditing}
+            onChange={(e) =>
+              setStaff({
+                ...staff,
+                emergencyContact: {
+                  ...staff.emergencyContact,
+                  phoneNumber: e.currentTarget.value,
+                },
+              })
+            }
+          />
+
+          <TextInput
+            label="Relationship"
+            value={staff.emergencyContact.relationship}
+            readOnly={!isEditing}
+            onChange={(e) =>
+              setStaff({
+                ...staff,
+                emergencyContact: {
+                  ...staff.emergencyContact,
+                  relationship: e.currentTarget.value,
+                },
+              })
+            }
+          />
+
+          <Group justify="flex-end" mt="md">
+            <Button
+              variant="subtle"
+              onClick={() => setEmergencyModalOpen(false)}
+            >
+              Close
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Container>
   );
 }
 
-function LabeledField({ label, value }: { label: string; value: string }) {
+function LabeledField({
+  label,
+  value,
+  readOnly,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  readOnly?: boolean;
+  onChange?: (value: string) => void;
+}) {
   return (
     <Group gap="sm" align="stretch" wrap="nowrap">
       <Box w={140}>
@@ -177,14 +349,59 @@ function LabeledField({ label, value }: { label: string; value: string }) {
           </Text>
         </Card>
       </Box>
-
-      {/* Display-only field; swap to TextInput for editing later */}
       <TextInput
         value={value}
-        readOnly
+        readOnly={readOnly}
+        onChange={(e) => onChange?.(e.currentTarget.value)}
+        variant={readOnly ? 'default' : 'filled'}
         styles={{ input: { height: 44 } }}
         w="100%"
       />
+    </Group>
+  );
+}
+
+function ClickableLabeledField({
+  label,
+  value,
+  onClick,
+}: {
+  label: string;
+  value: string;
+  onClick: () => void;
+}) {
+  return (
+    <Group gap="sm" align="stretch" wrap="nowrap">
+      <Box w={140}>
+        <Card
+          radius="sm"
+          p="sm"
+          withBorder
+          style={{
+            background: 'var(--mantine-color-blue-filled)',
+            color: 'var(--mantine-color-white)',
+            textAlign: 'center',
+          }}
+        >
+          <Text fw={700} size="sm">
+            {label}
+          </Text>
+        </Card>
+      </Box>
+      <Button
+        variant="default"
+        onClick={onClick}
+        styles={{
+          root: {
+            height: 44,
+            justifyContent: 'flex-start',
+            width: '100%',
+            fontWeight: 400,
+          },
+        }}
+      >
+        {value || 'Add emergency contact'}
+      </Button>
     </Group>
   );
 }
@@ -202,12 +419,7 @@ function BigActionButton({
       size="lg"
       radius="md"
       onClick={onClick}
-      styles={{
-        root: {
-          height: 56,
-          fontWeight: 700,
-        },
-      }}
+      styles={{ root: { height: 56, fontWeight: 700 } }}
     >
       {children}
     </Button>

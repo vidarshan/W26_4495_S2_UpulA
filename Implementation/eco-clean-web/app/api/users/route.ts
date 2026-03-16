@@ -1,40 +1,40 @@
-export const runtime = "nodejs";
-import { prisma } from "@/lib/prisma";
-import { getAuthSession } from "@/lib/session";
-import { NextResponse } from "next/server";
-import bcrypt from "bcrypt";
-import crypto from "crypto";
+export const runtime = 'nodejs';
+import { prisma } from '@/lib/prisma';
+import { getAuthSession } from '@/lib/session';
+import { NextResponse } from 'next/server';
+import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 
-type Role = "ADMIN" | "STAFF";
+type Role = 'ADMIN' | 'STAFF';
 export async function GET(req: Request) {
   const session = await getAuthSession();
 
-  if (!session || session.user.role !== "ADMIN") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!session || session.user.role !== 'ADMIN') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   try {
     const { searchParams } = new URL(req.url);
 
-    const q = searchParams.get("q")?.trim() || "";
-    const page = Number(searchParams.get("page") || 1);
-    const limit = Number(searchParams.get("limit") || 20);
-    const sort = searchParams.get("sort") || "newest";
-    const paginate = searchParams.get("paginate") !== "false";
+    const q = searchParams.get('q')?.trim() || '';
+    const page = Number(searchParams.get('page') || 1);
+    const limit = Number(searchParams.get('limit') || 20);
+    const sort = searchParams.get('sort') || 'newest';
+    const paginate = searchParams.get('paginate') !== 'false';
 
     const skip = (page - 1) * limit;
 
     const where = q
       ? {
           OR: [
-            { name: { contains: q, mode: "insensitive" as const } },
-            { email: { contains: q, mode: "insensitive" as const } },
+            { name: { contains: q, mode: 'insensitive' as const } },
+            { email: { contains: q, mode: 'insensitive' as const } },
           ],
         }
       : undefined;
 
     const orderBy = {
-      createdAt: sort === "oldest" ? ("asc" as const) : ("desc" as const),
+      createdAt: sort === 'oldest' ? ('asc' as const) : ('desc' as const),
     };
 
     const baseSelect = {
@@ -79,9 +79,9 @@ export async function GET(req: Request) {
       },
     });
   } catch (error) {
-    console.error("GET /users failed:", error);
+    console.error('GET /users failed:', error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: 'Internal server error' },
       { status: 500 },
     );
   }
@@ -90,18 +90,11 @@ export async function GET(req: Request) {
 function generatePassword(length = 14) {
   return crypto
     .randomBytes(Math.ceil((length * 3) / 4))
-    .toString("base64url")
+    .toString('base64url')
     .slice(0, length);
 }
 
 export async function POST(req: Request) {
-  // const session = await getAuthSession();
-
-  // Uncomment when ready:
-  // if (!session || session.user.role !== "ADMIN") {
-  //   return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  // }
-
   const body = (await req.json()) as {
     name?: string;
     email?: string;
@@ -112,20 +105,39 @@ export async function POST(req: Request) {
 
   if (!name || !email || !role) {
     return NextResponse.json(
-      { error: "Missing required fields" },
-      { status: 400 },
+      { error: 'Missing required fields' },
+      { status: 400 }
     );
   }
 
   const tempPassword = generatePassword(14);
   const hashedPassword = await bcrypt.hash(tempPassword, 10);
 
+  const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+  const staffId = `STF-ECO-${randomSuffix}`;
+  const minWage = 18.5;
+
   const user = await prisma.user.create({
     data: {
       name,
+<<<<<<< Updated upstream
       email: email.toLowerCase().trim(),
       role,
       password: hashedPassword,
+=======
+      email,
+      role,
+      password: hashedPassword,
+      ...(role === 'STAFF' && {
+        staffProfile: {
+          create: {
+            staffId,
+            hourlyRate: minWage,
+            position: null,
+          },
+        },
+      }),
+>>>>>>> Stashed changes
     },
     select: {
       id: true,
@@ -133,9 +145,16 @@ export async function POST(req: Request) {
       email: true,
       role: true,
       createdAt: true,
+      staffProfile: {
+        select: {
+          id: true,
+          staffId: true,
+          position: true,
+          hourlyRate: true,
+        },
+      },
     },
   });
 
-  // return tempPassword only once (admin can copy)
   return NextResponse.json({ user, tempPassword }, { status: 201 });
 }

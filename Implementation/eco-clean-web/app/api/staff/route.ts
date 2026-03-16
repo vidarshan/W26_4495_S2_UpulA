@@ -13,67 +13,6 @@ function generatePassword(length = 14) {
     .slice(0, length);
 }
 
-export async function POST(req: Request) {
-  const session = await getAuthSession();
-
-  // 1. Match security: Only Admins should create staff profiles
-//   if (!session || session.user.role !== "ADMIN") {
-//     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-//   }
-
-  try {
-    const body = await req.json();
-    const { name, email, postalCode, hourlyRate } = body;
-
-    // 2. Validation
-    if (!name || !email || !postalCode) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
-    }
-
-    // 3. Security: Generate and hash password exactly like users/route.ts
-    const tempPassword = generatePassword(14);
-    const hashedPassword = await bcrypt.hash(tempPassword, 10);
-
-    // 4. Atomic Transaction: User + Profile
-    const result = await prisma.$transaction(async (tx) => {
-      const user = await tx.user.create({
-        data: {
-          name,
-          email,
-          role: "STAFF", // Hardcoded for this route
-          password: hashedPassword,
-        },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          role: true,
-          createdAt: true,
-        },
-      });
-
-      const profile = await tx.staffProfile.create({
-        data: {
-          userId: user.id,
-          postalCode,
-          hourlyRate: Number(hourlyRate) || 0,
-        },
-      });
-
-      return { user, profile };
-    });
-
-    // 5. Return tempPassword only once for the Admin to copy
-    return NextResponse.json({ ...result, tempPassword }, { status: 201 });
-
-  } catch (error: any) {
-    if (error.code === 'P2002') {
-      return NextResponse.json({ error: "Email already exists" }, { status: 400 });
-    }
-    console.error("Staff Creation failed:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
-}
 
 
 export async function GET(req: Request) {
