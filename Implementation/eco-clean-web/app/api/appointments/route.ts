@@ -1,11 +1,14 @@
 export const runtime = "nodejs";
+
 import { NextRequest, NextResponse } from "next/server";
+import { AppointmentStatus, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 function colorFromString(input: string) {
   let hash = 0;
-  for (let i = 0; i < input.length; i++)
+  for (let i = 0; i < input.length; i++) {
     hash = input.charCodeAt(i) + ((hash << 5) - hash);
+  }
   const hue = Math.abs(hash) % 360;
   return `hsl(${hue}, 60%, 35%)`;
 }
@@ -14,10 +17,12 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
 
+    const search = searchParams.get("search")?.trim();
+    const status = searchParams.get("status");
     const startParam = searchParams.get("start");
     const endParam = searchParams.get("end");
     const staffId = searchParams.get("staffId");
-    const view = searchParams.get("view"); // "calendar" | "tasks"
+    const view = searchParams.get("view");
 
     if (!startParam || !endParam) {
       return NextResponse.json(
@@ -39,11 +44,69 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    const andFilters: Prisma.AppointmentWhereInput[] = [
+      { startTime: { lt: rangeEnd } },
+      { endTime: { gt: rangeStart } },
+    ];
+
+    if (status) {
+      andFilters.push({
+        status: status as AppointmentStatus,
+      });
+    }
+
+    if (search) {
+      andFilters.push({
+        OR: [
+          {
+            job: {
+              title: {
+                contains: search,
+                mode: Prisma.QueryMode.insensitive,
+              },
+            },
+          },
+          {
+            job: {
+              client: {
+                firstName: {
+                  contains: search,
+                  mode: Prisma.QueryMode.insensitive,
+                },
+              },
+            },
+          },
+          {
+            job: {
+              client: {
+                lastName: {
+                  contains: search,
+                  mode: Prisma.QueryMode.insensitive,
+                },
+              },
+            },
+          },
+          {
+            job: {
+              client: {
+                companyName: {
+                  contains: search,
+                  mode: Prisma.QueryMode.insensitive,
+                },
+              },
+            },
+          },
+        ],
+      });
+    }
+
+    const where: Prisma.AppointmentWhereInput = {
+      AND: andFilters,
+      ...(staffId ? { staff: { some: { id: staffId } } } : {}),
+    };
+
     const appointments = await prisma.appointment.findMany({
-      where: {
-        AND: [{ startTime: { lt: rangeEnd } }, { endTime: { gt: rangeStart } }],
-        ...(staffId ? { staff: { some: { id: staffId } } } : {}),
-      },
+      where,
       include: {
         job: { include: { client: true, address: true } },
         staff: { select: { id: true, name: true, email: true } },
@@ -53,12 +116,10 @@ export async function GET(req: NextRequest) {
       orderBy: { startTime: "asc" },
     });
 
-    // Staff tasks screen / detailed list
     if (view === "tasks") {
       return NextResponse.json(appointments);
     }
 
-    // FullCalendar feed
     const events = appointments.map((a) => ({
       id: a.id,
       title: `${a.job.title} - ${a.job.client.firstName}`,
@@ -67,7 +128,8 @@ export async function GET(req: NextRequest) {
       extendedProps: {
         jobId: a.jobId,
         status: a.status,
-        staff: a.staff,
+        staffNames: a.staff.map((member) => member.name).join(", "),
+        staffMembers: a.staff,
       },
     }));
 

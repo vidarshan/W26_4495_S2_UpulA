@@ -86,6 +86,7 @@ model Appointment {
   createdAt      DateTime           @default(now()) @db.Timestamptz(6)
   completionSent Boolean            @default(false)
   reminder1dSent Boolean            @default(false)
+  reminder3dSent Boolean            @default(false)
   reminder5dSent Boolean            @default(false)
   jobId          String
   timeSpent      Int?
