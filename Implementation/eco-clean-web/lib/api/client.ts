@@ -136,6 +136,6 @@ export function updateClient(id: string, payload: CreateClientPayload) {
 export function createClient(payload: CreateClientPayload) {
   return apiClient<ClientWithRelations>("/api/clients", {
     method: "POST",
-    body: JSON.stringify(payload),
+    body: payload,
   });
 }
