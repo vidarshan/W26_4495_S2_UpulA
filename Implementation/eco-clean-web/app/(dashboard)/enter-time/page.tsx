@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import {
   ActionIcon,
@@ -13,125 +13,231 @@ import {
   Table,
   Text,
   Title,
-} from "@mantine/core";
-import { useMemo, useState } from "react";
-import { IoClipboardOutline, IoChevronDown } from "react-icons/io5";
+  Loader,
+  Center,
+} from '@mantine/core';
+import { useMemo, useState, useEffect } from 'react';
+import { IoClipboardOutline, IoChevronDown } from 'react-icons/io5';
 
 type Week = 1 | 2;
 
-type DayCell = {
-  dow: string; // Sun, Mon...
-  dateLabel: string; // Feb 15
-  isToday?: boolean;
-  hours: string; // "0:00"
+type PayPeriod = {
+  id: string;
+  startDate: string;
+  endDate: string;
 };
 
-const PAY_PERIODS = [
-  { value: "2026-02-15_2026-02-28", label: "15-02-2026 – 28-02-2026" },
-  { value: "2026-03-01_2026-03-14", label: "01-03-2026 – 14-03-2026" },
-];
+type DayCell = {
+  dow: string;
+  dateLabel: string;
+  fullDate: Date;
+  isToday?: boolean;
+  hours: string;
+};
+
+function toDateKey(date: Date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function formatMinutesToHHMM(totalMinutes: number) {
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${hours}:${String(minutes).padStart(2, '0')}`;
+}
 
 export default function EnterTimePage() {
-  const [payPeriod, setPayPeriod] = useState<string | null>(PAY_PERIODS[0].value);
-  const [week, setWeek] = useState<Week>(1);
+  const [allPeriods, setAllPeriods] = useState<PayPeriod[]>([]);
+  const [payPeriodOptions, setPayPeriodOptions] = useState<
+    { value: string; label: string }[]
+  >([]);
+  const [payPeriodId, setPayPeriodId] = useState<string | null>(null);
+  const [loadingPeriods, setLoadingPeriods] = useState(true);
 
-  // modal state for "day details"
-  const [openDay, setOpenDay] = useState<{ week: Week; idx: number } | null>(null);
+  const [dayMinutes, setDayMinutes] = useState<Record<string, number>>({});
+  const [loadingEntries, setLoadingEntries] = useState(false);
+
+  const [week, setWeek] = useState<Week>(1);
+  const [openDay, setOpenDay] = useState<{ week: Week; idx: number } | null>(
+    null,
+  );
+
+  useEffect(() => {
+    async function fetchRelevantPeriods() {
+      try {
+        const res = await fetch('/api/timesheet-periods');
+        const fetched: PayPeriod[] = await res.json();
+        setAllPeriods(fetched);
+
+        const now = new Date();
+        const currentIndex = fetched.findIndex((p) => {
+          const start = new Date(p.startDate);
+          const end = new Date(p.endDate);
+          return now >= start && now <= end;
+        });
+
+        if (currentIndex !== -1) {
+          const startIdx = Math.max(0, currentIndex - 1);
+          const endIdx = Math.min(fetched.length, currentIndex + 3);
+          const filtered = fetched.slice(startIdx, endIdx);
+
+          const options = filtered.map((p) => ({
+            value: p.id,
+            label: `${new Date(p.startDate).toLocaleDateString('en-GB')} to ${new Date(p.endDate).toLocaleDateString('en-GB')}`,
+          }));
+
+          setPayPeriodOptions(options);
+
+          const defaultIdx = currentIndex === 0 ? 0 : 1;
+          setPayPeriodId(options[defaultIdx]?.value ?? null);
+        }
+      } catch (error) {
+        console.error('Failed to load periods:', error);
+      } finally {
+        setLoadingPeriods(false);
+      }
+    }
+
+    fetchRelevantPeriods();
+  }, []);
+
+  useEffect(() => {
+    async function fetchTimesheetEntries() {
+      const selected = allPeriods.find((p) => p.id === payPeriodId);
+
+      if (!selected) {
+        setDayMinutes({});
+        return;
+      }
+
+      try {
+        setLoadingEntries(true);
+
+        const res = await fetch(
+          `/api/staff/time-sheet?startDate=${encodeURIComponent(selected.startDate)}&endDate=${encodeURIComponent(selected.endDate)}`,
+        );
+
+        const result = await res.json();
+
+        if (!res.ok) {
+          console.error('Failed to load timesheet entries:', result.error);
+          setDayMinutes({});
+          return;
+        }
+
+        setDayMinutes(result.dailyTotals ?? {});
+      } catch (error) {
+        console.error('Failed to load timesheet entries:', error);
+        setDayMinutes({});
+      } finally {
+        setLoadingEntries(false);
+      }
+    }
+
+    if (payPeriodId && allPeriods.length > 0) {
+      fetchTimesheetEntries();
+    }
+  }, [payPeriodId, allPeriods]);
 
   const days = useMemo(() => {
-    // Mocked UI data to match your screenshots.
-    // Replace later with real data from DB/API.
-    const week1: DayCell[] = [
-      { dow: "Sun", dateLabel: "Feb 15", hours: "0:00" },
-      { dow: "Mon", dateLabel: "Feb 16", hours: "0:00" },
-      { dow: "Tue", dateLabel: "Today", isToday: true, hours: "0:00" },
-      { dow: "Wed", dateLabel: "Feb 18", hours: "0:00" },
-      { dow: "Thu", dateLabel: "Feb 19", hours: "0:00" },
-      { dow: "Fri", dateLabel: "Feb 20", hours: "0:00" },
-      { dow: "Sat", dateLabel: "Feb 21", hours: "0:00" },
-    ];
+    const selected = allPeriods.find((p) => p.id === payPeriodId);
+    if (!selected) return { 1: [], 2: [] as DayCell[] };
 
-    const week2: DayCell[] = [
-      { dow: "Sun", dateLabel: "Feb 22", hours: "0:00" },
-      { dow: "Mon", dateLabel: "Feb 23", hours: "0:00" },
-      { dow: "Tue", dateLabel: "Feb 24", hours: "0:00" },
-      { dow: "Wed", dateLabel: "Feb 25", hours: "0:00" },
-      { dow: "Thu", dateLabel: "Feb 26", hours: "0:00" },
-      { dow: "Fri", dateLabel: "Feb 27", hours: "0:00" },
-      { dow: "Sat", dateLabel: "Feb 28", hours: "0:00" },
-    ];
+    const startDate = new Date(selected.startDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-    return { 1: week1, 2: week2 } as const;
-  }, []);
+    const generateWeek = (weekNum: number): DayCell[] => {
+      const weekDays: DayCell[] = [];
+      const offset = (weekNum - 1) * 7;
+
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(startDate);
+        d.setDate(d.getDate() + offset + i);
+        d.setHours(0, 0, 0, 0);
+
+        const isToday = d.getTime() === today.getTime();
+        const key = toDateKey(d);
+        const minutes = dayMinutes[key] ?? 0;
+
+        weekDays.push({
+          dow: d.toLocaleDateString('en-US', { weekday: 'short' }),
+          dateLabel: isToday
+            ? 'Today'
+            : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          fullDate: d,
+          isToday,
+          hours: formatMinutesToHHMM(minutes),
+        });
+      }
+
+      return weekDays;
+    };
+
+    return {
+      1: generateWeek(1),
+      2: generateWeek(2),
+    };
+  }, [payPeriodId, allPeriods, dayMinutes]);
 
   const activeDays = days[week];
 
-  const totalHours = useMemo(() => {
-    // Placeholder: if you store minutes later, compute total properly.
-    return "0:00";
-  }, [week, payPeriod]);
-
-  const goWeek1 = () => setWeek(1);
-  const goWeek2 = () => setWeek(2);
-  const next = () => setWeek(2);
-  const prev = () => setWeek(1);
+  if (loadingPeriods) {
+    return (
+      <Center h="80vh">
+        <Loader size="xl" color="green" />
+      </Center>
+    );
+  }
 
   return (
     <Container size="lg" py="xl">
       <Stack gap="xl">
-        {/* Header controls */}
         <Group justify="center" gap="xl">
           <Text fw={600}>Pay Period</Text>
-
           <Box w={420}>
             <Select
-              value={payPeriod}
-              onChange={setPayPeriod}
-              data={PAY_PERIODS}
+              value={payPeriodId}
+              onChange={setPayPeriodId}
+              data={payPeriodOptions}
               rightSection={<IoChevronDown size={18} />}
               styles={{
-                input: {
-                  height: 52,
-                  fontWeight: 700,
-                  textAlign: "center",
-                },
+                input: { height: 52, fontWeight: 700, textAlign: 'center' },
               }}
             />
           </Box>
         </Group>
 
-        {/* Week toggle */}
         <Group justify="center" gap="md">
           <Button
             size="lg"
             radius="md"
-            color={week === 1 ? "green" : "gray"}
-            variant="filled"
-            onClick={goWeek1}
+            color={week === 1 ? 'green' : 'gray'}
+            onClick={() => setWeek(1)}
             styles={{ root: { width: 240, height: 56, fontWeight: 700 } }}
           >
             Week 1
           </Button>
-
           <Button
             size="lg"
             radius="md"
-            color={week === 2 ? "green" : "gray"}
-            variant="filled"
-            onClick={goWeek2}
+            color={week === 2 ? 'green' : 'gray'}
+            onClick={() => setWeek(2)}
             styles={{ root: { width: 240, height: 56, fontWeight: 700 } }}
           >
             Week 2
           </Button>
         </Group>
 
-        {/* Main card */}
         <Paper withBorder radius="md" p="xl">
-          <Title order={3} mb="lg">
-            My hours for this week
-          </Title>
+          <Group justify="space-between" mb="lg">
+            <Title order={3}>My hours for this week</Title>
+            {loadingEntries && <Loader size="sm" color="green" />}
+          </Group>
 
-          <Box style={{ overflowX: "auto" }}>
+          <Box style={{ overflowX: 'auto' }}>
             <Table
               withRowBorders
               withColumnBorders={false}
@@ -143,11 +249,11 @@ export default function EnterTimePage() {
                 <Table.Tr>
                   <Table.Th />
                   {activeDays.map((d, i) => (
-                    <Table.Th key={i} style={{ textAlign: "center" }}>
+                    <Table.Th key={i} style={{ textAlign: 'center' }}>
                       <Text size="sm" c="dimmed">
                         {d.dow}
                       </Text>
-                      <Text fw={800} c={d.isToday ? "blue" : undefined}>
+                      <Text fw={800} c={d.isToday ? 'blue' : undefined}>
                         {d.dateLabel}
                       </Text>
                     </Table.Th>
@@ -160,9 +266,8 @@ export default function EnterTimePage() {
                   <Table.Td>
                     <Text fw={700}>General</Text>
                   </Table.Td>
-
                   {activeDays.map((d, i) => (
-                    <Table.Td key={i} style={{ textAlign: "center" }}>
+                    <Table.Td key={i} style={{ textAlign: 'center' }}>
                       <Text fw={700}>{d.hours}</Text>
                     </Table.Td>
                   ))}
@@ -172,9 +277,8 @@ export default function EnterTimePage() {
                   <Table.Td>
                     <Text fw={700}>Total Hours:</Text>
                   </Table.Td>
-
                   {activeDays.map((d, i) => (
-                    <Table.Td key={i} style={{ textAlign: "center" }}>
+                    <Table.Td key={i} style={{ textAlign: 'center' }}>
                       <Text fw={700}>{d.hours}</Text>
                     </Table.Td>
                   ))}
@@ -183,14 +287,21 @@ export default function EnterTimePage() {
             </Table>
           </Box>
 
-          {/* Icon row (clickable day details) */}
-          <Group justify="space-between" mt="lg" px="sm" style={{ minWidth: 860 }}>
+          <Group
+            justify="space-between"
+            mt="lg"
+            px="sm"
+            style={{ minWidth: 860 }}
+          >
             {activeDays.map((_, i) => (
-              <Box key={i} w={100} style={{ display: "flex", justifyContent: "center" }}>
+              <Box
+                key={i}
+                w={100}
+                style={{ display: 'flex', justifyContent: 'center' }}
+              >
                 <ActionIcon
                   variant="subtle"
                   size={56}
-                  aria-label="View day details"
                   onClick={() => setOpenDay({ week, idx: i })}
                 >
                   <IoClipboardOutline size={40} />
@@ -200,14 +311,13 @@ export default function EnterTimePage() {
           </Group>
         </Paper>
 
-        {/* Footer nav buttons */}
         <Group justify="flex-end" gap="lg">
           {week === 1 ? (
             <Button
               size="xl"
               radius="md"
               color="green"
-              onClick={next}
+              onClick={() => setWeek(2)}
               styles={{ root: { width: 260, height: 64, fontWeight: 800 } }}
             >
               Next
@@ -219,17 +329,16 @@ export default function EnterTimePage() {
                 radius="md"
                 color="green"
                 variant="filled"
-                onClick={prev}
+                onClick={() => setWeek(1)}
                 styles={{ root: { width: 260, height: 64, fontWeight: 800 } }}
               >
                 Previous
               </Button>
-
               <Button
                 size="xl"
                 radius="md"
                 color="dark"
-                onClick={() => console.log("Submit timesheet")}
+                onClick={() => console.log('Submit timesheet')}
                 styles={{ root: { width: 260, height: 64, fontWeight: 800 } }}
               >
                 Submit
@@ -239,29 +348,30 @@ export default function EnterTimePage() {
         </Group>
       </Stack>
 
-      {/* Day details modal */}
       <Modal
         opened={openDay !== null}
         onClose={() => setOpenDay(null)}
         title="Day details"
         centered
       >
-        {openDay ? (
+        {openDay && (
           <Stack gap="sm">
             <Text>
-              <b>Week:</b> {openDay.week}
+              <b>Date:</b>{' '}
+              {activeDays[openDay.idx]?.fullDate.toLocaleDateString()}
             </Text>
             <Text>
-              <b>Day:</b> {activeDays[openDay.idx]?.dow} — {activeDays[openDay.idx]?.dateLabel}
+              <b>Day:</b> {activeDays[openDay.idx]?.dow}
             </Text>
-
+            <Text>
+              <b>Hours:</b> {activeDays[openDay.idx]?.hours}
+            </Text>
             <Text c="dimmed" size="sm">
-              This is where you’ll show entered jobs/appointments, time blocks, notes, etc.
+              Loaded from assignment planned time for the selected pay period.
             </Text>
-
             <Button onClick={() => setOpenDay(null)}>Close</Button>
           </Stack>
-        ) : null}
+        )}
       </Modal>
     </Container>
   );
