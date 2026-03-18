@@ -1,16 +1,12 @@
-import { prisma } from '@/lib/prisma';
-import { getAuthSession } from '@/lib/session';
-import { NextResponse } from 'next/server';
+import { prisma } from "@/lib/prisma";
+import { getAuthSession } from "@/lib/session";
+import { NextResponse } from "next/server";
 
 export async function GET() {
   const session = await getAuthSession();
 
-  console.log('session:', session);
-  console.log('session user id:', session?.user?.id);
-  console.log('session user role:', session?.user?.role);
-
   if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const staffMember = await prisma.user.findUnique({
@@ -24,13 +20,17 @@ export async function GET() {
       staffProfile: {
         select: {
           id: true,
-          staffId: true,
+          userId: true,
           position: true,
           hourlyRate: true,
           staffAddress: {
             select: {
               street1: true,
+              street2: true,
+              city: true,
+              province: true,
               postalCode: true,
+              country: true,
             },
           },
           emergencyContact: {
@@ -45,8 +45,8 @@ export async function GET() {
     },
   });
 
-  if (!staffMember || staffMember.role !== 'STAFF') {
-    return NextResponse.json({ error: 'Staff not found' }, { status: 404 });
+  if (!staffMember || staffMember.role !== "STAFF") {
+    return NextResponse.json({ error: "Staff not found" }, { status: 404 });
   }
 
   return NextResponse.json(staffMember);

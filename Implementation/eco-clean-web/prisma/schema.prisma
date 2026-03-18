@@ -265,6 +265,8 @@ model Assignment {
   staffId       String
   status        AssignmentStatus @default(PENDING)
   plannedStart  DateTime?        @db.Timestamptz(6)
+  hourlyRateAtTime Float            @default(0)
+  breakMinutes Int @default(0)
   plannedEnd    DateTime?        @db.Timestamptz(6)
   notes         String?
   createdAt     DateTime         @default(now())

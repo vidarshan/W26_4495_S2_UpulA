@@ -9,14 +9,14 @@ import { NextResponse } from "next/server";
  */
 export async function GET(
   req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await getAuthSession();
 
-//   // Security check: Only Admins can view full staff details
-//   if (!session || session.user.role !== "ADMIN") {
-//     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-//   }
+  //   // Security check: Only Admins can view full staff details
+  //   if (!session || session.user.role !== "ADMIN") {
+  //     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  //   }
 
   try {
     // UNWRAP the dynamic route params
@@ -30,26 +30,37 @@ export async function GET(
         email: true,
         role: true,
         createdAt: true,
-        // Join the StaffProfile table
         staffProfile: {
           select: {
             id: true,
-            postalCode: true,
+            userId: true,
+            position: true,
             hourlyRate: true,
-          }
-        }
-      }
+            staffAddress: {
+              select: {
+                postalCode: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     // Ensure the user exists and is actually a staff member
     if (!staffMember || staffMember.role !== "STAFF") {
-      return NextResponse.json({ error: "Staff member not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Staff member not found" },
+        { status: 404 },
+      );
     }
 
     return NextResponse.json(staffMember);
   } catch (error) {
     console.error("GET staff by ID failed:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
   }
 }
 
@@ -59,7 +70,7 @@ export async function GET(
  */
 export async function PATCH(
   req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await getAuthSession();
 
@@ -72,10 +83,8 @@ export async function PATCH(
     const body = await req.json();
     const { name, email, postalCode, hourlyRate } = body;
 
-    // Use a transaction to ensure atomic updates across both tables
     const updatedStaff = await prisma.$transaction(async (tx) => {
-      // 1. Update core User fields
-      const user = await tx.user.update({
+      await tx.user.update({
         where: { id },
         data: {
           ...(name && { name }),
@@ -83,26 +92,63 @@ export async function PATCH(
         },
       });
 
-      // 2. Upsert the StaffProfile (Create if it doesn't exist, update if it does)
       const profile = await tx.staffProfile.upsert({
         where: { userId: id },
         update: {
-          ...(postalCode && { postalCode }),
           ...(hourlyRate !== undefined && { hourlyRate: Number(hourlyRate) }),
         },
         create: {
           userId: id,
-          postalCode: postalCode || null,
           hourlyRate: Number(hourlyRate) || 0,
         },
       });
 
-      return { ...user, staffProfile: profile };
+      if (postalCode !== undefined) {
+        await tx.staffAddress.upsert({
+          where: { staffProfileId: profile.id },
+          update: {
+            postalCode,
+          },
+          create: {
+            staffProfileId: profile.id,
+            street1: "",
+            city: "",
+            province: "",
+            country: "",
+            postalCode: postalCode || null,
+          },
+        });
+      }
+
+      return tx.user.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          createdAt: true,
+          staffProfile: {
+            select: {
+              id: true,
+              hourlyRate: true,
+              staffAddress: {
+                select: {
+                  postalCode: true,
+                },
+              },
+            },
+          },
+        },
+      });
     });
 
     return NextResponse.json(updatedStaff);
   } catch (error) {
     console.error("PATCH staff failed:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
   }
 }

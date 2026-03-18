@@ -159,26 +159,24 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { jobId, startTime, endTime, status, staffIds } = body;
 
-    // 1. Basic Validation
     if (!jobId || !startTime || !endTime) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 },
+      );
     }
 
-    // 2. Transaction to link Appointment and Staff (Assignment)
-    const newAppointment = await prisma.$transaction(async (tx) => {
+    const appointmentId = await prisma.$transaction(async (tx) => {
       const appt = await tx.appointment.create({
         data: {
           jobId,
           startTime: new Date(startTime),
           endTime: new Date(endTime),
           status: status || "SCHEDULED",
-          // Note: If using the original implicit many-to-many relation:
-          staff: staffIds ? { connect: staffIds.map((id: string) => ({ id })) } : undefined,
         },
       });
 
-      // 3. Optional: If using the new Assignment model, create those here too
-      if (staffIds && Array.isArray(staffIds)) {
+      if (Array.isArray(staffIds) && staffIds.length > 0) {
         await tx.assignment.createMany({
           data: staffIds.map((sid: string) => ({
             appointmentId: appt.id,
@@ -190,12 +188,31 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      return appt;
+      return appt.id;
     });
 
-    return NextResponse.json(newAppointment, { status: 201 });
+    const createdAppointment = await prisma.appointment.findUnique({
+      where: { id: appointmentId },
+      include: {
+        job: { include: { client: true, address: true } },
+        assignments: {
+          include: {
+            staff: {
+              select: { id: true, name: true, email: true },
+            },
+          },
+        },
+        images: true,
+        notes: true,
+      },
+    });
+
+    return NextResponse.json(createdAppointment, { status: 201 });
   } catch (error) {
     console.error("POST Appointment Error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
   }
 }
