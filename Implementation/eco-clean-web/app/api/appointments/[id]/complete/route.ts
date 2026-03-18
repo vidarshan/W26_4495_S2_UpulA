@@ -1,5 +1,7 @@
 export const runtime = "nodejs";
+
 import { prisma } from "@/lib/prisma";
+import { AppointmentStatus } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(
@@ -9,7 +11,31 @@ export async function POST(
   try {
     const { id: appointmentId } = await params;
 
+    if (!appointmentId) {
+      return NextResponse.json(
+        { error: "Missing appointment id" },
+        { status: 400 },
+      );
+    }
+
     const result = await prisma.$transaction(async (tx) => {
+      const appointment = await tx.appointment.findUnique({
+        where: { id: appointmentId },
+        select: { id: true, status: true },
+      });
+
+      if (!appointment) {
+        throw new Error("Appointment not found");
+      }
+
+      if (appointment.status === AppointmentStatus.CANCELLED) {
+        throw new Error("Cancelled appointment cannot be completed");
+      }
+
+      if (appointment.status === AppointmentStatus.COMPLETED) {
+        throw new Error("Appointment is already completed");
+      }
+
       const activeSession = await tx.appointmentWorkSession.findFirst({
         where: {
           appointmentId,
@@ -33,39 +59,80 @@ export async function POST(
 
       const totalSeconds = allSessions.reduce((sum, s) => {
         if (!s.endedAt) return sum;
+
         const diff = Math.max(
           0,
           Math.floor((s.endedAt.getTime() - s.startedAt.getTime()) / 1000),
         );
+
         return sum + diff;
       }, 0);
 
       await tx.appointment.update({
         where: { id: appointmentId },
         data: {
-          status: "COMPLETED",
+          status: AppointmentStatus.COMPLETED,
           completedAt: new Date(),
-          timeSpent: Math.floor(totalSeconds / 60), // store minutes
+          timeSpent: Math.floor(totalSeconds / 60),
         },
       });
 
-      return tx.appointment.findUnique({
+      const fullAppointment = await tx.appointment.findUnique({
         where: { id: appointmentId },
         include: {
-          workSessions: { orderBy: { startedAt: "asc" } },
-          staff: true,
+          workSessions: {
+            orderBy: { startedAt: "asc" },
+            include: {
+              staff: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  role: true,
+                },
+              },
+            },
+          },
+          assignments: {
+            include: {
+              staff: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  role: true,
+                },
+              },
+            },
+            orderBy: { createdAt: "asc" },
+          },
           notes: true,
           images: true,
-          job: { include: { client: true, address: true } },
+          job: {
+            include: {
+              client: true,
+              address: true,
+            },
+          },
         },
       });
+
+      return fullAppointment;
     });
 
-    return NextResponse.json(result);
-  } catch (error: any) {
+    return NextResponse.json({
+      ...result,
+      staff: result?.assignments.map((a) => a.staff) ?? [],
+    });
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : "Failed to complete appointment";
+
     return NextResponse.json(
-      { error: error?.message || "Failed to complete appointment" },
-      { status: 400 },
+      { error: message },
+      {
+        status: message === "Appointment not found" ? 404 : 400,
+      },
     );
   }
 }

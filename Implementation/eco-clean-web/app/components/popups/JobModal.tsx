@@ -20,12 +20,13 @@ import {
   Text,
   Image,
   Checkbox,
+  Loader,
 } from "@mantine/core";
-import { DateInput, TimeInput } from "@mantine/dates";
+import { DatePickerInput, TimeInput } from "@mantine/dates";
 import { Dropzone } from "@mantine/dropzone";
 import { useDebouncedValue } from "@mantine/hooks";
 import { useForm } from "@mantine/form";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { IoAddOutline, IoImageOutline } from "react-icons/io5";
 import { createJob, CreateJobPayload, JobFormValues } from "@/lib/api/jobs";
@@ -38,6 +39,7 @@ import { DateTime } from "luxon";
 import { APP_TZ } from "@/lib/dateTime";
 import { useUploadThing } from "@/lib/uploadthing";
 import { notifications } from "@mantine/notifications";
+import { AIInsightsSection } from "../cards/AIInsightsSection";
 
 interface Props {
   opened: boolean;
@@ -71,7 +73,7 @@ type UploadedNoteImage = {
 };
 
 type JobNoteInput = {
-  id: string; // local form id
+  id: string;
   title: string;
   content: string;
   category: JobNoteCategory | "";
@@ -84,11 +86,11 @@ type JobNoteInput = {
 type AppointmentForm = {
   id: string;
   startDate: Date | null;
-  startTime: string; // "HH:mm"
-  endTime: string; // "HH:mm"
+  startTime: string;
+  endTime: string;
   staffId: string[];
   notes: string;
-  uploadedImages: UploadedImage[]; // ✅ persisted (url + fileKey)
+  uploadedImages: UploadedImage[];
 };
 
 type RecurrenceForm = {
@@ -141,7 +143,7 @@ const mapAppt = (appt: AppointmentForm): AppointmentApiPayload => {
     date,
     startTime: appt.startTime?.trim() ? appt.startTime.trim() : null,
     endTime: appt.endTime?.trim() ? appt.endTime.trim() : null,
-    staffIds: Array.isArray(appt.staffId) ? appt.staffId : [], // ✅ required array
+    staffIds: Array.isArray(appt.staffId) ? appt.staffId : [],
     note: appt.notes?.trim() ? appt.notes.trim() : null,
     images: appt.uploadedImages?.length
       ? appt.uploadedImages.map((img) => ({
@@ -183,6 +185,7 @@ export default function NewJobModal({
   selectedInfo,
   onSuccess,
 }: Props) {
+  const queryClient = useQueryClient();
   const { startUpload, isUploading } = useUploadThing("appointmentImages");
 
   const form = useForm<JobFormValuesWithRecurrence>({
@@ -235,7 +238,48 @@ export default function NewJobModal({
       clientId: (v) => (!v ? "Client is required" : null),
       addressId: (v) => (!v ? "Address is required" : null),
       notes: {
-        content: (v) => (!v.trim() ? "Note content is required" : null),
+        title: (value, values, path) => {
+          const match = path.match(/^notes\.(\d+)\.title$/);
+          const index = match ? Number(match[1]) : -1;
+          const note = values.notes[index];
+
+          if (!note) return null;
+
+          const hasAnyValue =
+            !!note.title.trim() ||
+            !!note.content.trim() ||
+            !!note.category ||
+            note.isClientVisible ||
+            note.isPinned ||
+            note.uploadedImages.length > 0;
+
+          if (hasAnyValue && !note.content.trim()) {
+            return "Note content is required";
+          }
+
+          return null;
+        },
+        content: (value, values, path) => {
+          const match = path.match(/^notes\.(\d+)\.content$/);
+          const index = match ? Number(match[1]) : -1;
+          const note = values.notes[index];
+
+          if (!note) return null;
+
+          const hasAnyValue =
+            !!note.title.trim() ||
+            !!note.content.trim() ||
+            !!note.category ||
+            note.isClientVisible ||
+            note.isPinned ||
+            note.uploadedImages.length > 0;
+
+          if (hasAnyValue && !note.content.trim()) {
+            return "Note content is required";
+          }
+
+          return null;
+        },
       },
       recurrence: {
         interval: (v, values) =>
@@ -263,25 +307,74 @@ export default function NewJobModal({
   const [debouncedSearchClients] = useDebouncedValue(searchClients, 300);
   const [debouncedSearchAssignees] = useDebouncedValue(searchAssignees, 300);
 
-  const { data: clientsData } = useQuery({
+  const {
+    data: clientsData,
+    isLoading: clientsLoading,
+    isFetching: clientsFetching,
+    isError: clientsError,
+  } = useQuery({
     queryKey: ["clients", debouncedSearchClients],
     queryFn: () => getClients(debouncedSearchClients),
+    enabled: opened,
   });
 
-  const { data: staffData } = useQuery({
+  const {
+    data: staffData,
+    isLoading: staffLoading,
+    isFetching: staffFetching,
+    isError: staffError,
+  } = useQuery({
     queryKey: [
       "staff",
       { q: debouncedSearchAssignees, paginate: false },
     ] as const,
     queryFn: () => getStaff(),
     staleTime: 60_000,
+    enabled: opened,
   });
 
-  const { data: addressesData } = useQuery({
+  const {
+    data: addressesData,
+    isLoading: addressesLoading,
+    isFetching: addressesFetching,
+    isError: addressesError,
+  } = useQuery({
     queryKey: ["client-addresses", form.values.clientId],
     queryFn: () => getClientAddresses(form.values.clientId),
-    enabled: !!form.values.clientId,
+    enabled: opened && !!form.values.clientId,
   });
+
+  const createJobMutation = useMutation({
+    mutationFn: (payload: CreateJobPayload) => createJob(payload),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["jobs"] }),
+        queryClient.invalidateQueries({ queryKey: ["appointments"] }),
+        queryClient.invalidateQueries({ queryKey: ["calendar"] }),
+      ]);
+
+      notifications.show({
+        title: "Success",
+        message: "Job created successfully",
+        color: "green",
+      });
+
+      onSuccess();
+      form.reset();
+      onClose();
+    },
+    onError: (error) => {
+      console.error(error);
+      notifications.show({
+        title: "Failed",
+        message: "Could not create job. Please try again.",
+        color: "red",
+      });
+    },
+  });
+
+  const isSubmitting = createJobMutation.isPending;
+  const isBusy = isSubmitting || isUploading;
 
   const addLineItem = () => {
     form.setFieldValue("lineItems", [
@@ -304,21 +397,18 @@ export default function NewJobModal({
     ]);
   };
 
-  // Fill appointment[0] from FullCalendar selection
   const startStr = selectedInfo?.startStr || "";
   const endStr = selectedInfo?.endStr || "";
   const allDay = !!selectedInfo?.allDay;
 
   useEffect(() => {
-    if (!opened) return;
-    if (!startStr) return;
+    if (!opened || !startStr) return;
 
     const startDT = DateTime.fromISO(startStr, { zone: APP_TZ });
     const endDT = endStr ? DateTime.fromISO(endStr, { zone: APP_TZ }) : null;
     if (!startDT.isValid) return;
 
-    const startDate = startDT.startOf("day").toJSDate();
-
+    const startDate = new Date(startDT.year, startDT.month - 1, startDT.day);
     const startTime = allDay ? "09:00" : startDT.toFormat("HH:mm");
     const endTime = allDay
       ? "11:00"
@@ -332,7 +422,6 @@ export default function NewJobModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opened, startStr, endStr, allDay]);
 
-  // Keep endsAfter/endsOn coherent
   useEffect(() => {
     if (form.values.jobType !== "RECURRING") return;
 
@@ -347,7 +436,8 @@ export default function NewJobModal({
         form.setFieldValue("recurrence.endsAfter", 6);
       }
     }
-  }, [form.values.jobType, form.values.recurrence.endType]); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.values.jobType, form.values.recurrence.endType]);
 
   const handleSubmit = async (values: JobFormValuesWithRecurrence) => {
     const visitInstructions =
@@ -391,7 +481,6 @@ export default function NewJobModal({
           ? { description: li.description.trim() }
           : {}),
       })),
-
       ...(values.jobType === "RECURRING"
         ? {
             recurrence: {
@@ -414,15 +503,7 @@ export default function NewJobModal({
       appointments,
     };
 
-    await createJob(payload);
-    onSuccess();
-    form.reset();
-    onClose();
-    notifications.show({
-      title: `Success`,
-      message: "Moved the appointment",
-      color: "green",
-    });
+    createJobMutation.mutate(payload);
   };
 
   const addJobNote = () => {
@@ -444,6 +525,7 @@ export default function NewJobModal({
             <TextInput
               label="Note title"
               placeholder="e.g. Gate access"
+              disabled={isBusy}
               {...form.getInputProps(`notes.${index}.title`)}
             />
           </Grid.Col>
@@ -452,6 +534,7 @@ export default function NewJobModal({
             <Select
               label="Category"
               placeholder="Select category"
+              disabled={isBusy}
               data={[
                 { value: "GENERAL", label: "General" },
                 { value: "ACCESS", label: "Access" },
@@ -469,6 +552,7 @@ export default function NewJobModal({
               label="Content"
               placeholder="Enter note details"
               minRows={3}
+              disabled={isBusy}
               {...form.getInputProps(`notes.${index}.content`)}
             />
           </Grid.Col>
@@ -477,6 +561,7 @@ export default function NewJobModal({
             <Group>
               <Checkbox
                 label="Visible to client"
+                disabled={isBusy}
                 checked={form.values.notes[index].isClientVisible}
                 onChange={(event) =>
                   form.setFieldValue(
@@ -487,6 +572,7 @@ export default function NewJobModal({
               />
               <Checkbox
                 label="Pinned"
+                disabled={isBusy}
                 checked={form.values.notes[index].isPinned}
                 onChange={(event) =>
                   form.setFieldValue(
@@ -497,26 +583,39 @@ export default function NewJobModal({
               />
             </Group>
           </Grid.Col>
+
           <Grid.Col span={12}>
             <Dropzone
               accept={["image/png", "image/jpeg", "image/webp"]}
               maxFiles={10}
+              disabled={isBusy}
               onDrop={async (files) => {
                 const existing = note.images || [];
                 const nextFiles = [...existing, ...files].slice(0, 10);
                 form.setFieldValue(`notes.${index}.images`, nextFiles);
 
-                const uploaded = await startUpload(files);
+                try {
+                  const uploaded = await startUpload(files);
 
-                const imgs: UploadedNoteImage[] = (uploaded ?? []).map((u) => ({
-                  url: u.url,
-                  fileKey: u.key,
-                }));
+                  const imgs: UploadedNoteImage[] = (uploaded ?? []).map(
+                    (u) => ({
+                      url: u.url,
+                      fileKey: u.key,
+                    }),
+                  );
 
-                form.setFieldValue(`notes.${index}.uploadedImages`, [
-                  ...(note.uploadedImages || []),
-                  ...imgs,
-                ]);
+                  form.setFieldValue(`notes.${index}.uploadedImages`, [
+                    ...(note.uploadedImages || []),
+                    ...imgs,
+                  ]);
+                } catch (error) {
+                  console.error(error);
+                  notifications.show({
+                    title: "Upload failed",
+                    message: "Could not upload note images.",
+                    color: "red",
+                  });
+                }
               }}
             >
               <Flex direction="column" align="center">
@@ -532,13 +631,14 @@ export default function NewJobModal({
               </Flex>
             </Dropzone>
           </Grid.Col>
+
           <Grid.Col span={12}>
             <Button
               color="red"
               variant="light"
               type="button"
+              disabled={isBusy || form.values.notes.length === 1}
               onClick={() => removeJobNote(note.id)}
-              disabled={form.values.notes.length === 1}
             >
               Remove Note
             </Button>
@@ -552,10 +652,16 @@ export default function NewJobModal({
       <Card withBorder mt="sm" key={appt.id}>
         <Grid>
           <Grid.Col span={4}>
-            <DateInput
-              key={form.key(`appointments.${index}.startDate`)}
+            <DatePickerInput
               label="Date"
+              placeholder="Date"
+              key={form.key(`appointments.${index}.startDate`)}
               {...form.getInputProps(`appointments.${index}.startDate`)}
+              minDate={
+                form.values.appointments?.[0]?.startDate instanceof Date
+                  ? form.values.appointments[0].startDate
+                  : undefined
+              }
             />
           </Grid.Col>
 
@@ -563,7 +669,7 @@ export default function NewJobModal({
             <TimeInput
               key={form.key(`appointments.${index}.startTime`)}
               label="Start"
-              disabled={form.values.isAnytime}
+              disabled={form.values.isAnytime || isBusy}
               {...form.getInputProps(`appointments.${index}.startTime`)}
             />
           </Grid.Col>
@@ -572,15 +678,26 @@ export default function NewJobModal({
             <TimeInput
               key={form.key(`appointments.${index}.endTime`)}
               label="End"
-              disabled={form.values.isAnytime}
+              disabled={form.values.isAnytime || isBusy}
               {...form.getInputProps(`appointments.${index}.endTime`)}
             />
           </Grid.Col>
-
+          <Grid.Col span={12}>
+            <AIInsightsSection insights={[]} />
+          </Grid.Col>
           <Grid.Col span={12}>
             <MultiSelect
               label="Staff"
-              placeholder="Assign staff"
+              searchable
+              placeholder={
+                staffLoading
+                  ? "Loading staff..."
+                  : staffError
+                    ? "Failed to load staff"
+                    : "Assign staff"
+              }
+              disabled={staffLoading || isBusy}
+              rightSection={staffFetching ? <Loader size="xs" /> : undefined}
               data={
                 staffData?.data?.map((s: Staff) => ({
                   value: s.id,
@@ -588,7 +705,6 @@ export default function NewJobModal({
                 })) || []
               }
               onSearchChange={setSearchAssignees}
-              searchable
               {...form.getInputProps(`appointments.${index}.staffId`)}
             />
           </Grid.Col>
@@ -615,236 +731,326 @@ export default function NewJobModal({
     ));
 
   return (
-    <Modal opened={opened} onClose={onClose} size="xl" title="New Job" centered>
+    <Modal
+      opened={opened}
+      onClose={isBusy ? () => {} : onClose}
+      size="xl"
+      title="New Job"
+      centered
+      closeOnClickOutside={!isBusy}
+      closeOnEscape={!isBusy}
+      withCloseButton={!isBusy}
+    >
       <form onSubmit={form.onSubmit(handleSubmit)}>
-        <Paper>
-          <SegmentedControl
-            mt="sm"
-            value={form.values.jobType}
-            onChange={(value) =>
-              form.setFieldValue("jobType", value as JobFormValues["jobType"])
-            }
-            data={[
-              { label: "One-off", value: "ONE_OFF" },
-              { label: "Recurring", value: "RECURRING" },
-            ]}
-          />
+        <Stack gap="sm">
+          {(isUploading || isSubmitting) && (
+            <Paper p="sm" radius="md" withBorder bg="gray.0">
+              <Group gap="xs">
+                <Loader size="sm" />
+                <Text size="sm">
+                  {isUploading
+                    ? "Uploading images. Please wait..."
+                    : "Saving job..."}
+                </Text>
+              </Group>
+            </Paper>
+          )}
 
-          <TextInput
-            mt="sm"
-            label="Title"
-            placeholder="Job Title"
-            {...form.getInputProps("title")}
-          />
+          <Paper>
+            <SegmentedControl
+              mt="sm"
+              value={form.values.jobType}
+              disabled={isBusy}
+              onChange={(value) =>
+                form.setFieldValue("jobType", value as JobFormValues["jobType"])
+              }
+              data={[
+                { label: "One-off", value: "ONE_OFF" },
+                { label: "Recurring", value: "RECURRING" },
+              ]}
+            />
 
-          <Grid mt="sm">
-            <Grid.Col span={6}>
-              <Select
-                label="Client"
-                placeholder="Select client"
-                {...form.getInputProps("clientId")}
-                data={
-                  clientsData?.data?.map((c: Client) => ({
-                    value: c.id,
-                    label: c.companyName || `${c.firstName} ${c.lastName}`,
-                  })) || []
-                }
-                onSearchChange={setSearchClients}
-                searchable
-              />
-            </Grid.Col>
+            <TextInput
+              mt="sm"
+              label="Title"
+              placeholder="Job Title"
+              disabled={isBusy}
+              {...form.getInputProps("title")}
+            />
 
-            <Grid.Col span={6}>
-              <Select
-                label="Client Address"
-                placeholder="Select address"
-                {...form.getInputProps("addressId")}
-                data={
-                  addressesData?.data?.map((a) => ({
-                    value: a.id,
-                    label: `${a.street1}, ${a.city}, ${a.province}`,
-                  })) || []
-                }
-              />
-            </Grid.Col>
-          </Grid>
+            <Grid mt="sm">
+              <Grid.Col span={6}>
+                <Select
+                  label="Client"
+                  searchable
+                  disabled={clientsLoading || isBusy}
+                  placeholder={
+                    clientsLoading
+                      ? "Loading clients..."
+                      : clientsError
+                        ? "Failed to load clients"
+                        : "Select client"
+                  }
+                  rightSection={
+                    clientsFetching ? <Loader size="xs" /> : undefined
+                  }
+                  {...form.getInputProps("clientId")}
+                  data={
+                    clientsData?.data?.map((c: Client) => ({
+                      value: c.id,
+                      label: c.companyName || `${c.firstName} ${c.lastName}`,
+                    })) || []
+                  }
+                  onSearchChange={setSearchClients}
+                />
+              </Grid.Col>
 
-          <Divider my="sm" />
+              <Grid.Col span={6}>
+                <Select
+                  label="Client Address"
+                  disabled={!form.values.clientId || addressesLoading || isBusy}
+                  placeholder={
+                    !form.values.clientId
+                      ? "Select client first"
+                      : addressesLoading
+                        ? "Loading addresses..."
+                        : addressesError
+                          ? "Failed to load addresses"
+                          : "Select address"
+                  }
+                  rightSection={
+                    addressesFetching ? <Loader size="xs" /> : undefined
+                  }
+                  {...form.getInputProps("addressId")}
+                  data={
+                    addressesData?.data?.map((a) => ({
+                      value: a.id,
+                      label: `${a.street1}, ${a.city}, ${a.province}`,
+                    })) || []
+                  }
+                />
+              </Grid.Col>
+            </Grid>
 
-          <Group align="center" justify="space-between">
-            <Text fw={500}>Services</Text>
-            <Button
-              leftSection={<IoAddOutline />}
-              size="xs"
-              onClick={addLineItem}
-            >
-              Add Line Item
-            </Button>
-          </Group>
+            <Divider my="sm" />
 
-          {form.values.lineItems.map((item, index) => (
-            <Card withBorder mt="sm" key={item.id}>
-              <Grid>
-                <Grid.Col span={6}>
-                  <TextInput
-                    label="Name"
-                    {...form.getInputProps(`lineItems.${index}.name`)}
-                  />
-                </Grid.Col>
-                <Grid.Col span={2}>
-                  <NumberInput
-                    label="Qty"
-                    min={1}
-                    {...form.getInputProps(`lineItems.${index}.quantity`)}
-                  />
-                </Grid.Col>
-                <Grid.Col span={2}>
-                  <NumberInput
-                    label="Unit Cost"
-                    min={0}
-                    prefix="$"
-                    {...form.getInputProps(`lineItems.${index}.unitCost`)}
-                  />
-                </Grid.Col>
-                <Grid.Col span={2}>
-                  <NumberInput
-                    label="Unit Price"
-                    min={0}
-                    prefix="$"
-                    {...form.getInputProps(`lineItems.${index}.unitPrice`)}
-                  />
-                </Grid.Col>
-              </Grid>
+            <Group align="center" justify="space-between">
+              <Text fw={500}>Services</Text>
+              <Button
+                leftSection={<IoAddOutline />}
+                size="xs"
+                type="button"
+                disabled={isBusy}
+                onClick={addLineItem}
+              >
+                Add Line Item
+              </Button>
+            </Group>
 
-              <Textarea
-                mt="sm"
-                label="Description"
-                {...form.getInputProps(`lineItems.${index}.description`)}
-              />
-            </Card>
-          ))}
+            {form.values.lineItems.map((item, index) => (
+              <Card withBorder mt="sm" key={item.id}>
+                <Grid>
+                  <Grid.Col span={6}>
+                    <TextInput
+                      label="Name"
+                      placeholder="Service Name"
+                      disabled={isBusy}
+                      {...form.getInputProps(`lineItems.${index}.name`)}
+                    />
+                  </Grid.Col>
+                  <Grid.Col span={2}>
+                    <NumberInput
+                      label="Qty"
+                      placeholder="Service Qty"
+                      min={1}
+                      disabled={isBusy}
+                      {...form.getInputProps(`lineItems.${index}.quantity`)}
+                    />
+                  </Grid.Col>
+                  <Grid.Col span={2}>
+                    <NumberInput
+                      label="Unit Cost"
+                      min={0}
+                      prefix="$"
+                      disabled={isBusy}
+                      {...form.getInputProps(`lineItems.${index}.unitCost`)}
+                    />
+                  </Grid.Col>
+                  <Grid.Col span={2}>
+                    <NumberInput
+                      label="Unit Price"
+                      min={0}
+                      prefix="$"
+                      disabled={isBusy}
+                      {...form.getInputProps(`lineItems.${index}.unitPrice`)}
+                    />
+                  </Grid.Col>
+                </Grid>
 
-          <Divider my="sm" />
+                <Textarea
+                  mt="sm"
+                  label="Description"
+                  disabled={isBusy}
+                  {...form.getInputProps(`lineItems.${index}.description`)}
+                />
+              </Card>
+            ))}
 
-          {form.values.jobType === "RECURRING" && (
-            <Card withBorder mt="sm">
-              <Text fw={500} mb="xs">
-                Recurrence
-              </Text>
+            <Divider my="sm" />
 
-              <Grid>
-                <Grid.Col span={6}>
-                  <Select
-                    label="Frequency"
-                    data={[
-                      { value: "weekly", label: "Weekly" },
-                      { value: "monthly", label: "Monthly" },
-                    ]}
-                    value={form.values.recurrence.frequency}
-                    onChange={(v) =>
-                      form.setFieldValue(
-                        "recurrence.frequency",
-                        v as "weekly" | "monthly",
-                      )
-                    }
-                  />
-                </Grid.Col>
+            {form.values.jobType === "RECURRING" && (
+              <Card withBorder mt="sm">
+                <Text fw={500} mb="xs">
+                  Recurrence
+                </Text>
 
-                <Grid.Col span={6}>
-                  <NumberInput
-                    label={`Every (${form.values.recurrence.frequency === "weekly" ? "weeks" : "months"})`}
-                    min={1}
-                    value={form.values.recurrence.interval}
-                    onChange={(v) =>
-                      form.setFieldValue("recurrence.interval", Number(v) || 1)
-                    }
-                  />
-                </Grid.Col>
+                <Grid>
+                  <Grid.Col span={6}>
+                    <Select
+                      label="Frequency"
+                      disabled={isBusy}
+                      data={[
+                        { value: "weekly", label: "Weekly" },
+                        { value: "monthly", label: "Monthly" },
+                      ]}
+                      value={form.values.recurrence.frequency}
+                      onChange={(v: string | null) =>
+                        form.setFieldValue(
+                          "recurrence.frequency",
+                          (v ?? "weekly") as RecurrenceForm["frequency"],
+                        )
+                      }
+                    />
+                  </Grid.Col>
 
-                <Grid.Col span={12}>
-                  <Radio.Group
-                    label="Ends"
-                    value={form.values.recurrence.endType}
-                    onChange={(v) =>
-                      form.setFieldValue(
-                        "recurrence.endType",
-                        v as "after" | "on",
-                      )
-                    }
-                  >
-                    <Stack gap="xs" mt="xs">
-                      <Radio value="after" label="After" />
-                      <Radio value="on" label="On date" />
-                    </Stack>
-                  </Radio.Group>
-                </Grid.Col>
-
-                {form.values.recurrence.endType === "after" && (
                   <Grid.Col span={6}>
                     <NumberInput
-                      label="Occurrences"
+                      label={`Every (${form.values.recurrence.frequency === "weekly" ? "weeks" : "months"})`}
                       min={1}
-                      value={form.values.recurrence.endsAfter}
+                      disabled={isBusy}
+                      value={form.values.recurrence.interval}
                       onChange={(v) =>
                         form.setFieldValue(
-                          "recurrence.endsAfter",
+                          "recurrence.interval",
                           Number(v) || 1,
                         )
                       }
                     />
                   </Grid.Col>
-                )}
 
-                {form.values.recurrence.endType === "on" && (
-                  <Grid.Col span={6}>
-                    <DateInput
-                      label="End date"
-                      value={form.values.recurrence.endsOn}
-                      onChange={(d) =>
+                  <Grid.Col span={12}>
+                    <Radio.Group
+                      label="Ends"
+                      value={form.values.recurrence.endType}
+                      onChange={(v: string) =>
                         form.setFieldValue(
-                          "recurrence.endsOn",
-                          d ? new Date(d) : null,
+                          "recurrence.endType",
+                          v as RecurrenceForm["endType"],
                         )
                       }
-                      minDate={
-                        form.values.appointments?.[0]?.startDate ?? undefined
-                      }
-                    />
+                    >
+                      <Stack gap="xs" mt="xs">
+                        <Radio value="after" label="After" disabled={isBusy} />
+                        <Radio value="on" label="On date" disabled={isBusy} />
+                      </Stack>
+                    </Radio.Group>
                   </Grid.Col>
-                )}
-              </Grid>
-            </Card>
-          )}
+
+                  {form.values.recurrence.endType === "after" && (
+                    <Grid.Col span={6}>
+                      <NumberInput
+                        label="Occurrences"
+                        min={1}
+                        disabled={isBusy}
+                        value={form.values.recurrence.endsAfter}
+                        onChange={(v) =>
+                          form.setFieldValue(
+                            "recurrence.endsAfter",
+                            Number(v) || 1,
+                          )
+                        }
+                      />
+                    </Grid.Col>
+                  )}
+
+                  {form.values.recurrence.endType === "on" && (
+                    <Grid.Col span={6}>
+                      <DatePickerInput
+                        label="End date"
+                        placeholder="End date"
+                        disabled={isBusy}
+                        value={form.values.recurrence.endsOn ?? null}
+                        onChange={(d) =>
+                          form.setFieldValue(
+                            "recurrence.endsOn",
+                            d as Date | null,
+                          )
+                        }
+                        minDate={
+                          form.values.appointments?.[0]?.startDate instanceof
+                          Date
+                            ? form.values.appointments[0].startDate
+                            : undefined
+                        }
+                      />
+                    </Grid.Col>
+                  )}
+                </Grid>
+              </Card>
+            )}
+
+            <Group align="center" justify="space-between" mt="sm">
+              <Text fw={500}>Appointments</Text>
+              <Button
+                leftSection={<IoAddOutline />}
+                size="xs"
+                type="button"
+                disabled={isBusy}
+                onClick={addAppointment}
+              >
+                Add Appointment
+              </Button>
+            </Group>
+
+            {renderAppointments()}
+          </Paper>
+
+          <Divider my="sm" />
 
           <Group align="center" justify="space-between">
-            <Text fw={500}>Appointments</Text>
+            <Text fw={500}>Notes</Text>
             <Button
               leftSection={<IoAddOutline />}
               size="xs"
-              onClick={addAppointment}
+              type="button"
+              disabled={isBusy}
+              onClick={addJobNote}
             >
-              Add Appointment
+              Add Notes
             </Button>
           </Group>
 
-          {renderAppointments()}
-        </Paper>
-        <Divider my="sm" />
-        <Group align="center" justify="space-between">
-          <Text fw={500}>Notes</Text>
-          <Button leftSection={<IoAddOutline />} size="xs" onClick={addJobNote}>
-            Add Notes
-          </Button>
-        </Group>
-        {renderJobNotes()}
-        <Group justify="right" mt="md">
-          <Button variant="default" onClick={onClose} type="button">
-            Cancel
-          </Button>
-          <Button type="submit" color="green" disabled={isUploading}>
-            Save Job
-          </Button>
-        </Group>
+          {renderJobNotes()}
+
+          <Group justify="right" mt="md">
+            <Button
+              variant="default"
+              onClick={onClose}
+              type="button"
+              disabled={isBusy}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              color="green"
+              loading={isSubmitting}
+              disabled={isBusy}
+            >
+              {isUploading ? "Uploading..." : "Save Job"}
+            </Button>
+          </Group>
+        </Stack>
       </form>
     </Modal>
   );

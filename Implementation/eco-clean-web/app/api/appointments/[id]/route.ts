@@ -1,13 +1,42 @@
 export const runtime = "nodejs";
+
 import { prisma } from "@/lib/prisma";
+import { AppointmentStatus, Prisma, Role } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 
-type Tx = Parameters<typeof prisma.$transaction>[0] extends (
-  tx: infer T,
-  ...args: unknown[]
-) => unknown
-  ? T
-  : never;
+type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
+
+type PatchBody = {
+  startTime?: string;
+  endTime?: string;
+  status?: AppointmentStatus;
+  staffIds?: string[];
+  note?: string | null;
+  noteIsClientVisible?: boolean;
+};
+
+const VALID_APPOINTMENT_STATUSES: AppointmentStatus[] = [
+  "SCHEDULED",
+  "COMPLETED",
+  "CANCELLED",
+  "LATE",
+];
+
+function parseJsonBody(raw: string): PatchBody | null {
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed === "string") {
+      return JSON.parse(parsed) as PatchBody;
+    }
+    return parsed as PatchBody;
+  } catch {
+    return null;
+  }
+}
+
+function dedupeStrings(values: string[]) {
+  return [...new Set(values.filter((v) => typeof v === "string" && v.trim()))];
+}
 
 export async function GET(
   _req: NextRequest,
@@ -23,7 +52,20 @@ export async function GET(
     const appointment = await prisma.appointment.findUnique({
       where: { id },
       include: {
-        staff: true,
+        assignments: {
+          include: {
+            staff: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+                createdAt: true,
+              },
+            },
+          },
+          orderBy: { createdAt: "asc" },
+        },
         notes: true,
         images: true,
         workSessions: {
@@ -61,7 +103,10 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(appointment);
+    return NextResponse.json({
+      ...appointment,
+      staff: appointment.assignments.map((a) => a.staff), // optional compatibility shape
+    });
   } catch (err) {
     console.error("GET appointment by ID error:", err);
     return NextResponse.json(
@@ -80,12 +125,11 @@ export async function PATCH(
   if (!id) {
     return NextResponse.json({ error: "Missing id" }, { status: 400 });
   }
+
   const raw = await req.text();
-  let body;
-  try {
-    body = JSON.parse(raw);
-    if (typeof body === "string") body = JSON.parse(body);
-  } catch {
+  const body = parseJsonBody(raw);
+
+  if (!body || typeof body !== "object") {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
@@ -99,63 +143,141 @@ export async function PATCH(
     );
   }
 
-  const data: Parameters<typeof prisma.appointment.update>[0]["data"] = {};
+  if (status && !VALID_APPOINTMENT_STATUSES.includes(status)) {
+    return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+  }
+
+  if (staffIds !== undefined && !Array.isArray(staffIds)) {
+    return NextResponse.json(
+      { error: "staffIds must be an array" },
+      { status: 400 },
+    );
+  }
+
+  if (
+    noteIsClientVisible !== undefined &&
+    typeof noteIsClientVisible !== "boolean"
+  ) {
+    return NextResponse.json(
+      { error: "noteIsClientVisible must be a boolean" },
+      { status: 400 },
+    );
+  }
+
+  const appointmentData: Prisma.AppointmentUpdateInput = {};
 
   if (startTime && endTime) {
     const s = new Date(startTime);
     const e = new Date(endTime);
+
     if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) {
       return NextResponse.json(
         { error: "Invalid startTime/endTime" },
         { status: 400 },
       );
     }
-    data.startTime = s;
-    data.endTime = e;
+
+    if (e <= s) {
+      return NextResponse.json(
+        { error: "endTime must be after startTime" },
+        { status: 400 },
+      );
+    }
+
+    appointmentData.startTime = s;
+    appointmentData.endTime = e;
   }
 
-  if (
-    status &&
-    ["SCHEDULED", "COMPLETED", "CANCELLED", "LATE"].includes(status)
-  ) {
-    data.status = status;
-  }
-
-  if (Array.isArray(staffIds)) {
-    data.staff = { set: staffIds.map((sid: string) => ({ id: sid })) };
+  if (status) {
+    appointmentData.status = status;
   }
 
   try {
     const updated = await prisma.$transaction(async (tx: Tx) => {
-      // 1) Update appointment core fields (only if needed)
-      let appt = null;
+      const existingAppointment = await tx.appointment.findUnique({
+        where: { id },
+        select: { id: true },
+      });
 
-      if (Object.keys(data).length > 0) {
-        appt = await tx.appointment.update({
-          where: { id },
-          data,
-        });
-      } else {
-        appt = await tx.appointment.findUnique({ where: { id } });
+      if (!existingAppointment) {
+        throw new Error("Appointment not found");
       }
 
-      if (!appt) throw new Error("Appointment not found");
+      // 1) Update appointment core fields
+      if (Object.keys(appointmentData).length > 0) {
+        await tx.appointment.update({
+          where: { id },
+          data: appointmentData,
+        });
+      }
 
-      // 2) Handle note updates (VisitNote)
-      // - note: string | null | undefined
-      //   undefined => don't touch notes
-      //   null/""    => remove the latest internal note (optional behavior)
-      //   string     => upsert latest internal note
+      // 2) Sync staff assignments
+      if (Array.isArray(staffIds)) {
+        const normalizedStaffIds = dedupeStrings(staffIds);
+
+        if (normalizedStaffIds.length > 0) {
+          const validStaff = await tx.user.findMany({
+            where: {
+              id: { in: normalizedStaffIds },
+              role: Role.STAFF,
+            },
+            select: { id: true },
+          });
+
+          const validStaffIds = validStaff.map((u) => u.id);
+
+          if (validStaffIds.length !== normalizedStaffIds.length) {
+            return NextResponse.json(
+              { error: "One or more staffIds are invalid" },
+              { status: 400 },
+            );
+          }
+
+          await tx.assignment.deleteMany({
+            where: {
+              appointmentId: id,
+              staffId: { notIn: validStaffIds },
+            },
+          });
+
+          const existingAssignments = await tx.assignment.findMany({
+            where: { appointmentId: id },
+            select: { staffId: true },
+          });
+
+          const existingStaffIds = new Set(
+            existingAssignments.map((a) => a.staffId),
+          );
+
+          const toCreate = validStaffIds.filter(
+            (staffId) => !existingStaffIds.has(staffId),
+          );
+
+          if (toCreate.length > 0) {
+            await tx.assignment.createMany({
+              data: toCreate.map((staffId) => ({
+                appointmentId: id,
+                staffId,
+              })),
+            });
+          }
+        } else {
+          await tx.assignment.deleteMany({
+            where: { appointmentId: id },
+          });
+        }
+      }
+
+      // 3) Handle note updates
       if (note !== undefined) {
         const trimmed = typeof note === "string" ? note.trim() : "";
 
-        // Find latest note (you can filter isClientVisible if you want)
         const existing = await tx.visitNote.findFirst({
           where: { appointmentId: id, isClientVisible: false },
           orderBy: { createdAt: "desc" },
         });
+
         if (!trimmed) {
-          // User cleared note => delete existing latest note (or you can keep it)
           if (existing) {
             await tx.visitNote.delete({ where: { id: existing.id } });
           }
@@ -185,29 +307,83 @@ export async function PATCH(
         }
       }
 
-      // 3) Return fresh included data
+      // 4) Return fresh data
       return tx.appointment.findUnique({
         where: { id },
         include: {
-          staff: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              role: true,
-              createdAt: true,
+          assignments: {
+            include: {
+              staff: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  role: true,
+                  createdAt: true,
+                },
+              },
+            },
+            orderBy: { createdAt: "asc" },
+          },
+          job: {
+            include: {
+              client: true,
+              address: true,
+              lineItems: true,
+              recurrence: true,
+              notes: {
+                include: {
+                  images: true,
+                  createdBy: {
+                    select: {
+                      id: true,
+                      name: true,
+                      email: true,
+                      role: true,
+                    },
+                  },
+                },
+                orderBy: [{ isPinned: "desc" }, { createdAt: "desc" }],
+              },
             },
           },
-          job: true,
           notes: true,
           images: true,
+          workSessions: {
+            orderBy: { startedAt: "asc" },
+            include: {
+              staff: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  role: true,
+                },
+              },
+            },
+          },
         },
       });
     });
 
-    return NextResponse.json(updated);
+    if (updated instanceof NextResponse) {
+      return updated;
+    }
+
+    return NextResponse.json({
+      ...updated,
+      staff: updated?.assignments.map((a) => a.staff) ?? [],
+    });
   } catch (err) {
     console.error("Failed to update appointment:", err);
+
+    if (err instanceof Error && err.message === "Appointment not found") {
+      return NextResponse.json(
+        { error: "Appointment not found" },
+        { status: 404 },
+      );
+    }
+
     return NextResponse.json(
       { error: "Failed to update appointment" },
       { status: 500 },

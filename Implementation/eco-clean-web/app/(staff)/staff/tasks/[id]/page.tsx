@@ -51,6 +51,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { useUploadThing } from "@/lib/uploadthing";
 import { Dropzone } from "@mantine/dropzone";
 import formatPrettyDate from "@/lib/utils/formatPrettyDate";
+import { showLocalNotification } from "@/lib/notifications/showNotification";
 
 function formatAddress(address?: {
   street1?: string | null;
@@ -160,21 +161,10 @@ const Page = () => {
       setVisitNote("");
       setVisitImages([]);
       setUploadedVisitImages([]);
-
-      notifications.show({
-        title: "Saved",
-        message: "Visit note saved successfully",
-        color: "green",
-        position: "top-center",
-      });
+      showLocalNotification("Visit note saved", "/staff/tasks");
     },
-    onError: (err: any) => {
-      notifications.show({
-        title: "Error",
-        message: err?.message || "Failed to save visit note",
-        color: "red",
-        position: "top-center",
-      });
+    onError: () => {
+      showLocalNotification("Failed to save note", "/staff/tasks");
     },
   });
 
@@ -201,20 +191,10 @@ const Page = () => {
       startAppointment(appointment!.id, appointment?.staff?.[0]?.id),
     onSuccess: (updated) => {
       refreshAppointment(updated);
-      notifications.show({
-        title: "Started",
-        message: "Job started successfully",
-        color: "green",
-        position: "top-center",
-      });
+      showLocalNotification("Job started", `/staff/tasks/${appointment!.id}`);
     },
-    onError: (err: any) => {
-      notifications.show({
-        title: "Error",
-        message: err?.message || "Failed to start job",
-        color: "red",
-        position: "top-center",
-      });
+    onError: () => {
+      showLocalNotification("Failed to start job", "/staff/tasks");
     },
   });
 
@@ -222,20 +202,13 @@ const Page = () => {
     mutationFn: () => pauseAppointment(appointment!.id),
     onSuccess: (updated) => {
       refreshAppointment(updated);
-      notifications.show({
-        title: "Paused",
-        message: "Job paused successfully",
-        color: "yellow",
-        position: "top-center",
-      });
+      showLocalNotification("Job paused", `/staff/tasks/${appointment!.id}`);
     },
-    onError: (err: any) => {
-      notifications.show({
-        title: "Error",
-        message: err?.message || "Failed to pause job",
-        color: "red",
-        position: "top-center",
-      });
+    onError: () => {
+      showLocalNotification(
+        "Job pause failed",
+        `/staff/tasks/${appointment!.id}`,
+      );
     },
   });
 
@@ -243,20 +216,16 @@ const Page = () => {
     mutationFn: () => completeAppointment(appointment!.id),
     onSuccess: (updated) => {
       refreshAppointment(updated);
-      notifications.show({
-        title: "Completed",
-        message: "Job marked as completed",
-        color: "green",
-        position: "top-center",
-      });
+      showLocalNotification(
+        "Job marked as completed",
+        `/staff/tasks/${appointment!.id}`,
+      );
     },
-    onError: (err: any) => {
-      notifications.show({
-        title: "Error",
-        message: err?.message || "Failed to complete job",
-        color: "red",
-        position: "top-center",
-      });
+    onError: () => {
+      showLocalNotification(
+        "Job completion failed",
+        `/staff/tasks/${appointment!.id}`,
+      );
     },
   });
 

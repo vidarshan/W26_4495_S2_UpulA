@@ -1,6 +1,8 @@
 "use client";
+
 import {
   ActionIcon,
+  Alert,
   AppShell,
   Box,
   Container,
@@ -15,12 +17,11 @@ import {
 import { signOut } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { FaPlus } from "react-icons/fa";
 import {
-  IoAccessibilityOutline,
+  IoAlertCircleOutline,
   IoBriefcaseOutline,
-  IoCogOutline,
   IoHammerOutline,
   IoHomeOutline,
   IoLogOutOutline,
@@ -30,24 +31,86 @@ import {
 } from "react-icons/io5";
 import ClientPropertyModal from "../../components/popups/ClientModal";
 import NewJobModal from "../../components/popups/JobModal";
-import { useDashboardUI } from "@/stores/store";
 import UserUpsertModal from "../../components/popups/UserModal";
+import { useDashboardUI } from "@/stores/store";
 
 export default function DashboardShell({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [opened, setOpened] = useState(false);
-  const [clientPopoverOpened, setClientPopoverOpened] = useState(false);
-  const [jobPopoverOpened, setJobPopoverOpened] = useState(false);
   const pathname = usePathname();
   const { selectedInfo } = useDashboardUI();
 
+  const [opened, setOpened] = useState(false);
+  const [clientPopoverOpened, setClientPopoverOpened] = useState(false);
+  const [jobPopoverOpened, setJobPopoverOpened] = useState(false);
   const [userOpened, setUserOpened] = useState(false);
 
-  const openAdd = () => setUserOpened(true);
-  const closeAdd = () => setUserOpened(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const closeAllOverlays = useCallback(() => {
+    setOpened(false);
+    setClientPopoverOpened(false);
+    setJobPopoverOpened(false);
+    setUserOpened(false);
+  }, []);
+
+  const openUserModal = useCallback(() => {
+    setError(null);
+    setUserOpened(true);
+  }, []);
+
+  const closeUserModal = useCallback(() => {
+    setUserOpened(false);
+  }, []);
+
+  const handleOpenJob = useCallback(() => {
+    setError(null);
+    setOpened(false);
+    setJobPopoverOpened(true);
+  }, []);
+
+  const handleOpenClient = useCallback(() => {
+    setError(null);
+    setOpened(false);
+    setClientPopoverOpened(true);
+  }, []);
+
+  const handleOpenUser = useCallback(() => {
+    setError(null);
+    setOpened(false);
+    openUserModal();
+  }, [openUserModal]);
+
+  const handleToggleQuickActions = useCallback(() => {
+    setError(null);
+    setOpened((prev) => !prev);
+  }, []);
+
+  const handleMainClick = useCallback(() => {
+    if (opened) setOpened(false);
+  }, [opened]);
+
+  const handleLogout = useCallback(async () => {
+    if (isSigningOut) return;
+
+    try {
+      setError(null);
+      setIsSigningOut(true);
+      await signOut({ callbackUrl: "/login", redirect: true });
+    } catch (err) {
+      console.error("Logout failed:", err);
+      setError("Failed to sign out. Please try again.");
+      setIsSigningOut(false);
+    }
+  }, [isSigningOut]);
+
+  useEffect(() => {
+    closeAllOverlays();
+    setError(null);
+  }, [pathname, closeAllOverlays]);
 
   return (
     <AppShell
@@ -60,7 +123,8 @@ export default function DashboardShell({
       <AppShell.Navbar p="md">
         <Stack h="100%" justify="space-between">
           <Stack gap="xs">
-            <Flex justify="center"></Flex>
+            <Flex justify="center" />
+
             <Flex align="center" justify="center">
               <Popover
                 radius="xl"
@@ -68,6 +132,7 @@ export default function DashboardShell({
                 position="right"
                 withArrow
                 shadow="md"
+                onChange={setOpened}
               >
                 <Popover.Target>
                   <ActionIcon
@@ -75,19 +140,21 @@ export default function DashboardShell({
                     mb="sm"
                     size="xl"
                     radius="xl"
-                    onClick={() => setOpened((o) => !o)}
-                    aria-label="Toggle sidebar"
+                    onClick={handleToggleQuickActions}
+                    aria-label="Open quick actions"
+                    disabled={isSigningOut}
+                    loading={false}
                   >
                     <FaPlus
                       size={20}
                       style={{
                         transform: opened ? "rotate(405deg)" : "rotate(0deg)",
-
-                        transition: "transform 0.5s",
+                        transition: "transform 0.35s ease",
                       }}
                     />
                   </ActionIcon>
                 </Popover.Target>
+
                 <Popover.Dropdown p="xs">
                   <Flex direction="column" gap="md">
                     <Flex direction="column" align="center">
@@ -95,10 +162,9 @@ export default function DashboardShell({
                         variant="light"
                         size="xl"
                         radius="xl"
-                        onClick={() => {
-                          setOpened(false);
-                          setJobPopoverOpened(true);
-                        }}
+                        onClick={handleOpenJob}
+                        aria-label="Create job"
+                        disabled={isSigningOut}
                       >
                         <IoHammerOutline />
                       </ActionIcon>
@@ -106,17 +172,18 @@ export default function DashboardShell({
                         Job
                       </Text>
                     </Flex>
+
                     <Divider />
+
                     <Flex direction="column" align="center">
                       <ActionIcon
                         variant="light"
                         color="orange"
                         radius="xl"
                         size="xl"
-                        onClick={() => {
-                          setOpened(false);
-                          setClientPopoverOpened(true);
-                        }}
+                        onClick={handleOpenClient}
+                        aria-label="Create client"
+                        disabled={isSigningOut}
                       >
                         <IoPersonOutline />
                       </ActionIcon>
@@ -124,17 +191,18 @@ export default function DashboardShell({
                         Client
                       </Text>
                     </Flex>
+
                     <Divider />
+
                     <Flex direction="column" align="center">
                       <ActionIcon
                         variant="light"
                         radius="xl"
                         color="violet"
                         size="xl"
-                        onClick={() => {
-                          setOpened(false);
-                          openAdd();
-                        }}
+                        onClick={handleOpenUser}
+                        aria-label="Create user"
+                        disabled={isSigningOut}
                       >
                         <IoBriefcaseOutline />
                       </ActionIcon>
@@ -146,6 +214,7 @@ export default function DashboardShell({
                 </Popover.Dropdown>
               </Popover>
             </Flex>
+
             <Tooltip label="Dashboard" position="right" withArrow>
               <NavLink
                 onClick={() => setOpened(false)}
@@ -154,8 +223,10 @@ export default function DashboardShell({
                 bdrs="md"
                 leftSection={<IoHomeOutline />}
                 active={pathname === "/admin"}
+                disabled={isSigningOut}
               />
             </Tooltip>
+
             <Tooltip label="Clients" position="right" withArrow>
               <NavLink
                 onClick={() => setOpened(false)}
@@ -164,8 +235,10 @@ export default function DashboardShell({
                 bdrs="md"
                 leftSection={<IoPeopleOutline />}
                 active={pathname.startsWith("/admin/clients")}
+                disabled={isSigningOut}
               />
             </Tooltip>
+
             <Tooltip label="Employees" position="right" withArrow>
               <NavLink
                 onClick={() => setOpened(false)}
@@ -174,6 +247,7 @@ export default function DashboardShell({
                 bdrs="md"
                 leftSection={<IoBriefcaseOutline />}
                 active={pathname.startsWith("/admin/employees")}
+                disabled={isSigningOut}
               />
             </Tooltip>
 
@@ -185,8 +259,10 @@ export default function DashboardShell({
                 bdrs="md"
                 leftSection={<IoPersonCircleOutline />}
                 active={pathname.startsWith("/admin/staff-profile")}
+                disabled={isSigningOut}
               />
             </Tooltip>
+
             <Box>
               <Divider mb="xs" />
               <NavLink
@@ -194,36 +270,53 @@ export default function DashboardShell({
                 leftSection={<IoLogOutOutline size={18} />}
                 color="red"
                 bdrs="md"
-                onClick={() => signOut({ callbackUrl: "/login" })}
+                onClick={handleLogout}
+                disabled={isSigningOut}
+                label={isSigningOut ? "Signing out..." : undefined}
               />
             </Box>
           </Stack>
         </Stack>
       </AppShell.Navbar>
+
       <AppShell.Main>
-        <Container
-          fluid
-          onClick={() => {
-            opened && setOpened(false);
-          }}
-        >
+        <Container fluid onClick={handleMainClick}>
+          {error && (
+            <Alert
+              mb="md"
+              icon={<IoAlertCircleOutline size={18} />}
+              color="red"
+              radius="md"
+              variant="light"
+              withCloseButton
+              onClose={() => setError(null)}
+            >
+              {error}
+            </Alert>
+          )}
+
           <UserUpsertModal
             key="new"
             opened={userOpened}
-            onClose={closeAdd}
+            onClose={closeUserModal}
             mode="create"
             user={null}
           />
+
           <ClientPropertyModal
             opened={clientPopoverOpened}
             onClose={() => setClientPopoverOpened(false)}
           />
+
           <NewJobModal
             opened={jobPopoverOpened}
             onClose={() => setJobPopoverOpened(false)}
             selectedInfo={selectedInfo}
-            onSuccess={() => console.log("refresh")}
+            onSuccess={() => {
+              setJobPopoverOpened(false);
+            }}
           />
+
           {children}
         </Container>
       </AppShell.Main>

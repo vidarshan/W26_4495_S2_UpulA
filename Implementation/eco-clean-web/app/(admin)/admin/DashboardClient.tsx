@@ -335,7 +335,7 @@ export default function DashboardClient() {
           <Group mt="md" gap="lg">
             {Object.entries(STATUS_COLORS).map(([status, color]) => (
               <Group align="center" key={status} gap={6}>
-                <Badge radius="sm" color={color} variant="dot">
+                <Badge radius="sm" color={color} variant="filled">
                   {STATUS_LABELS[status as keyof typeof STATUS_LABELS]}
                 </Badge>
               </Group>
@@ -343,7 +343,6 @@ export default function DashboardClient() {
           </Group>
         </Paper>
         <FullCalendar
-          height="75vh"
           ref={calendarRef}
           timeZone={APP_TZ}
           plugins={[

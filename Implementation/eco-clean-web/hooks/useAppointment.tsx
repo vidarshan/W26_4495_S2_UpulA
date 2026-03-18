@@ -1,5 +1,7 @@
-import { JobNote } from "@prisma/client";
 import { useQuery } from "@tanstack/react-query";
+
+export type Status = "SCHEDULED" | "COMPLETED" | "CANCELLED" | "LATE";
+
 
 export type VisitNote = {
   id: string;
@@ -19,6 +21,19 @@ export type StaffUser = {
   name?: string;
   email?: string;
   role?: string;
+};
+
+export type AppointmentAssignment = {
+  id: string;
+  appointmentId?: string;
+  staffId: string;
+  status?: string;
+  plannedStart?: string | null;
+  plannedEnd?: string | null;
+  notes?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+  staff: StaffUser;
 };
 
 type JobClient = {
@@ -42,6 +57,23 @@ type JobAddress = {
   country?: string | null;
 };
 
+type JobNoteImage = {
+  id: string;
+  url: string;
+  fileKey?: string | null;
+};
+
+export type JobNote = {
+  id: string;
+  title: string | null;
+  content: string | null;
+  category: string | null;
+  isClientVisible: boolean;
+  isPinned: boolean;
+  createdAt: string;
+  images?: JobNoteImage[];
+};
+
 type JobLineItem = {
   id: string;
   name: string;
@@ -56,8 +88,9 @@ export type AppointmentWithRelations = {
   id: string;
   startTime: string;
   endTime: string;
-  status: "SCHEDULED" | "COMPLETED" | "CANCELLED";
+  status: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "LATE";
   jobId: string;
+  createdAt: string;
   job?: {
     id: string;
     title: string;
@@ -69,10 +102,10 @@ export type AppointmentWithRelations = {
     lineItems?: JobLineItem[];
     notes?: JobNote[];
   };
-  staff: StaffUser[];
+  assignments: AppointmentAssignment[];
+  staff: StaffUser[]; // keep this because your backend is returning derived staff too
   notes: VisitNote[];
   images: AppointmentImage[];
-  createdAt: string;
 };
 
 export const useAppointment = (id?: string | null) => {

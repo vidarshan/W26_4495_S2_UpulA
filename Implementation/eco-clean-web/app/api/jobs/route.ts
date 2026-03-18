@@ -2,14 +2,13 @@ export const runtime = "nodejs";
 
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
-import { AppointmentStatus, JobType, Prisma } from "@prisma/client";
+import { AppointmentStatus, JobType } from "@prisma/client";
 import { DateTime } from "luxon";
 import { LineItem } from "@/lib/api/jobs";
 import { buildUtcWindowFromLocal } from "@/lib/dateTime";
 
 const APP_TZ = process.env.APP_TZ ?? "America/Vancouver";
 
-// Infer tx type from prisma.$transaction callback signature
 type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
 
 type JobNoteCategory =
@@ -46,9 +45,9 @@ type CreateJobBody = {
   }>;
 
   appointments: Array<{
-    date: string; // "YYYY-MM-DD"
-    startTime: string | null; // "HH:mm"
-    endTime: string | null; // "HH:mm"
+    date: string;
+    startTime: string | null;
+    endTime: string | null;
     staffIds: string[];
     note?: string | null;
     images?: Array<{ url: string; fileKey?: string | null }>;
@@ -59,7 +58,7 @@ type CreateJobBody = {
     interval: number;
     endType: "after" | "on";
     endsAfter?: number | null;
-    endsOn?: string | null; // "YYYY-MM-DD"
+    endsOn?: string | null;
   } | null;
 };
 
@@ -140,7 +139,6 @@ function normalizeNotes(rawNotes: unknown) {
 export async function POST(req: NextRequest) {
   try {
     const raw = await req.text();
-    console.log("RAW:", raw);
 
     let parsed: unknown;
 
@@ -203,6 +201,7 @@ export async function POST(req: NextRequest) {
         | Record<string, unknown>
         | null
         | undefined;
+
       must(recurrence, "RECURRING requires recurrence object");
       must(
         typeof recurrence?.interval === "number" && recurrence.interval >= 1,
@@ -245,7 +244,7 @@ export async function POST(req: NextRequest) {
                   category: note.category,
                   isClientVisible: note.isClientVisible,
                   isPinned: note.isPinned,
-                  createdById: null, // wire auth user id later if needed
+                  createdById: null,
                   images: note.images.length
                     ? {
                         create: note.images.map((img) => ({
@@ -261,33 +260,35 @@ export async function POST(req: NextRequest) {
       });
 
       if (lineItems.length) {
-        await tx.jobLineItem.createMany({
-          data: lineItems
-            .filter(
-              (li: unknown): li is LineItem =>
-                !!li &&
-                typeof li === "object" &&
-                typeof (li as Record<string, unknown>).name === "string" &&
-                !!(li as Record<string, unknown>).name &&
-                typeof (li as Record<string, unknown>).quantity === "number" &&
-                ((li as Record<string, unknown>).quantity as number) > 0,
-            )
-            .map((li: LineItem) => {
-              const qty = Math.trunc(Number(li.quantity));
-              const unitPrice = li.unitPrice ?? null;
-              const total = unitPrice != null ? qty * unitPrice : null;
+        const validLineItems = lineItems
+          .filter(
+            (li: unknown): li is LineItem =>
+              !!li &&
+              typeof li === "object" &&
+              typeof (li as Record<string, unknown>).name === "string" &&
+              !!(li as Record<string, unknown>).name &&
+              typeof (li as Record<string, unknown>).quantity === "number" &&
+              ((li as Record<string, unknown>).quantity as number) > 0,
+          )
+          .map((li: LineItem) => {
+            const qty = Math.trunc(Number(li.quantity));
+            const unitPrice = li.unitPrice ?? null;
+            const total = unitPrice != null ? qty * unitPrice : null;
 
-              return {
-                jobId: job.id,
-                name: li.name.trim(),
-                quantity: qty,
-                unitCost: li.unitCost ?? null,
-                unitPrice,
-                total,
-                description: li.description ?? null,
-              };
-            }),
-        });
+            return {
+              jobId: job.id,
+              name: li.name.trim(),
+              quantity: qty,
+              unitCost: li.unitCost ?? null,
+              unitPrice,
+              total,
+              description: li.description ?? null,
+            };
+          });
+
+        if (validLineItems.length) {
+          await tx.jobLineItem.createMany({ data: validLineItems });
+        }
       }
 
       const createOne = async (
@@ -309,9 +310,11 @@ export async function POST(req: NextRequest) {
             startTime: win!.startUtc,
             endTime: win!.endUtc,
             status: AppointmentStatus.SCHEDULED,
-            staff: a.staffIds?.length
+            assignments: a.staffIds?.length
               ? {
-                  connect: a.staffIds.map((id) => ({ id })),
+                  create: a.staffIds.map((staffId) => ({
+                    staff: { connect: { id: staffId } },
+                  })),
                 }
               : undefined,
           },
@@ -330,15 +333,17 @@ export async function POST(req: NextRequest) {
 
           const imgs = a.images ?? [];
           if (imgs.length) {
-            await tx.appointmentImage.createMany({
-              data: imgs
-                .filter((img) => !!img?.url)
-                .map((img) => ({
-                  appointmentId: created.id,
-                  url: img.url,
-                  fileKey: img.fileKey ?? null,
-                })),
-            });
+            const validImgs = imgs
+              .filter((img) => !!img?.url)
+              .map((img) => ({
+                appointmentId: created.id,
+                url: img.url,
+                fileKey: img.fileKey ?? null,
+              }));
+
+            if (validImgs.length) {
+              await tx.appointmentImage.createMany({ data: validImgs });
+            }
           }
         }
 
@@ -423,11 +428,11 @@ export async function POST(req: NextRequest) {
               startTime: startUtc,
               endTime: endUtc,
               status: AppointmentStatus.SCHEDULED,
-              staff: base.staffIds?.length
+              assignments: base.staffIds?.length
                 ? {
-                    connect: base.staffIds.map(
-                      (id: string): Prisma.UserWhereUniqueInput => ({ id }),
-                    ),
+                    create: base.staffIds.map((staffId) => ({
+                      staff: { connect: { id: staffId } },
+                    })),
                   }
                 : undefined,
             },
@@ -445,15 +450,17 @@ export async function POST(req: NextRequest) {
 
           const imgs = base.images ?? [];
           if (imgs.length) {
-            await tx.appointmentImage.createMany({
-              data: imgs
-                .filter((img) => !!img?.url)
-                .map((img) => ({
-                  appointmentId: created.id,
-                  url: img.url,
-                  fileKey: img.fileKey ?? null,
-                })),
-            });
+            const validImgs = imgs
+              .filter((img) => !!img?.url)
+              .map((img) => ({
+                appointmentId: created.id,
+                url: img.url,
+                fileKey: img.fileKey ?? null,
+              }));
+
+            if (validImgs.length) {
+              await tx.appointmentImage.createMany({ data: validImgs });
+            }
           }
 
           cursor =
@@ -486,8 +493,12 @@ export async function POST(req: NextRequest) {
           },
           appointments: {
             include: {
-              staff: {
-                select: { id: true, name: true, email: true, role: true },
+              assignments: {
+                include: {
+                  staff: {
+                    select: { id: true, name: true, email: true, role: true },
+                  },
+                },
               },
               notes: true,
               images: true,

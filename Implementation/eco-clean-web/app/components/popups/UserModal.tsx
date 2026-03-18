@@ -12,8 +12,11 @@ import {
   Stack,
   Text,
   TextInput,
+  Loader,
+  Paper,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
+import { notifications } from "@mantine/notifications";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { IoPeopleOutline, IoTextOutline } from "react-icons/io5";
@@ -73,6 +76,7 @@ export default function UserUpsertModal({
 }: Props) {
   const queryClient = useQueryClient();
   const [generatedPassword, setGeneratedPassword] = useState("");
+  const [copied, setCopied] = useState(false);
 
   const initialValues = useMemo<FormValues>(
     () => ({
@@ -89,11 +93,12 @@ export default function UserUpsertModal({
     initialValues,
     validate: {
       name: (v) => (!v.trim() ? "Name is required" : null),
-      email: (v) => (/^\S+@\S+$/.test(v) ? null : "Invalid email"),
+      email: (v) =>
+        /^\S+@\S+\.\S+$/.test(v.trim()) ? null : "Invalid email address",
 
       password: (value) => {
         const p = (value || "").trim();
-        if (!p) return null; // optional on edit
+        if (!p) return null;
         return p.length < 8 ? "Password must be at least 8 characters" : null;
       },
 
@@ -101,7 +106,7 @@ export default function UserUpsertModal({
         const p = (values.password || "").trim();
         const c = (value || "").trim();
 
-        if (!p) return null; // not resetting password
+        if (!p) return null;
         if (!c) return "Please confirm the password";
         return c !== p ? "Passwords do not match" : null;
       },
@@ -110,7 +115,9 @@ export default function UserUpsertModal({
 
   useEffect(() => {
     if (!opened) return;
+
     setGeneratedPassword("");
+    setCopied(false);
     form.setValues(initialValues);
     form.resetDirty();
     form.clearErrors();
@@ -120,11 +127,10 @@ export default function UserUpsertModal({
   const mutation = useMutation<MutationResult, Error, FormValues>({
     mutationFn: async (values) => {
       if (mode === "create") {
-        // expected: { user, tempPassword }
         return (await createUser(
-          values.name,
+          values.name.trim(),
           values.role,
-          values.email,
+          values.email.trim().toLowerCase(),
         )) as CreateUserResult;
       }
 
@@ -132,38 +138,72 @@ export default function UserUpsertModal({
 
       const passwordToSet = (values.password || "").trim();
 
-      // expected: updated user or any success payload
       return (await editUser(
         user.id,
-        values.name,
+        values.name.trim(),
         values.role,
-        values.email,
+        values.email.trim().toLowerCase(),
         passwordToSet ? passwordToSet : undefined,
       )) as EditUserResult;
     },
 
     onSuccess: async (result) => {
-      await queryClient.invalidateQueries({
-        queryKey: ["staff"],
-        exact: false,
-      });
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["staff"],
+          exact: false,
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["users"],
+          exact: false,
+        }),
+      ]);
 
       if (mode === "create") {
-        // Narrow result type safely
         const temp = "tempPassword" in result ? result.tempPassword : "";
         setGeneratedPassword(temp);
 
         form.setFieldValue("password", "");
         form.setFieldValue("confirmPassword", "");
-        return; // keep open so admin can copy
+
+        notifications.show({
+          title: "User created",
+          message: "User created successfully. Copy the generated password.",
+          color: "green",
+        });
+
+        return;
       }
 
-      onClose();
+      notifications.show({
+        title: "User updated",
+        message: "User details saved successfully.",
+        color: "green",
+      });
+
+      handleClose(true);
+    },
+
+    onError: (error) => {
+      console.error(error);
+      notifications.show({
+        title: mode === "create" ? "Create failed" : "Update failed",
+        message: error.message || "Something went wrong. Please try again.",
+        color: "red",
+      });
     },
   });
 
-  const handleClose = () => {
-    if (mutation.isPending) return;
+  const isBusy = mutation.isPending;
+  const isCreateComplete = mode === "create" && !!generatedPassword;
+
+  const handleClose = (force = false) => {
+    if (isBusy && !force) return;
+
+    setGeneratedPassword("");
+    setCopied(false);
+    form.reset();
+    form.clearErrors();
     onClose();
   };
 
@@ -175,7 +215,28 @@ export default function UserUpsertModal({
       handleClose();
       return;
     }
+
     mutation.mutate(values);
+  };
+
+  const handleCopyPassword = async () => {
+    try {
+      await navigator.clipboard.writeText(generatedPassword);
+      setCopied(true);
+
+      notifications.show({
+        title: "Copied",
+        message: "Generated password copied to clipboard.",
+        color: "green",
+      });
+    } catch (error) {
+      console.error(error);
+      notifications.show({
+        title: "Copy failed",
+        message: "Could not copy password. Please copy it manually.",
+        color: "red",
+      });
+    }
   };
 
   const roleOptions: { value: Role; label: string }[] = [
@@ -186,24 +247,40 @@ export default function UserUpsertModal({
   return (
     <Modal
       opened={opened}
-      onClose={handleClose}
+      onClose={() => handleClose()}
       title={mode === "create" ? "Add User" : "Edit User"}
       size="sm"
-      closeOnClickOutside={false}
       centered
+      closeOnClickOutside={!isBusy}
+      closeOnEscape={!isBusy}
+      withCloseButton={!isBusy}
     >
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Stack gap="sm">
+          {isBusy && (
+            <Paper withBorder p="sm" radius="md">
+              <Group gap="xs">
+                <Loader size="sm" />
+                <Text size="sm">
+                  {mode === "create" ? "Creating user..." : "Saving changes..."}
+                </Text>
+              </Group>
+            </Paper>
+          )}
+
           <TextInput
             leftSection={<IoTextOutline />}
             label="Name"
             placeholder="Staff name"
+            disabled={isBusy || isCreateComplete}
             {...form.getInputProps("name")}
           />
+
           <TextInput
             leftSection={<IoTextOutline />}
             placeholder="Staff email"
             label="Email"
+            disabled={isBusy || isCreateComplete}
             {...form.getInputProps("email")}
           />
 
@@ -212,8 +289,8 @@ export default function UserUpsertModal({
             data={roleOptions}
             value={form.values.role}
             leftSection={<IoPeopleOutline />}
+            disabled={isBusy || isCreateComplete}
             onChange={(v) => {
-              // Mantine Select returns string | null
               const nextRole: Role =
                 v === "ADMIN" || v === "STAFF" ? v : "STAFF";
               form.setFieldValue("role", nextRole);
@@ -227,16 +304,17 @@ export default function UserUpsertModal({
                 Generated password
               </Text>
 
-              <Group justify="space-between" align="center">
-                <Code style={{ userSelect: "all" }}>{generatedPassword}</Code>
+              <Group justify="space-between" align="center" wrap="nowrap">
+                <Code style={{ userSelect: "all", flex: 1 }}>
+                  {generatedPassword}
+                </Code>
+
                 <Button
                   type="button"
                   variant="light"
-                  onClick={() =>
-                    navigator.clipboard.writeText(generatedPassword)
-                  }
+                  onClick={handleCopyPassword}
                 >
-                  Copy
+                  {copied ? "Copied" : "Copy"}
                 </Button>
               </Group>
 
@@ -251,11 +329,13 @@ export default function UserUpsertModal({
               <PasswordInput
                 label="Reset password"
                 placeholder="Leave blank to keep unchanged"
+                disabled={isBusy}
                 {...form.getInputProps("password")}
               />
               <PasswordInput
                 label="Confirm password"
                 placeholder="Re-enter password"
+                disabled={isBusy}
                 {...form.getInputProps("confirmPassword")}
               />
             </>
@@ -266,13 +346,14 @@ export default function UserUpsertModal({
           <Button
             type="button"
             variant="default"
-            onClick={handleClose}
+            onClick={() => handleClose()}
             fullWidth
+            disabled={isBusy}
           >
             Cancel
           </Button>
 
-          <Button type="submit" loading={mutation.isPending} fullWidth>
+          <Button type="submit" loading={isBusy} fullWidth>
             {submitLabel}
           </Button>
         </Flex>

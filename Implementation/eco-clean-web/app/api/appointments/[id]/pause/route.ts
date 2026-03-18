@@ -1,4 +1,5 @@
 export const runtime = "nodejs";
+
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -9,7 +10,31 @@ export async function POST(
   try {
     const { id: appointmentId } = await params;
 
+    if (!appointmentId) {
+      return NextResponse.json(
+        { error: "Missing appointment id" },
+        { status: 400 },
+      );
+    }
+
     const result = await prisma.$transaction(async (tx) => {
+      const appointment = await tx.appointment.findUnique({
+        where: { id: appointmentId },
+        select: { id: true, status: true },
+      });
+
+      if (!appointment) {
+        throw new Error("Appointment not found");
+      }
+
+      if (appointment.status === "COMPLETED") {
+        throw new Error("Completed appointment cannot be paused");
+      }
+
+      if (appointment.status === "CANCELLED") {
+        throw new Error("Cancelled appointment cannot be paused");
+      }
+
       const activeSession = await tx.appointmentWorkSession.findFirst({
         where: {
           appointmentId,
@@ -29,23 +54,62 @@ export async function POST(
         data: { endedAt: new Date() },
       });
 
-      return tx.appointment.findUnique({
+      const fullAppointment = await tx.appointment.findUnique({
         where: { id: appointmentId },
         include: {
-          workSessions: { orderBy: { startedAt: "asc" } },
-          staff: true,
+          workSessions: {
+            orderBy: { startedAt: "asc" },
+            include: {
+              staff: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  role: true,
+                },
+              },
+            },
+          },
+          assignments: {
+            include: {
+              staff: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  role: true,
+                },
+              },
+            },
+            orderBy: { createdAt: "asc" },
+          },
           notes: true,
           images: true,
-          job: { include: { client: true, address: true } },
+          job: {
+            include: {
+              client: true,
+              address: true,
+            },
+          },
         },
       });
+
+      return fullAppointment;
     });
 
-    return NextResponse.json(result);
-  } catch (error: any) {
+    return NextResponse.json({
+      ...result,
+      staff: result?.assignments.map((a) => a.staff) ?? [],
+    });
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : "Failed to pause appointment";
+
     return NextResponse.json(
-      { error: error?.message || "Failed to pause appointment" },
-      { status: 400 },
+      { error: message },
+      {
+        status: message === "Appointment not found" ? 404 : 400,
+      },
     );
   }
 }
