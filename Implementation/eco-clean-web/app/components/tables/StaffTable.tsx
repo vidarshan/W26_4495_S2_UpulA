@@ -90,7 +90,7 @@ export default function StaffTable() {
           <TextInput
             placeholder="Search users"
             leftSection={<IoSearchOutline size={16} />}
-            radius="md"
+            radius="xl"
             onChange={(e) => handleSearch(e.target.value)}
           />
           <Select
@@ -104,7 +104,7 @@ export default function StaffTable() {
             onChange={(value) =>
               setSort((value as "newest" | "oldest") ?? "newest")
             }
-            radius="md"
+            radius="xl"
           />
         </Group>
       </Group>
@@ -114,7 +114,7 @@ export default function StaffTable() {
       ) : (
         <>
           <ScrollArea mih="60vh">
-            <Table striped highlightOnHover withTableBorder withRowBorders>
+            <Table striped highlightOnHover withRowBorders>
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th>Name</Table.Th>

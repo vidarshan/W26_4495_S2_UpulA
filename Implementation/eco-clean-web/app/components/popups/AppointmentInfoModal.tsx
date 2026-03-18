@@ -3,6 +3,7 @@
 import { useEffect, useMemo } from "react";
 import {
   ActionIcon,
+  Badge,
   Box,
   Button,
   Divider,
@@ -13,51 +14,131 @@ import {
   MultiSelect,
   Paper,
   Select,
+  SimpleGrid,
   Stack,
+  Text,
   Textarea,
+  ThemeIcon,
+  Title,
 } from "@mantine/core";
 import { DateInput, TimeInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { notifications } from "@mantine/notifications";
+import {
+  IoCalendarOutline,
+  IoCloseOutline,
+  IoDocumentTextOutline,
+  IoLocationOutline,
+  IoPeopleOutline,
+  IoPersonOutline,
+  IoPricetagOutline,
+  IoTimeOutline,
+} from "react-icons/io5";
+
 import Loader from "../UI/Loader";
 import { useDashboardUI } from "@/stores/store";
 import { useAppointment } from "@/hooks/useAppointment";
-import { updateAppointment } from "@/lib/api/appointments";
 import { getStaff } from "@/lib/api/users";
+import { updateAppointment } from "@/lib/api/appointments";
 import { dateOnlyAndHHmmToIso, isoToDateOnly, isoToHHmm } from "@/lib/dateTime";
-import { deleteAppointmentImage, useUploadThing } from "@/lib/uploadthing";
-import { IoCloseOutline } from "react-icons/io5";
+import { deleteAppointmentImage } from "@/lib/uploadthing";
+
+import classes from "./AppointmentInfoModal.module.css";
 
 type Status = "SCHEDULED" | "COMPLETED" | "CANCELLED";
 
-type AppointmentImage = { id: string; url: string };
+type AppointmentImage = {
+  id: string;
+  url: string;
+};
+
+type AppointmentStaff = {
+  id: string;
+  name?: string;
+  email?: string;
+};
+
+type AppointmentNote = {
+  id: string;
+  content: string;
+  createdAt: string;
+  isClientVisible?: boolean;
+};
+
+type JobNoteImage = {
+  id: string;
+  url: string;
+  fileKey: string;
+};
+
+type JobNote = {
+  id: string;
+  title: string | null;
+  content: string | null;
+  category: string | null;
+  isClientVisible: boolean;
+  isPinned: boolean;
+  createdAt: string | Date;
+  images?: JobNoteImage[];
+};
+
+type JobLineItem = {
+  id: string;
+  name: string;
+  quantity: number;
+  unitCost: number;
+  unitPrice: number;
+  total: number;
+  description?: string | null;
+};
+
+type JobClient = {
+  id: string;
+  title?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  companyName?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  preferredContact?: string | null;
+};
+
+type JobAddress = {
+  id: string;
+  street1?: string | null;
+  street2?: string | null;
+  city?: string | null;
+  province?: string | null;
+  postalCode?: string | null;
+  country?: string | null;
+};
 
 type AppointmentCache = {
   id: string;
   startTime: string;
   endTime: string;
   status: Status;
-  staff?: { id: string; name?: string }[];
-  notes?: { id: string; content: string; createdAt: string }[];
+  staff?: AppointmentStaff[];
+  notes?: AppointmentNote[];
   images?: AppointmentImage[];
-};
-
-type AppointmentForm = {
-  id: string;
-  startDate: Date | null;
-  startTime: string;
-  endTime: string;
-  staffId: string[];
-  notes: string;
-  images: File[]; // local picked files
-  imageUrls: string[]; // uploaded URLs
+  job?: {
+    id: string;
+    title: string;
+    type: string;
+    isAnytime?: boolean;
+    visitInstructions?: string | null;
+    client?: JobClient | null;
+    address?: JobAddress | null;
+    lineItems?: JobLineItem[];
+    notes?: JobNote[];
+  };
 };
 
 type FormValues = {
   date: Date | null;
-  startTime: string; // "HH:mm"
-  endTime: string; // "HH:mm"
+  startTime: string;
+  endTime: string;
   status: Status;
   staff: string[];
   note: string;
@@ -71,12 +152,89 @@ function isValidHHmm(value: string) {
   return /^([01]\d|2[0-3]):([0-5]\d)$/.test(value);
 }
 
+function formatDateTime(value?: string | Date | null) {
+  if (!value) return "—";
+
+  const date = value instanceof Date ? value : new Date(value);
+
+  return new Intl.DateTimeFormat("en-CA", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+}
+
+function formatDateOnly(value?: string | null) {
+  if (!value) return "—";
+
+  const date = new Date(value);
+  return new Intl.DateTimeFormat("en-CA", {
+    dateStyle: "medium",
+  }).format(date);
+}
+
+function buildClientName(client?: JobClient | null) {
+  if (!client) return "—";
+
+  const fullName = [client.title, client.firstName, client.lastName]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+
+  return client.companyName?.trim()
+    ? `${fullName || "—"}${fullName ? " • " : ""}${client.companyName}`
+    : fullName || "—";
+}
+
+function buildAddress(address?: JobAddress | null) {
+  if (!address) return "—";
+
+  return [
+    address.street1,
+    address.street2,
+    [address.city, address.province].filter(Boolean).join(", "),
+    address.postalCode,
+    address.country,
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
+
+function ReadOnlyItem({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: React.ReactNode;
+}) {
+  return (
+    <Paper withBorder radius="md" p="sm">
+      <Group align="flex-start" wrap="nowrap">
+        <ThemeIcon variant="light" size="lg" radius="xl">
+          {icon}
+        </ThemeIcon>
+
+        <Box flex={1}>
+          <Text size="xs" c="dimmed">
+            {label}
+          </Text>
+          <Text size="sm" fw={500}>
+            {value || "—"}
+          </Text>
+        </Box>
+      </Group>
+    </Paper>
+  );
+}
+
 export default function AppointmentInfoModal({ onSuccess }: Props) {
-  const { startUpload, isUploading } = useUploadThing("appointmentImages");
   const { appointmentOpen, closeAppointment, selectedApptId } =
     useDashboardUI();
+
   const { data: appointment, isLoading } = useAppointment(selectedApptId);
   const qc = useQueryClient();
+
   const { data: staffData, isLoading: staffLoading } = useQuery({
     queryKey: ["staff", "all"],
     queryFn: () => getStaff(),
@@ -107,18 +265,30 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
     },
   });
 
-  // Populate on load/change
+  const latestAppointmentNote =
+    appointment?.notes
+      ?.slice()
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      )?.[0]?.content ?? "";
+
+  const sortedAppointmentNotes =
+    appointment?.notes
+      ?.slice()
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      ) ?? [];
+  console.log(appointment);
+  const sortedJobNotes: JobNote[] =
+    appointment?.job?.notes?.slice().sort((a, b) => {
+      if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    }) ?? [];
+
   useEffect(() => {
     if (!appointment) return;
-
-    const noteValue = appointment.notes?.length
-      ? (appointment.notes
-          .slice()
-          .sort(
-            (a, b) =>
-              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-          )[0]?.content ?? "")
-      : "";
 
     form.setValues({
       date: isoToDateOnly(appointment.startTime),
@@ -126,7 +296,7 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
       endTime: isoToHHmm(appointment.endTime),
       status: appointment.status,
       staff: (appointment.staff ?? []).map((s) => s.id),
-      note: noteValue,
+      note: latestAppointmentNote,
     });
 
     form.resetDirty();
@@ -137,11 +307,11 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
     appointment?.endTime,
     appointment?.status,
     appointment?.staff?.map((s) => s.id).join(","),
-    appointment?.notes?.length,
+    appointment?.notes?.map((n) => `${n.id}-${n.createdAt}`).join(","),
   ]);
 
   const handleClose = () => {
-    form.reset(); // revert any unsaved edits to last initialValues snapshot
+    form.reset();
     closeAppointment();
   };
 
@@ -173,8 +343,9 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
     form.resetDirty();
     onSuccess?.();
     closeAppointment();
+
     notifications.show({
-      title: `Success`,
+      title: "Success",
       message: "Updated the appointment",
       color: "green",
     });
@@ -195,9 +366,7 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
 
         return {
           ...old,
-          images: (old.images ?? []).filter(
-            (img: AppointmentImage) => img.id !== imageId,
-          ),
+          images: (old.images ?? []).filter((img) => img.id !== imageId),
         };
       });
 
@@ -218,7 +387,7 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
 
   return (
     <Modal
-      size="sm"
+      size="xl"
       title="Appointment Details"
       opened={appointmentOpen}
       onClose={handleClose}
@@ -229,29 +398,37 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
         <Loader />
       ) : !appointment ? null : (
         <Paper radius="md">
-          <Divider
-            label="Appointment Information"
-            mb="sm"
-            labelPosition="left"
-          />
-
           <form
             onSubmit={(e) => {
               e.preventDefault();
               handleSave();
             }}
           >
-            <Stack gap="sm">
-              <DateInput
-                label="Date"
-                value={form.values.date}
-                onChange={(d) => {
-                  form.setFieldValue("date", d ? new Date(d) : null);
-                }}
-                error={form.errors.date}
-              />
+            <Stack gap="lg">
+              <Divider label="Appointment Information" labelPosition="left" />
 
-              <Group grow>
+              <SimpleGrid cols={{ base: 1, sm: 2 }}>
+                <DateInput
+                  label="Date"
+                  value={form.values.date}
+                  onChange={(value) =>
+                    form.setFieldValue("date", value ? new Date(value) : null)
+                  }
+                  error={form.errors.date}
+                />
+
+                <Select
+                  label="Status"
+                  data={[
+                    { value: "SCHEDULED", label: "Scheduled" },
+                    { value: "COMPLETED", label: "Completed" },
+                    { value: "CANCELLED", label: "Cancelled" },
+                  ]}
+                  {...form.getInputProps("status")}
+                />
+              </SimpleGrid>
+
+              <SimpleGrid cols={{ base: 1, sm: 2 }}>
                 <TimeInput
                   label="Start Time"
                   value={form.values.startTime}
@@ -260,6 +437,7 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
                   }
                   error={form.errors.startTime}
                 />
+
                 <TimeInput
                   label="End Time"
                   value={form.values.endTime}
@@ -268,17 +446,7 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
                   }
                   error={form.errors.endTime}
                 />
-              </Group>
-
-              <Select
-                label="Status"
-                data={[
-                  { value: "SCHEDULED", label: "Scheduled" },
-                  { value: "COMPLETED", label: "Completed" },
-                  { value: "CANCELLED", label: "Cancelled" },
-                ]}
-                {...form.getInputProps("status")}
-              />
+              </SimpleGrid>
 
               <MultiSelect
                 label="Assigned Staff"
@@ -291,63 +459,263 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
               />
 
               <Textarea
-                label="Note"
+                label="Latest Appointment Note"
+                description="This updates the current internal visit note."
                 autosize
                 minRows={3}
                 placeholder="Add internal note for this visit..."
                 {...form.getInputProps("note")}
               />
+
+              {!!sortedAppointmentNotes.length && (
+                <Stack gap="xs">
+                  <Text fw={600} size="sm">
+                    Appointment Note History
+                  </Text>
+
+                  {sortedAppointmentNotes.map((note) => (
+                    <Paper key={note.id} withBorder radius="md" p="sm">
+                      <Group justify="space-between" align="flex-start" mb={6}>
+                        <Badge
+                          variant="light"
+                          color={note.isClientVisible ? "blue" : "gray"}
+                        >
+                          {note.isClientVisible ? "Client visible" : "Internal"}
+                        </Badge>
+
+                        <Text size="xs" c="dimmed">
+                          {formatDateTime(note.createdAt)}
+                        </Text>
+                      </Group>
+
+                      <Text size="sm">{note.content || "—"}</Text>
+                    </Paper>
+                  ))}
+                </Stack>
+              )}
+
+              {!!appointment.images?.length && (
+                <Stack gap="xs">
+                  <Text fw={600} size="sm">
+                    Appointment Images
+                  </Text>
+
+                  <Group wrap="wrap" gap="xs">
+                    {appointment.images.map((img) => (
+                      <Paper
+                        key={img.id}
+                        radius="md"
+                        withBorder
+                        className={classes.thumbnailCard}
+                      >
+                        <Image
+                          src={img.url}
+                          alt="appointment attachment"
+                          w={88}
+                          h={88}
+                          fit="cover"
+                        />
+
+                        <ActionIcon
+                          size="sm"
+                          variant="filled"
+                          color="dark"
+                          className={classes.thumbnailAction}
+                          loading={deleteImageMutation.isPending}
+                          onClick={() => deleteImageMutation.mutate(img.id)}
+                          aria-label="Delete image"
+                        >
+                          <IoCloseOutline size={14} />
+                        </ActionIcon>
+                      </Paper>
+                    ))}
+                  </Group>
+                </Stack>
+              )}
+
+              <Divider label="Job Details" labelPosition="left" />
+
+              <SimpleGrid cols={{ base: 1, sm: 2 }}>
+                <ReadOnlyItem
+                  icon={<IoDocumentTextOutline size={18} />}
+                  label="Job Title"
+                  value={appointment.job?.title || "—"}
+                />
+
+                <ReadOnlyItem
+                  icon={<IoPricetagOutline size={18} />}
+                  label="Job Type"
+                  value={appointment.job?.type || "—"}
+                />
+
+                <ReadOnlyItem
+                  icon={<IoPersonOutline size={18} />}
+                  label="Client"
+                  value={buildClientName(appointment.job?.client)}
+                />
+
+                <ReadOnlyItem
+                  icon={<IoPeopleOutline size={18} />}
+                  label="Preferred Contact"
+                  value={appointment.job?.client?.preferredContact || "—"}
+                />
+
+                <ReadOnlyItem
+                  icon={<IoCalendarOutline size={18} />}
+                  label="Created"
+                  value={formatDateOnly(appointment.createdAt)}
+                />
+
+                <ReadOnlyItem
+                  icon={<IoTimeOutline size={18} />}
+                  label="Scheduled Window"
+                  value={`${formatDateTime(appointment.startTime)} → ${formatDateTime(
+                    appointment.endTime,
+                  )}`}
+                />
+              </SimpleGrid>
+
+              <ReadOnlyItem
+                icon={<IoLocationOutline size={18} />}
+                label="Service Address"
+                value={buildAddress(appointment.job?.address)}
+              />
+
+              {!!appointment.job?.visitInstructions && (
+                <Paper withBorder radius="md" p="sm">
+                  <Text size="xs" c="dimmed" mb={4}>
+                    Visit Instructions
+                  </Text>
+                  <Text size="sm">{appointment.job.visitInstructions}</Text>
+                </Paper>
+              )}
+
+              {!!appointment.job?.client && (
+                <SimpleGrid cols={{ base: 1, sm: 2 }}>
+                  <Paper withBorder radius="md" p="sm">
+                    <Text size="xs" c="dimmed" mb={4}>
+                      Client Email
+                    </Text>
+                    <Text size="sm">{appointment.job.client.email || "—"}</Text>
+                  </Paper>
+
+                  <Paper withBorder radius="md" p="sm">
+                    <Text size="xs" c="dimmed" mb={4}>
+                      Client Phone
+                    </Text>
+                    <Text size="sm">{appointment.job.client.phone || "—"}</Text>
+                  </Paper>
+                </SimpleGrid>
+              )}
+
+              {!!appointment.job?.lineItems?.length && (
+                <Stack gap="xs">
+                  <Text fw={600} size="sm">
+                    Job Line Items
+                  </Text>
+
+                  {appointment.job.lineItems.map((item) => (
+                    <Paper key={item.id} withBorder radius="md" p="sm">
+                      <Group justify="space-between" align="flex-start" mb={4}>
+                        <Text fw={600} size="sm">
+                          {item.name}
+                        </Text>
+
+                        <Badge variant="light">
+                          Qty {item.quantity} • Total {item.total}
+                        </Badge>
+                      </Group>
+
+                      {item.description ? (
+                        <Text size="sm" c="dimmed">
+                          {item.description}
+                        </Text>
+                      ) : null}
+                    </Paper>
+                  ))}
+                </Stack>
+              )}
+
+              {!!sortedJobNotes.length && (
+                <>
+                  <Divider label="Job Notes" labelPosition="left" />
+
+                  <Stack gap="sm">
+                    {sortedJobNotes.map((note: JobNote) => (
+                      <Paper key={note.id} withBorder radius="md" p="sm">
+                        <Group
+                          justify="space-between"
+                          align="flex-start"
+                          mb={6}
+                        >
+                          <Stack gap={4}>
+                            <Group gap="xs">
+                              <Text fw={600} size="sm">
+                                {note.title || "Untitled note"}
+                              </Text>
+
+                              {note.isPinned && (
+                                <Badge color="yellow" variant="light">
+                                  Pinned
+                                </Badge>
+                              )}
+
+                              <Badge variant="outline">{note.category}</Badge>
+
+                              <Badge
+                                variant="light"
+                                color={note.isClientVisible ? "blue" : "gray"}
+                              >
+                                {note.isClientVisible
+                                  ? "Client visible"
+                                  : "Internal"}
+                              </Badge>
+                            </Group>
+
+                            <Text size="xs" c="dimmed">
+                              {formatDateTime(note.createdAt)}
+                            </Text>
+                          </Stack>
+                        </Group>
+
+                        <Text size="sm">{note.content}</Text>
+
+                        {!!note.images?.length && (
+                          <Group mt="sm" wrap="wrap" gap="xs">
+                            {note.images.map((img) => (
+                              <Paper
+                                key={img.id}
+                                radius="md"
+                                withBorder
+                                className={classes.thumbnailCard}
+                              >
+                                <Image
+                                  src={img.url}
+                                  alt="job note attachment"
+                                  w={88}
+                                  h={88}
+                                  fit="cover"
+                                />
+                              </Paper>
+                            ))}
+                          </Group>
+                        )}
+                      </Paper>
+                    ))}
+                  </Stack>
+                </>
+              )}
+
+              <Flex mt="xs" gap="xs">
+                <Button variant="default" onClick={handleClose} fullWidth>
+                  Cancel
+                </Button>
+
+                <Button type="submit" fullWidth disabled={!form.isDirty()}>
+                  Save
+                </Button>
+              </Flex>
             </Stack>
-
-            {appointment?.images?.length > 0 && (
-              <Group mt="xs" wrap="wrap" gap="xs">
-                {appointment.images.map((img) => (
-                  <Box
-                    key={img.id}
-                    pos="relative"
-                    w={64}
-                    h={64}
-                    style={{ borderRadius: 8, overflow: "hidden" }}
-                  >
-                    <Image
-                      src={img.url}
-                      alt="attached"
-                      width={64}
-                      height={64}
-                      fit="cover"
-                    />
-
-                    <ActionIcon
-                      size="sm"
-                      variant="filled"
-                      color="dark"
-                      pos="absolute"
-                      top={4}
-                      right={4}
-                      loading={deleteImageMutation.isPending}
-                      onClick={() => {
-                        console.log("DELETE CLICK", img.id);
-
-                        deleteImageMutation.mutate(img.id);
-                      }}
-                      aria-label="Delete image"
-                    >
-                      <IoCloseOutline size={14} />
-                    </ActionIcon>
-                  </Box>
-                ))}
-              </Group>
-            )}
-
-            <Flex mt="sm" gap="xs">
-              <Button variant="default" onClick={handleClose} fullWidth>
-                Cancel
-              </Button>
-
-              <Button type="submit" fullWidth disabled={!form.isDirty()}>
-                Save
-              </Button>
-            </Flex>
           </form>
         </Paper>
       )}

@@ -13,7 +13,6 @@ type Address = {
   isBilling?: boolean;
 };
 
-// ✅ Infer tx type from prisma.$transaction callback
 type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
 
 export async function GET(req: Request) {

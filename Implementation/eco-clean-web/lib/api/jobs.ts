@@ -8,33 +8,47 @@ export type CreateJobPayload = {
   jobType: "ONE_OFF" | "RECURRING";
   isAnytime: boolean;
   visitInstructions?: string;
-  lineItems: {
-    id: string;
+  notes?: {
+    title?: string;
+    content: string;
+    category?:
+      | "GENERAL"
+      | "ACCESS"
+      | "CLEANING"
+      | "SAFETY"
+      | "SUPPLIES"
+      | "CLIENT_PREFERENCE";
+    isClientVisible?: boolean;
+    isPinned?: boolean;
+    images?: {
+      url: string;
+      fileKey?: string;
+    }[];
+  }[];
+  lineItems: Array<{
     name: string;
     quantity: number;
-    unitCost: number;
-    unitPrice: number;
+    unitCost?: number | null;
+    unitPrice?: number | null;
     description?: string;
-  }[];
+  }>;
 
   recurrence?: {
     frequency: "weekly" | "monthly";
     interval: number;
     endType: "after" | "on";
-    endsAfter: number;
-    endsUnit: "weeks" | "months";
-    endsOn: Date | null;
+    endsAfter?: number | null;
+    endsOn?: string | null;
   };
 
-  appointments: {
-    id: string;
-    startDate: Date | null;
-    startTime: string;
-    endTime: string;
-    staffId?: string[];
-    notes?: string;
-    images?: { url: string; fileKey: string }[];
-  }[];
+  appointments: Array<{
+    date: string;
+    startTime: string | null;
+    endTime: string | null;
+    staffIds: string[];
+    note?: string | null;
+    images?: Array<{ url: string; fileKey?: string | null }>;
+  }>;
 };
 
 export interface JobFormValues {

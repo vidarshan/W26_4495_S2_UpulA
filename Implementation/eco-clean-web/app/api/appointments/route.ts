@@ -1,31 +1,28 @@
 export const runtime = "nodejs";
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import randomColor from "randomcolor";
 
-type AppointmentWithJobClient = {
-  id: string;
-  jobId: string;
-  status: string;
-  startTime: Date;
-  endTime: Date;
-  job: {
-    title: string;
-    client: {
-      firstName: string;
-      // add more client fields if you use them in extendedProps
-      // lastName?: string;
-      // email?: string;
-    };
-  };
-};
+import { NextRequest, NextResponse } from "next/server";
+import { AppointmentStatus, Prisma } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
+
+function colorFromString(input: string) {
+  let hash = 0;
+  for (let i = 0; i < input.length; i++) {
+    hash = input.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const hue = Math.abs(hash) % 360;
+  return `hsl(${hue}, 60%, 35%)`;
+}
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
 
+    const search = searchParams.get("search")?.trim();
+    const status = searchParams.get("status");
     const startParam = searchParams.get("start");
     const endParam = searchParams.get("end");
+    const staffId = searchParams.get("staffId");
+    const view = searchParams.get("view");
 
     if (!startParam || !endParam) {
       return NextResponse.json(
@@ -47,38 +44,99 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const appointments = (await prisma.appointment.findMany({
-      where: {
-        status: "SCHEDULED",
-        AND: [{ startTime: { lt: rangeEnd } }, { endTime: { gt: rangeStart } }],
-      },
+    const andFilters: Prisma.AppointmentWhereInput[] = [
+      { startTime: { lt: rangeEnd } },
+      { endTime: { gt: rangeStart } },
+    ];
+
+    if (status) {
+      andFilters.push({
+        status: status as AppointmentStatus,
+      });
+    }
+
+    if (search) {
+      andFilters.push({
+        OR: [
+          {
+            job: {
+              title: {
+                contains: search,
+                mode: Prisma.QueryMode.insensitive,
+              },
+            },
+          },
+          {
+            job: {
+              client: {
+                firstName: {
+                  contains: search,
+                  mode: Prisma.QueryMode.insensitive,
+                },
+              },
+            },
+          },
+          {
+            job: {
+              client: {
+                lastName: {
+                  contains: search,
+                  mode: Prisma.QueryMode.insensitive,
+                },
+              },
+            },
+          },
+          {
+            job: {
+              client: {
+                companyName: {
+                  contains: search,
+                  mode: Prisma.QueryMode.insensitive,
+                },
+              },
+            },
+          },
+        ],
+      });
+    }
+
+    const where: Prisma.AppointmentWhereInput = {
+      AND: andFilters,
+      ...(staffId ? { staff: { some: { id: staffId } } } : {}),
+    };
+
+    const appointments = await prisma.appointment.findMany({
+      where,
       include: {
-        job: { include: { client: true } },
+        job: { include: { client: true, address: true } },
+        staff: { select: { id: true, name: true, email: true } },
+        images: true,
+        notes: true,
       },
       orderBy: { startTime: "asc" },
-    })) as AppointmentWithJobClient[];
-
-    const events = appointments.map((appt: AppointmentWithJobClient) => {
-      const color = randomColor({ luminosity: "dark" });
-
-      return {
-        id: appt.id,
-        title: `${appt.job.title} - ${appt.job.client.firstName}`,
-        start: appt.startTime.toISOString(),
-        end: appt.endTime.toISOString(),
-        backgroundColor: color,
-        borderColor: color,
-        extendedProps: {
-          jobId: appt.jobId,
-          status: appt.status,
-          client: appt.job.client,
-        },
-      };
     });
+
+    if (view === "tasks") {
+      return NextResponse.json(appointments);
+    }
+
+    const events = appointments.map((a) => ({
+      id: a.id,
+      title: `${a.job.title} - ${a.job.client.firstName}`,
+      start: a.startTime.toISOString(),
+      end: a.endTime.toISOString(),
+      extendedProps: {
+        jobId: a.jobId,
+        status: a.status,
+        staffNames: a.staff.map((member) => member.name).join(", "),
+        staffMembers: a.staff,
+      },
+    }));
 
     return NextResponse.json(events);
   } catch (error) {
-    console.error("GET Appointments Error:", error);
+    console.error("GET /api/appointments error:", error);
+
     return NextResponse.json(
       { error: "Failed to fetch appointments" },
       { status: 500 },

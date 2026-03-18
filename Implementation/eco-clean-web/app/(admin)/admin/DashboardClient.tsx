@@ -1,12 +1,19 @@
 "use client";
 
 import {
+  Badge,
   Box,
   Button,
   Container,
+  Divider,
+  Flex,
   Group,
+  Input,
+  Paper,
   SegmentedControl,
+  Select,
   Text,
+  TextInput,
 } from "@mantine/core";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
@@ -14,18 +21,30 @@ import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin, {
   EventResizeDoneArg,
 } from "@fullcalendar/interaction";
-import { IoArrowBackOutline, IoArrowForwardOutline } from "react-icons/io5";
+import {
+  IoArrowBackOutline,
+  IoArrowForwardOutline,
+  IoPersonOutline,
+  IoRefreshCircle,
+  IoRefreshCircleOutline,
+  IoRefreshSharp,
+  IoSearchSharp,
+  IoToggleOutline,
+} from "react-icons/io5";
 import { useEffect, useRef, useState } from "react";
 import { DateSelectArg, EventClickArg, EventDropArg } from "@fullcalendar/core";
-import NewJobModal from "../components/popups/JobModal";
-import AppointmentInfoModal from "../components/popups/AppointmentInfoModal";
-import ConfirmCancellationModal from "../components/popups/ConfirmCancellationModal";
+import NewJobModal from "../../components/popups/JobModal";
+import AppointmentInfoModal from "../../components/popups/AppointmentInfoModal";
+import ConfirmCancellationModal from "../../components/popups/ConfirmCancellationModal";
 import { useCalendarStore, useDashboardUI } from "@/stores/store";
 import { notifications } from "@mantine/notifications";
 import { rescheduleAppointment } from "@/lib/api/appointments";
 import { APP_TZ } from "@/lib/dateTime";
 import luxonPlugin from "@fullcalendar/luxon3";
 import { useQueryClient } from "@tanstack/react-query";
+import { useDebouncedValue } from "@mantine/hooks";
+import { useStaff } from "@/hooks/useStaff";
+import { Staff } from "@/app/components/tables/ClientTable";
 
 export default function DashboardClient() {
   const qc = useQueryClient();
@@ -42,8 +61,34 @@ export default function DashboardClient() {
     selectedInfo,
   } = useDashboardUI();
 
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState<string | null>(null);
+  const [assignee, setAssignee] = useState<string | null>(null);
+  const [debounced] = useDebouncedValue(search, 200);
   const [view, setView] = useState("week");
   const [currentTitle, setCurrentTitle] = useState("");
+
+  const STATUS_COLORS = {
+    SCHEDULED: "#22c55e",
+    COMPLETED: "#3b82f6",
+    CANCELLED: "#ef4444",
+    LATE: "#f59e0b",
+  };
+
+  const STATUS_LABELS = {
+    SCHEDULED: "Scheduled",
+    COMPLETED: "Completed",
+    CANCELLED: "Cancelled",
+    LATE: "Late",
+  };
+
+  const { data: staffData, isLoading } = useStaff({
+    q: "",
+    page: 1,
+    limit: 10000,
+    sort: "newest",
+    paginate: true,
+  });
 
   const { setTriggerRefresh } = useCalendarStore();
 
@@ -140,7 +185,7 @@ export default function DashboardClient() {
     setTriggerRefresh(() => () => {
       calendarRef.current?.getApi().refetchEvents();
     });
-  }, [setTriggerRefresh]);
+  }, [setTriggerRefresh, search, status, assignee]);
 
   return (
     <Container fluid>
@@ -159,67 +204,148 @@ export default function DashboardClient() {
       <h1>Dashboard</h1>
 
       <Box>
-        <Group justify="space-between" mb="lg">
-          <Text fw={600} c="dimmed">
-            {currentTitle}
-          </Text>
+        <Paper mb="xs" p="md" radius="lg" withBorder>
+          <Flex
+            justify="space-between"
+            align={{ base: "stretch", md: "center" }}
+            direction={{ base: "column", md: "row" }}
+            gap="md"
+            mb="md"
+          >
+            <Box>
+              <Text fw={700} size="lg">
+                {currentTitle}
+              </Text>
+              <Text size="sm" c="dimmed">
+                Manage appointments and switch calendar views
+              </Text>
+            </Box>
 
-          <SegmentedControl
-            value={view}
-            onChange={(value) => {
-              setView(value);
-              const calendarApi = calendarRef.current?.getApi();
+            <SegmentedControl
+              value={view}
+              radius="xl"
+              h="fit-content"
+              onChange={(value) => {
+                setView(value);
+                const calendarApi = calendarRef.current?.getApi();
 
-              if (value === "month") {
-                calendarApi?.changeView("dayGridMonth");
-              }
-              if (value === "week") {
-                calendarApi?.changeView("timeGridWeek");
-              }
-              if (value === "day") {
-                calendarApi?.changeView("timeGridDay");
-              }
-            }}
-            data={[
-              { label: "Month", value: "month" },
-              { label: "Week", value: "week" },
-              { label: "Day", value: "day" },
-            ]}
-          />
+                if (value === "month") calendarApi?.changeView("dayGridMonth");
+                if (value === "week") calendarApi?.changeView("timeGridWeek");
+                if (value === "day") calendarApi?.changeView("timeGridDay");
+              }}
+              data={[
+                { label: "Month", value: "month" },
+                { label: "Week", value: "week" },
+                { label: "Day", value: "day" },
+              ]}
+            />
 
-          <Group>
             <Button.Group>
               <Button
-                leftSection={<IoArrowBackOutline />}
                 variant="default"
+                radius="xl"
+                leftSection={<IoArrowBackOutline />}
                 onClick={() => calendarRef.current?.getApi().prev()}
               >
                 Prev
               </Button>
               <Button
                 variant="default"
+                radius="xl"
                 onClick={() => calendarRef.current?.getApi().today()}
               >
                 Today
               </Button>
               <Button
-                rightSection={<IoArrowForwardOutline />}
                 variant="default"
+                radius="xl"
+                rightSection={<IoArrowForwardOutline />}
                 onClick={() => calendarRef.current?.getApi().next()}
               >
                 Next
               </Button>
             </Button.Group>
+          </Flex>
+          <Divider mb="md" />
+          <Flex
+            justify="space-between"
+            align={{ base: "stretch", md: "end" }}
+            direction={{ base: "column", lg: "row" }}
+            gap="md"
+          >
+            <Flex gap="sm" wrap="wrap" align="end" style={{ flex: 1 }}>
+              <TextInput
+                label="Search"
+                placeholder="Search appointment, client, or job"
+                size="sm"
+                leftSection={<IoSearchSharp />}
+                style={{ minWidth: 240, flex: 1 }}
+                value={search}
+                onChange={(e) => setSearch(e.currentTarget.value)}
+              />
+
+              <Select
+                size="sm"
+                label="Status"
+                leftSection={<IoToggleOutline />}
+                placeholder="All statuses"
+                data={[
+                  { label: "Scheduled", value: "SCHEDULED" },
+                  { label: "Completed", value: "COMPLETED" },
+                  { label: "Cancelled", value: "CANCELLED" },
+                  { label: "Late", value: "LATE" },
+                ]}
+                clearable
+                value={status}
+                onChange={setStatus}
+                style={{ minWidth: 170 }}
+              />
+
+              <Select
+                size="sm"
+                label="Assignee"
+                leftSection={<IoPersonOutline />}
+                placeholder="All staff"
+                data={
+                  staffData?.data?.map((s: Staff) => ({
+                    value: s.id,
+                    label: s.name,
+                  })) || []
+                }
+                clearable
+                searchable
+                value={assignee}
+                onChange={setAssignee}
+                style={{ minWidth: 180 }}
+              />
+            </Flex>
+
+            <Group justify="flex-end">
+              <Button
+                size="sm"
+                radius="xl"
+                variant="light"
+                leftSection={<IoRefreshSharp />}
+                onClick={() => calendarRef.current?.getApi().refetchEvents()}
+              >
+                Refresh
+              </Button>
+            </Group>
+          </Flex>
+          <Group mt="md" gap="lg">
+            {Object.entries(STATUS_COLORS).map(([status, color]) => (
+              <Group align="center" key={status} gap={6}>
+                <Badge radius="sm" color={color} variant="dot">
+                  {STATUS_LABELS[status as keyof typeof STATUS_LABELS]}
+                </Badge>
+              </Group>
+            ))}
           </Group>
-        </Group>
-        {}
+        </Paper>
         <FullCalendar
           height="75vh"
-          editable
-          timeZone={APP_TZ}
-          nowIndicator
-          headerToolbar={false}
           ref={calendarRef}
+          timeZone={APP_TZ}
           plugins={[
             timeGridPlugin,
             dayGridPlugin,
@@ -227,14 +353,77 @@ export default function DashboardClient() {
             luxonPlugin,
           ]}
           initialView="timeGridWeek"
-          allDaySlot={false}
+          headerToolbar={false}
+          editable
           selectable
+          nowIndicator
+          allDaySlot={false}
+          eventDisplay="block"
+          events={async (fetchInfo, successCallback, failureCallback) => {
+            try {
+              const params = new URLSearchParams({
+                start: fetchInfo.startStr,
+                end: fetchInfo.endStr,
+                view: "calendar",
+              });
+
+              if (search.trim()) params.set("search", search.trim());
+              if (status) params.set("status", status);
+              if (assignee) params.set("staffId", assignee);
+
+              const res = await fetch(`/api/appointments?${params.toString()}`);
+              if (!res.ok) throw new Error("Failed to fetch appointments");
+
+              const data = await res.json();
+              successCallback(data);
+            } catch (error) {
+              console.error(error);
+            }
+          }}
           select={handleDateSelect}
-          events="/api/appointments"
           eventDrop={handleDateDrop}
           eventResize={handleDateResize}
           eventClick={handleEventClick}
           datesSet={(arg) => setCurrentTitle(arg.view.title)}
+          eventDidMount={(info) => {
+            const colors: Record<
+              "SCHEDULED" | "COMPLETED" | "CANCELLED" | "LATE",
+              string
+            > = {
+              SCHEDULED: "#22c55e",
+              COMPLETED: "#3b82f6",
+              CANCELLED: "#ef4444",
+              LATE: "#f59e0b",
+            };
+
+            const status = info.event.extendedProps.status as
+              | "SCHEDULED"
+              | "COMPLETED"
+              | "CANCELLED"
+              | "LATE"
+              | undefined;
+
+            const color = status ? colors[status] : undefined;
+
+            if (color) {
+              info.el.style.backgroundColor = color;
+              info.el.style.borderColor = color;
+            }
+
+            info.el.style.borderRadius = "8px";
+            info.el.style.padding = "2px 4px";
+          }}
+          eventContent={(eventInfo) => {
+            const { title } = eventInfo.event;
+            const staffNames = eventInfo.event.extendedProps.staffNames;
+
+            return (
+              <div style={{ fontSize: 12 }}>
+                <div style={{ fontWeight: 600 }}>{title}</div>
+                {staffNames && <div style={{ opacity: 0.8 }}>{staffNames}</div>}
+              </div>
+            );
+          }}
         />
       </Box>
     </Container>

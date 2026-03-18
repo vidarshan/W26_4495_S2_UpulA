@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/reminders/five-day",
+      "schedule": "0 9 * * *"
+    }
+  ]
+}

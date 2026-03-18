@@ -163,3 +163,15 @@ export type ParsedSelection = {
 };
 
 export type Role = "ADMIN" | "STAFF";
+
+export type WorkSession = {
+  id: string;
+  startedAt: string;
+  endedAt: string | null;
+  appointmentId: string;
+  staffId: string;
+};
+
+export type BaseAppointment = {
+  staffIds: string[];
+};
