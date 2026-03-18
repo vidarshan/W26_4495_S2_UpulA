@@ -13,7 +13,7 @@ export function AIInsightsSection({ insights }: Props) {
         position: "relative",
         color: "white",
         background:
-          "linear-gradient(120deg, rgba(168,85,247,0.90), rgba(59,130,246,0.80))",
+          "linear-gradient(120deg, rgba(168,85,247,0.70), rgba(59,130,246,0.80))",
         borderTop: "1px solid rgba(255,255,255,0.08)",
         borderBottom: "1px solid rgba(255,255,255,0.06)",
       }}

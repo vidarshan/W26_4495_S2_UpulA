@@ -653,11 +653,10 @@ export default function NewJobModal({
         <Grid>
           <Grid.Col span={4}>
             <DatePickerInput
-              label="End date"
-              placeholder="End date"
+              label="Date"
+              placeholder="Date"
               key={form.key(`appointments.${index}.startDate`)}
               {...form.getInputProps(`appointments.${index}.startDate`)}
-              value={form.values.recurrence.endsOn}
               minDate={
                 form.values.appointments?.[0]?.startDate instanceof Date
                   ? form.values.appointments[0].startDate

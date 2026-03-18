@@ -16,7 +16,7 @@ import { Notifications } from "@mantine/notifications";
 import PWARegister from "./_pwa_register";
 
 export const metadata = {
-  title: "Eco Clean | Admin",
+  title: "Eco Clean",
   applicationName: "Eco Clean",
   manifest: "/manifest.webmanifest",
   themeColor: "#0ea5e9",
