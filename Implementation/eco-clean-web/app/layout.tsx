@@ -4,7 +4,7 @@ import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
 import "@mantine/dropzone/styles.css";
 import "@mantine/notifications/styles.css";
-import { Manrope } from "next/font/google";
+import { Comic_Neue } from "next/font/google";
 import "./globals.css";
 import { QueryProvider } from "@/lib/query-provider";
 import {
@@ -31,9 +31,10 @@ export const metadata = {
   },
 };
 
-const manrope = Manrope({
+const comicNeue = Comic_Neue({
   subsets: ["latin"],
-  variable: "--font-manrope",
+  weight: ["300", "400", "700"],
+  variable: "--font-comic-neue",
 });
 
 export default function RootLayout({
@@ -46,7 +47,7 @@ export default function RootLayout({
       <head>
         <ColorSchemeScript />
       </head>
-      <body className={`${manrope.variable} antialiased`}>
+      <body className={`${comicNeue.variable} antialiased`}>
         <MantineProvider theme={{ defaultRadius: "md", primaryColor: "green" }}>
           <Notifications position="top-right" />
           <QueryProvider>

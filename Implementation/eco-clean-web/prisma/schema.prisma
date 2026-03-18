@@ -7,20 +7,29 @@ datasource db {
 }
 
 model User {
-  id                   String                   @id @default(uuid())
-  name                 String
-  email                String                   @unique
-  role                 Role
-  createdAt            DateTime                 @default(now())
-  password             String
-  assignedAppointments Appointment[]            @relation("AppointmentStaff")
-  workSessions         AppointmentWorkSession[]
-  jobNotesAuthored     JobNote[]                @relation("JobNoteAuthor")
-  visitNotesAuthored   VisitNote[]              @relation("VisitNoteAuthor")
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  role      Role
+  createdAt DateTime @default(now())
+  password  String
+
+  // Operational authorship / work tracking
+  workSessions       AppointmentWorkSession[]
+  jobNotesAuthored   JobNote[]                @relation("JobNoteAuthor")
+  visitNotesAuthored VisitNote[]              @relation("VisitNoteAuthor")
+
+  // Staff / HR / payroll
+  staffProfile       StaffProfile?
+  assignments        Assignment[]
+  leaves             Leave[]
+  timesheets         Timesheet[]    @relation("TimesheetStaff")
+  payStatements      PayStatement[]
+  approvedTimesheets Timesheet[]    @relation("TimesheetApprovedBy")
 }
 
 model Client {
-  id               String       @id @default(uuid())
+  id               String   @id @default(uuid())
   title            String?
   firstName        String
   lastName         String
@@ -29,11 +38,12 @@ model Client {
   phone            String
   preferredContact String
   leadSource       String?
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
-  addresses        Address[]
-  notes            ClientNote[]
-  jobs             Job[]
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  addresses Address[]
+  notes     ClientNote[]
+  jobs      Job[]
 }
 
 model ClientNote {
@@ -41,7 +51,10 @@ model ClientNote {
   clientId  String
   content   String
   createdAt DateTime @default(now())
-  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
 }
 
 model Address {
@@ -56,49 +69,59 @@ model Address {
   isPrimary  Boolean  @default(false)
   isBilling  Boolean  @default(false)
   createdAt  DateTime @default(now())
-  client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  jobs       Job[]
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  jobs   Job[]
+
+  @@index([clientId])
 }
 
 model Job {
-  id                String        @id @default(uuid())
+  id                String   @id @default(uuid())
   title             String
   type              JobType
   clientId          String
   addressId         String
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
-  isAnytime         Boolean       @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  isAnytime         Boolean  @default(false)
   visitInstructions String?
-  appointments      Appointment[]
-  address           Address       @relation(fields: [addressId], references: [id])
-  client            Client        @relation(fields: [clientId], references: [id])
-  lineItems         JobLineItem[]
-  notes             JobNote[]
-  recurrence        Recurrence?
+
+  address      Address       @relation(fields: [addressId], references: [id])
+  client       Client        @relation(fields: [clientId], references: [id])
+  appointments Appointment[]
+  lineItems    JobLineItem[]
+  notes        JobNote[]
+  recurrence   Recurrence?
+
+  @@index([clientId])
+  @@index([addressId])
 }
 
 model Appointment {
-  id             String             @id @default(uuid())
-  startTime      DateTime           @db.Timestamptz(6)
-  endTime        DateTime           @db.Timestamptz(6)
+  id             String            @id @default(uuid())
+  startTime      DateTime          @db.Timestamptz(6)
+  endTime        DateTime          @db.Timestamptz(6)
   status         AppointmentStatus
-  createdAt      DateTime           @default(now()) @db.Timestamptz(6)
-  completionSent Boolean            @default(false)
-  reminder1dSent Boolean            @default(false)
-  reminder3dSent Boolean            @default(false)
-  reminder5dSent Boolean            @default(false)
+  createdAt      DateTime          @default(now()) @db.Timestamptz(6)
+  completionSent Boolean           @default(false)
+  reminder1dSent Boolean           @default(false)
+  reminder3dSent Boolean           @default(false)
+  reminder5dSent Boolean           @default(false)
   jobId          String
   timeSpent      Int?
-  completedAt    DateTime?
-  job            Job                @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  images         AppointmentImage[]
-  notes          VisitNote[]
-  staff          User[]             @relation("AppointmentStaff")
-  workSessions   AppointmentWorkSession[]
+  completedAt    DateTime?         @db.Timestamptz(6)
 
+  job          Job                      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  images       AppointmentImage[]
+  notes        VisitNote[]
+  workSessions AppointmentWorkSession[]
+  assignments  Assignment[]
+
+  @@index([jobId])
   @@index([startTime])
   @@index([endTime])
+  @@index([status])
 }
 
 model Recurrence {
@@ -109,7 +132,8 @@ model Recurrence {
   endsOn    DateTime?
   endType   String
   endsAfter Int?
-  job       Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
 }
 
 model JobLineItem {
@@ -121,23 +145,272 @@ model JobLineItem {
   unitPrice   Float?
   total       Float?
   description String?
-  job         Job     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
 }
 
 model JobNote {
-  id              String          @id @default(uuid())
+  id              String           @id @default(uuid())
   jobId           String
   title           String?
   content         String?
   category        JobNoteCategory?
-  isClientVisible Boolean         @default(false)
-  isPinned        Boolean         @default(false)
-  createdAt       DateTime        @default(now())
+  isClientVisible Boolean          @default(false)
+  isPinned        Boolean          @default(false)
+  createdAt       DateTime         @default(now())
   createdById     String?
 
-  job             Job             @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  createdBy       User?           @relation("JobNoteAuthor", fields: [createdById], references: [id], onDelete: SetNull)
-  images          JobNoteImage[]
+  job       Job            @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  createdBy User?          @relation("JobNoteAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+  images    JobNoteImage[]
+
+  @@index([jobId])
+  @@index([createdById])
+}
+
+model JobNoteImage {
+  id      String  @id @default(uuid())
+  noteId  String
+  url     String
+  fileKey String?
+
+  note JobNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  @@index([noteId])
+}
+
+model VisitNote {
+  id              String   @id @default(uuid())
+  content         String
+  isClientVisible Boolean  @default(false)
+  appointmentId   String
+  createdAt       DateTime @default(now())
+  createdById     String?
+
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  createdBy   User?       @relation("VisitNoteAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([appointmentId])
+  @@index([createdById])
+}
+
+model AppointmentImage {
+  id            String  @id @default(uuid())
+  appointmentId String
+  url           String
+  fileKey       String?
+
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@index([appointmentId])
+}
+
+model AppointmentWorkSession {
+  id            String    @id @default(uuid())
+  appointmentId String
+  staffId       String
+  startedAt     DateTime  @db.Timestamptz(6)
+  endedAt       DateTime? @db.Timestamptz(6)
+  createdAt     DateTime  @default(now()) @db.Timestamptz(6)
+
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  staff       User        @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@index([appointmentId])
+  @@index([staffId])
+  @@index([startedAt])
+}
+
+model StaffProfile {
+  id         String  @id @default(uuid())
+  userId     String  @unique
+  position   String?
+  hourlyRate Float   @default(0)
+
+  user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  availabilities   StaffAvailability[]
+  staffAddress     StaffAddress?
+  emergencyContact EmergencyContact?
+}
+
+model StaffAddress {
+  id             String   @id @default(uuid())
+  staffProfileId String   @unique
+  street1        String
+  street2        String?
+  city           String
+  province       String
+  postalCode     String?
+  country        String
+  createdAt      DateTime @default(now())
+
+  staffProfile StaffProfile @relation(fields: [staffProfileId], references: [id], onDelete: Cascade)
+}
+
+model EmergencyContact {
+  id             String @id @default(uuid())
+  staffProfileId String @unique
+  name           String
+  phoneNumber    String
+  relationship   String
+
+  staffProfile StaffProfile @relation(fields: [staffProfileId], references: [id], onDelete: Cascade)
+}
+
+model Assignment {
+  id            String           @id @default(uuid())
+  appointmentId String
+  staffId       String
+  status        AssignmentStatus @default(PENDING)
+  plannedStart  DateTime?        @db.Timestamptz(6)
+  plannedEnd    DateTime?        @db.Timestamptz(6)
+  notes         String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  staff       User        @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@unique([appointmentId, staffId])
+  @@index([appointmentId])
+  @@index([staffId])
+  @@index([status])
+}
+
+model StaffAvailability {
+  id             String   @id @default(uuid())
+  staffProfileId String
+  effectiveFrom  DateTime
+  createdAt      DateTime @default(now())
+
+  monActive Boolean @default(false)
+  monS1     Boolean @default(false)
+  monS2     Boolean @default(false)
+
+  tueActive Boolean @default(false)
+  tueS1     Boolean @default(false)
+  tueS2     Boolean @default(false)
+
+  wedActive Boolean @default(false)
+  wedS1     Boolean @default(false)
+  wedS2     Boolean @default(false)
+
+  thuActive Boolean @default(false)
+  thuS1     Boolean @default(false)
+  thuS2     Boolean @default(false)
+
+  friActive Boolean @default(false)
+  friS1     Boolean @default(false)
+  friS2     Boolean @default(false)
+
+  satActive Boolean @default(false)
+  satS1     Boolean @default(false)
+  satS2     Boolean @default(false)
+
+  sunActive Boolean @default(false)
+  sunS1     Boolean @default(false)
+  sunS2     Boolean @default(false)
+
+  staffProfile StaffProfile @relation(fields: [staffProfileId], references: [id], onDelete: Cascade)
+
+  @@index([staffProfileId])
+  @@index([effectiveFrom])
+}
+
+model Leave {
+  id        String    @id @default(uuid())
+  staffId   String
+  type      LeaveType
+  startAt   DateTime
+  endAt     DateTime
+  reason    String?
+  createdAt DateTime  @default(now())
+
+  staff User @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@index([staffId])
+  @@index([startAt])
+  @@index([endAt])
+}
+
+model TimesheetPeriod {
+  id        String                @id @default(uuid())
+  startDate DateTime
+  endDate   DateTime
+  status    TimesheetPeriodStatus @default(OPEN)
+  createdAt DateTime              @default(now())
+  lockedAt  DateTime?
+
+  timesheets    Timesheet[]
+  payStatements PayStatement[]
+
+  @@index([startDate])
+  @@index([endDate])
+  @@index([status])
+}
+
+model Timesheet {
+  id           String          @id @default(uuid())
+  periodId     String
+  staffId      String
+  status       TimesheetStatus @default(OPEN)
+  submittedAt  DateTime?
+  approvedAt   DateTime?
+  approvedById String?
+  notes        String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  period     TimesheetPeriod @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  staff      User            @relation("TimesheetStaff", fields: [staffId], references: [id], onDelete: Cascade)
+  approvedBy User?           @relation("TimesheetApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  days       TimesheetDay[]
+
+  @@unique([periodId, staffId])
+  @@index([periodId])
+  @@index([staffId])
+  @@index([approvedById])
+  @@index([status])
+}
+
+model TimesheetDay {
+  id            String   @id @default(uuid())
+  timesheetId   String
+  workDate      DateTime
+  minutesWorked Int
+  hourlyRate    Float?
+  notes         String?
+  createdAt     DateTime @default(now())
+
+  timesheet Timesheet @relation(fields: [timesheetId], references: [id], onDelete: Cascade)
+
+  @@unique([timesheetId, workDate])
+  @@index([timesheetId])
+  @@index([workDate])
+}
+
+model PayStatement {
+  id                String @id @default(uuid())
+  userId            String
+  timesheetPeriodId String
+
+  payPeriodStart DateTime
+  payPeriodEnd   DateTime
+  payDate        DateTime
+
+  grossEarnings   Float
+  totalDeductions Float
+  netEarnings     Float
+  breakdown       Json?
+
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  timesheetPeriod TimesheetPeriod @relation(fields: [timesheetPeriodId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, timesheetPeriodId])
+  @@index([userId])
+  @@index([timesheetPeriodId])
 }
 
 enum JobNoteCategory {
@@ -147,49 +420,6 @@ enum JobNoteCategory {
   SAFETY
   SUPPLIES
   CLIENT_PREFERENCE
-}
-
-model JobNoteImage {
-  id      String  @id @default(uuid())
-  noteId  String
-  url     String
-  fileKey String?
-  note    JobNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
-}
-
-model VisitNote {
-  id              String      @id @default(uuid())
-  content         String
-  isClientVisible Boolean     @default(false)
-  appointmentId   String
-  createdAt       DateTime    @default(now())
-  createdById     String?
-
-  appointment     Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
-  createdBy       User?       @relation("VisitNoteAuthor", fields: [createdById], references: [id], onDelete: SetNull)
-}
-
-model AppointmentImage {
-  id            String      @id @default(uuid())
-  appointmentId String
-  url           String
-  fileKey       String?
-  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
-}
-
-model AppointmentWorkSession {
-  id            String      @id @default(uuid())
-  appointmentId String
-  staffId       String?
-  startedAt     DateTime    @db.Timestamptz(6)
-  endedAt       DateTime?   @db.Timestamptz(6)
-  createdAt     DateTime    @default(now()) @db.Timestamptz(6)
-
-  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
-  staff         User?       @relation(fields: [staffId], references: [id])
-
-  @@index([appointmentId])
-  @@index([staffId])
 }
 
 enum Role {
@@ -208,4 +438,31 @@ enum AppointmentStatus {
   COMPLETED
   CANCELLED
   LATE
+}
+
+enum AssignmentStatus {
+  PENDING
+  EN_ROUTE
+  ON_SITE
+  COMPLETED
+  SICK_LEAVE
+}
+
+enum LeaveType {
+  PAID_SICK
+  VACATION
+  PERSONAL
+  UNPAID_SICK
+}
+
+enum TimesheetStatus {
+  OPEN
+  SUBMITTED
+  APPROVED
+  LOCKED
+}
+
+enum TimesheetPeriodStatus {
+  OPEN
+  LOCKED
 }

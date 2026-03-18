@@ -3,13 +3,12 @@ import { prisma } from "@/lib/prisma";
 import { sendAppointmentReminderEmail } from "@/lib/appointments/reminders";
 
 type ReminderConfig = {
-  daysBefore: 5 | 3 | 1;
-  flag: "reminder5dSent" | "reminder3dSent" | "reminder1dSent";
+  daysBefore: 5 | 1;
+  flag: "reminder5dSent" | "reminder1dSent";
 };
 
 const REMINDERS: ReminderConfig[] = [
   { daysBefore: 5, flag: "reminder5dSent" },
-  { daysBefore: 3, flag: "reminder3dSent" },
   { daysBefore: 1, flag: "reminder1dSent" },
 ];
 
@@ -26,6 +25,31 @@ function getReminderWindow(daysBefore: number) {
   return { start, end };
 }
 
+type ReminderResult = {
+  id: string;
+  daysBefore: number;
+  status: "sent" | "failed" | "skipped";
+  reason?: string;
+  error?: string;
+  email?: string;
+};
+
+type ReminderWindowDebug = {
+  daysBefore: number;
+  flag: string;
+  nowIso: string;
+  startIso: string;
+  endIso: string;
+  matchedCount: number;
+  matchedAppointments: Array<{
+    id: string;
+    email: string | null;
+    startTimeIso: string;
+    status: string;
+    reminderFlagValue: boolean | null;
+  }>;
+};
+
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
 
@@ -33,15 +57,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const allResults: Array<{
-    id: string;
-    daysBefore: number;
-    status: "sent" | "failed" | "skipped";
-    reason?: string;
-    error?: string;
-    email?: string;
-  }> = [];
+  const now = new Date();
 
+  const allResults: ReminderResult[] = [];
+  const debugWindows: ReminderWindowDebug[] = [];
   let totalChecked = 0;
 
   for (const reminder of REMINDERS) {
@@ -67,6 +86,40 @@ export async function GET(req: NextRequest) {
     });
 
     totalChecked += appointments.length;
+
+    debugWindows.push({
+      daysBefore: reminder.daysBefore,
+      flag: reminder.flag,
+      nowIso: now.toISOString(),
+      startIso: start.toISOString(),
+      endIso: end.toISOString(),
+      matchedCount: appointments.length,
+      matchedAppointments: appointments.map((appt) => ({
+        id: appt.id,
+        email: appt.job.client?.email ?? null,
+        startTimeIso: appt.startTime.toISOString(),
+        status: appt.status,
+        reminderFlagValue:
+          reminder.flag === "reminder5dSent"
+            ? appt.reminder5dSent
+            : appt.reminder1dSent,
+      })),
+    });
+
+    console.log("Reminder window debug", {
+      daysBefore: reminder.daysBefore,
+      flag: reminder.flag,
+      now: now.toISOString(),
+      start: start.toISOString(),
+      end: end.toISOString(),
+      matchedCount: appointments.length,
+      matchedAppointments: appointments.map((appt) => ({
+        id: appt.id,
+        email: appt.job.client?.email ?? null,
+        startTime: appt.startTime.toISOString(),
+        status: appt.status,
+      })),
+    });
 
     for (const appt of appointments) {
       const client = appt.job.client;
@@ -101,7 +154,7 @@ export async function GET(req: NextRequest) {
           appointmentId: appt.id,
           daysBefore: reminder.daysBefore,
           to: client.email,
-          startTime: appt.startTime,
+          startTime: appt.startTime.toISOString(),
         });
 
         const info = await sendAppointmentReminderEmail({
@@ -113,7 +166,7 @@ export async function GET(req: NextRequest) {
           daysBefore: reminder.daysBefore,
         });
 
-        console.log("Reminder email sent:", {
+        console.log("Reminder email sent", {
           appointmentId: appt.id,
           daysBefore: reminder.daysBefore,
           to: client.email,
@@ -129,6 +182,11 @@ export async function GET(req: NextRequest) {
           },
         });
 
+        console.log("Reminder flag updated", {
+          appointmentId: appt.id,
+          flag: reminder.flag,
+        });
+
         allResults.push({
           id: appt.id,
           daysBefore: reminder.daysBefore,
@@ -136,7 +194,7 @@ export async function GET(req: NextRequest) {
           email: client.email,
         });
       } catch (error) {
-        console.error("Reminder send failed:", {
+        console.error("Reminder send failed", {
           appointmentId: appt.id,
           daysBefore: reminder.daysBefore,
           to: client.email,
@@ -157,6 +215,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     ok: true,
     checked: totalChecked,
+    debug: debugWindows,
     results: allResults,
   });
 }

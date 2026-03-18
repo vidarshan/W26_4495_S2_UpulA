@@ -102,14 +102,20 @@ export async function GET(req: NextRequest) {
 
     const where: Prisma.AppointmentWhereInput = {
       AND: andFilters,
-      ...(staffId ? { staff: { some: { id: staffId } } } : {}),
+      ...(staffId ? { assignments: { some: { staffId } } } : {}),
     };
 
     const appointments = await prisma.appointment.findMany({
       where,
       include: {
         job: { include: { client: true, address: true } },
-        staff: { select: { id: true, name: true, email: true } },
+        assignments: {
+          include: {
+            staff: {
+              select: { id: true, name: true, email: true },
+            },
+          },
+        },
         images: true,
         notes: true,
       },
@@ -120,18 +126,22 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(appointments);
     }
 
-    const events = appointments.map((a) => ({
-      id: a.id,
-      title: `${a.job.title} - ${a.job.client.firstName}`,
-      start: a.startTime.toISOString(),
-      end: a.endTime.toISOString(),
-      extendedProps: {
-        jobId: a.jobId,
-        status: a.status,
-        staffNames: a.staff.map((member) => member.name).join(", "),
-        staffMembers: a.staff,
-      },
-    }));
+    const events = appointments.map((a) => {
+      const staffMembers = a.assignments.map((assignment) => assignment.staff);
+
+      return {
+        id: a.id,
+        title: `${a.job.title} - ${a.job.client.firstName}`,
+        start: a.startTime.toISOString(),
+        end: a.endTime.toISOString(),
+        extendedProps: {
+          jobId: a.jobId,
+          status: a.status,
+          staffNames: staffMembers.map((member) => member.name).join(", "),
+          staffMembers,
+        },
+      };
+    });
 
     return NextResponse.json(events);
   } catch (error) {

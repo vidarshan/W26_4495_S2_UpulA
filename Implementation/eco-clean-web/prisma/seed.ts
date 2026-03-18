@@ -6,6 +6,7 @@ import {
   JobType,
   AppointmentStatus,
   JobNoteCategory,
+  AssignmentStatus,
 } from "@prisma/client";
 import { faker } from "@faker-js/faker";
 import { PrismaPg } from "@prisma/adapter-pg";
@@ -21,9 +22,9 @@ const adapter = new PrismaPg({
 
 const prisma = new PrismaClient({ adapter });
 
-type SeedMode = "small" | "medium" | "large";
+type SeedMode = "tiny" | "small" | "medium" | "large";
 
-const mode = (process.argv[2] as SeedMode) || "large";
+const mode = (process.argv[2] as SeedMode) || "small";
 const DEFAULT_PASSWORD = "Password123!";
 const SEED_TEST_EMAIL = process.env.SEED_TEST_EMAIL?.toLowerCase().trim();
 
@@ -40,35 +41,45 @@ const CONFIG: Record<
     appointmentsPerJobMax: number;
   }
 > = {
+  tiny: {
+    adminCount: 1,
+    staffCount: 1,
+    clientUserCount: 1,
+    clientCount: 3,
+    jobsPerClientMin: 1,
+    jobsPerClientMax: 1,
+    appointmentsPerJobMin: 1,
+    appointmentsPerJobMax: 1,
+  },
   small: {
     adminCount: 1,
-    staffCount: 4,
-    clientUserCount: 10,
-    clientCount: 30,
+    staffCount: 2,
+    clientUserCount: 2,
+    clientCount: 8,
+    jobsPerClientMin: 1,
+    jobsPerClientMax: 1,
+    appointmentsPerJobMin: 1,
+    appointmentsPerJobMax: 2,
+  },
+  medium: {
+    adminCount: 1,
+    staffCount: 6,
+    clientUserCount: 12,
+    clientCount: 50,
     jobsPerClientMin: 1,
     jobsPerClientMax: 2,
     appointmentsPerJobMin: 2,
     appointmentsPerJobMax: 4,
   },
-  medium: {
+  large: {
     adminCount: 1,
-    staffCount: 8,
+    staffCount: 12,
     clientUserCount: 25,
-    clientCount: 120,
-    jobsPerClientMin: 1,
+    clientCount: 150,
+    jobsPerClientMin: 2,
     jobsPerClientMax: 3,
     appointmentsPerJobMin: 3,
     appointmentsPerJobMax: 6,
-  },
-  large: {
-    adminCount: 1,
-    staffCount: 14,
-    clientUserCount: 50,
-    clientCount: 320,
-    jobsPerClientMin: 2,
-    jobsPerClientMax: 4,
-    appointmentsPerJobMin: 4,
-    appointmentsPerJobMax: 8,
   },
 };
 
@@ -214,11 +225,6 @@ function fakeImageUrl(seed: string) {
   return `https://picsum.photos/seed/${seed}/1200/900`;
 }
 
-/**
- * Status logic for realism:
- * - Future: mostly SCHEDULED, some CANCELLED
- * - Past: mostly COMPLETED, some CANCELLED, some LATE, small number SCHEDULED
- */
 function deriveAppointmentStatus(startTime: Date): AppointmentStatus {
   const now = new Date();
 
@@ -250,6 +256,7 @@ function computeReminderFlags(startTime: Date, status: AppointmentStatus) {
 
     return {
       reminder5dSent: daysUntil < 5 ? maybe(0.25) : false,
+      reminder3dSent: daysUntil < 3 ? maybe(0.2) : false,
       reminder1dSent: daysUntil < 1 ? maybe(0.25) : false,
       completionSent: false,
     };
@@ -257,37 +264,75 @@ function computeReminderFlags(startTime: Date, status: AppointmentStatus) {
 
   return {
     reminder5dSent: maybe(0.85),
+    reminder3dSent: maybe(0.85),
     reminder1dSent: maybe(0.9),
     completionSent: status === AppointmentStatus.COMPLETED ? maybe(0.8) : false,
   };
 }
 
+function fakeAssignmentStatus(
+  appointmentStatus: AppointmentStatus,
+): AssignmentStatus {
+  if (appointmentStatus === AppointmentStatus.CANCELLED) {
+    return AssignmentStatus.PENDING;
+  }
+  if (appointmentStatus === AppointmentStatus.COMPLETED) {
+    return AssignmentStatus.COMPLETED;
+  }
+  if (appointmentStatus === AppointmentStatus.LATE) {
+    return pick([
+      AssignmentStatus.EN_ROUTE,
+      AssignmentStatus.ON_SITE,
+      AssignmentStatus.COMPLETED,
+    ]);
+  }
+  return pick([
+    AssignmentStatus.PENDING,
+    AssignmentStatus.EN_ROUTE,
+    AssignmentStatus.ON_SITE,
+  ]);
+}
+
 async function resetDatabase() {
+  await prisma.payStatement.deleteMany();
+  await prisma.timesheetDay.deleteMany();
+  await prisma.timesheet.deleteMany();
+  await prisma.timesheetPeriod.deleteMany();
+  await prisma.leave.deleteMany();
+  await prisma.staffAvailability.deleteMany();
+  await prisma.assignment.deleteMany();
+  await prisma.emergencyContact.deleteMany();
+  await prisma.staffAddress.deleteMany();
+  await prisma.staffProfile.deleteMany();
+
   await prisma.appointmentWorkSession.deleteMany();
   await prisma.appointmentImage.deleteMany();
   await prisma.visitNote.deleteMany();
   await prisma.appointment.deleteMany();
+
   await prisma.jobNoteImage.deleteMany();
   await prisma.jobNote.deleteMany();
   await prisma.jobLineItem.deleteMany();
   await prisma.recurrence.deleteMany();
   await prisma.job.deleteMany();
+
   await prisma.clientNote.deleteMany();
   await prisma.address.deleteMany();
   await prisma.client.deleteMany();
+
   await prisma.user.deleteMany();
 }
 
 async function createUsers() {
   const users: Prisma.UserCreateManyInput[] = [];
-  const PASSWORD = await bcrypt.hash(DEFAULT_PASSWORD, 10);
+  const passwordHash = await bcrypt.hash(DEFAULT_PASSWORD, 10);
 
   for (let i = 0; i < cfg.adminCount; i++) {
     users.push({
       name: `Admin ${i + 1}`,
       email: uniqueSeedEmail("admin", i),
       role: Role.ADMIN,
-      password: PASSWORD,
+      password: passwordHash,
     });
   }
 
@@ -299,7 +344,7 @@ async function createUsers() {
       name: fullName(firstName, lastName),
       email: uniqueSeedEmail("staff", i),
       role: Role.STAFF,
-      password: PASSWORD,
+      password: passwordHash,
     });
   }
 
@@ -311,7 +356,7 @@ async function createUsers() {
       name: fullName(firstName, lastName),
       email: uniqueSeedEmail("client", i),
       role: Role.CLIENT,
-      password: PASSWORD,
+      password: passwordHash,
     });
   }
 
@@ -321,9 +366,75 @@ async function createUsers() {
     orderBy: { createdAt: "asc" },
   });
 
+  const staffUsers = allUsers.filter((u) => u.role === Role.STAFF);
+
+  for (const member of staffUsers) {
+    await prisma.staffProfile.create({
+      data: {
+        userId: member.id,
+        position: pick(["Cleaner", "Senior Cleaner", "Supervisor"]),
+        hourlyRate: faker.number.float({
+          min: 18,
+          max: 32,
+          fractionDigits: 2,
+        }),
+        staffAddress: {
+          create: {
+            street1: faker.location.streetAddress(),
+            street2: maybe(0.2) ? faker.location.secondaryAddress() : null,
+            city: pick([
+              "Vancouver",
+              "Burnaby",
+              "Surrey",
+              "Richmond",
+              "Coquitlam",
+              "New Westminster",
+            ]),
+            province: "BC",
+            postalCode: fakePostalCode(),
+            country: "Canada",
+          },
+        },
+        emergencyContact: {
+          create: {
+            name: faker.person.fullName(),
+            phoneNumber: fakePhone(),
+            relationship: pick(["Parent", "Sibling", "Spouse", "Friend"]),
+          },
+        },
+        availabilities: {
+          create: {
+            effectiveFrom: addDays(new Date(), -30),
+            monActive: true,
+            monS1: maybe(0.8),
+            monS2: maybe(0.8),
+            tueActive: true,
+            tueS1: maybe(0.8),
+            tueS2: maybe(0.8),
+            wedActive: true,
+            wedS1: maybe(0.8),
+            wedS2: maybe(0.8),
+            thuActive: true,
+            thuS1: maybe(0.8),
+            thuS2: maybe(0.8),
+            friActive: true,
+            friS1: maybe(0.8),
+            friS2: maybe(0.8),
+            satActive: maybe(0.4),
+            satS1: maybe(0.35),
+            satS2: maybe(0.35),
+            sunActive: maybe(0.2),
+            sunS1: maybe(0.15),
+            sunS2: maybe(0.15),
+          },
+        },
+      },
+    });
+  }
+
   return {
     admins: allUsers.filter((u) => u.role === Role.ADMIN),
-    staff: allUsers.filter((u) => u.role === Role.STAFF),
+    staff: staffUsers,
     clientUsers: allUsers.filter((u) => u.role === Role.CLIENT),
   };
 }
@@ -423,6 +534,7 @@ async function createJobsForClients(
   let jobNoteImagesCreated = 0;
   let recurrencesCreated = 0;
   let lineItemsCreated = 0;
+  let assignmentsCreated = 0;
 
   const now = new Date();
   const eightMonthsAgo = addDays(now, -240);
@@ -510,14 +622,19 @@ async function createJobsForClients(
       }
 
       if (job.type === JobType.RECURRING && maybe(0.9)) {
+        const recurrenceEndType = pick(["after", "on"]);
+
         await prisma.recurrence.create({
           data: {
             jobId: job.id,
-            frequency: pick(["WEEKLY", "BIWEEKLY", "MONTHLY"]),
+            frequency: pick(["weekly", "monthly"]),
             interval: pick([1, 1, 2, 4]),
-            endType: pick(["NEVER", "ON_DATE", "AFTER_OCCURRENCES"]),
-            endsOn: maybe(0.35) ? addDays(now, randInt(30, 240)) : null,
-            endsAfter: maybe(0.25) ? randInt(8, 30) : null,
+            endType: recurrenceEndType,
+            endsOn:
+              recurrenceEndType === "on"
+                ? addDays(now, randInt(30, 240))
+                : null,
+            endsAfter: recurrenceEndType === "after" ? randInt(8, 30) : null,
           },
         });
         recurrencesCreated++;
@@ -562,17 +679,33 @@ async function createJobsForClients(
             completedAt,
             completionSent: reminderFlags.completionSent,
             reminder1dSent: reminderFlags.reminder1dSent,
+            reminder3dSent: reminderFlags.reminder3dSent,
             reminder5dSent: reminderFlags.reminder5dSent,
-            staff: {
-              connect: assignedStaff.map((id) => ({ id })),
+            assignments: {
+              create: assignedStaff.map((staffId) => ({
+                staffId,
+                status: fakeAssignmentStatus(status),
+                plannedStart: maybe(0.7)
+                  ? addMinutes(startTime, randInt(-15, 15))
+                  : null,
+                plannedEnd: maybe(0.7)
+                  ? addMinutes(endTime, randInt(-15, 20))
+                  : null,
+                notes: maybe(0.25) ? faker.lorem.sentence() : null,
+              })),
             },
           },
           include: {
-            staff: { select: { id: true } },
+            assignments: {
+              include: {
+                staff: { select: { id: true } },
+              },
+            },
           },
         });
 
         appointmentsCreated++;
+        assignmentsCreated += appointment.assignments.length;
 
         const visitNotes = Array.from({ length: randInt(0, 3) }).map(() => ({
           appointmentId: appointment.id,
@@ -583,8 +716,8 @@ async function createJobsForClients(
             to: addDays(startTime, 2),
           }),
           createdById:
-            maybe(0.85) && appointment.staff.length
-              ? pick(appointment.staff).id
+            maybe(0.85) && appointment.assignments.length
+              ? pick(appointment.assignments).staff.id
               : maybe(0.4)
                 ? pick(createdByCandidates)
                 : null,
@@ -610,8 +743,8 @@ async function createJobsForClients(
           appointmentImagesCreated += appointmentImages.length;
         }
 
-        if (shouldCreateWorkSession(status) && appointment.staff.length) {
-          const sessions = appointment.staff.map((member) => {
+        if (shouldCreateWorkSession(status) && appointment.assignments.length) {
+          const sessions = appointment.assignments.map((assignment) => {
             const startedAt = addMinutes(startTime, randInt(-10, 25));
             const endedAt =
               status === AppointmentStatus.COMPLETED
@@ -622,7 +755,7 @@ async function createJobsForClients(
 
             return {
               appointmentId: appointment.id,
-              staffId: member.id,
+              staffId: assignment.staff.id,
               startedAt,
               endedAt,
             };
@@ -645,6 +778,7 @@ async function createJobsForClients(
     jobNoteImagesCreated,
     recurrencesCreated,
     lineItemsCreated,
+    assignmentsCreated,
   };
 }
 
@@ -683,8 +817,7 @@ async function createGuaranteedReminderTestAppointments(
         clientId: client.id,
         addressId: address.id,
         isAnytime: false,
-        visitInstructions:
-          "Guaranteed seed appointment for 5-day reminder testing.",
+        visitInstructions: "Guaranteed seed appointment for reminder testing.",
       },
     });
 
@@ -698,10 +831,11 @@ async function createGuaranteedReminderTestAppointments(
         endTime,
         status: AppointmentStatus.SCHEDULED,
         reminder5dSent: false,
+        reminder3dSent: false,
         reminder1dSent: false,
         completionSent: false,
-        staff: {
-          connect: [{ id: staff[i % staff.length].id }],
+        assignments: {
+          create: [{ staffId: staff[i % staff.length].id }],
         },
       },
     });
@@ -731,6 +865,7 @@ async function main() {
     clients: clients.length,
     jobs: counts.jobsCreated + guaranteedReminderAppointments,
     appointments: counts.appointmentsCreated + guaranteedReminderAppointments,
+    assignments: counts.assignmentsCreated + guaranteedReminderAppointments,
     visitNotes: counts.visitNotesCreated,
     appointmentImages: counts.appointmentImagesCreated,
     workSessions: counts.workSessionsCreated,
@@ -754,7 +889,7 @@ async function main() {
 
   if (SEED_TEST_EMAIL) {
     console.log(
-      `Guaranteed 5-day reminder test emails will go to: ${SEED_TEST_EMAIL}\n`,
+      `Guaranteed reminder test emails will go to: ${SEED_TEST_EMAIL}\n`,
     );
   }
 }

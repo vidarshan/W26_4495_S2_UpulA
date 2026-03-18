@@ -343,7 +343,6 @@ export default function DashboardClient() {
           </Group>
         </Paper>
         <FullCalendar
-          height="75vh"
           ref={calendarRef}
           timeZone={APP_TZ}
           plugins={[

@@ -1,6 +1,23 @@
 export const runtime = "nodejs";
+
 import { prisma } from "@/lib/prisma";
+import { Role } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
+
+type StartAppointmentBody = {
+  staffId?: string;
+};
+
+function parseBody(raw: string): StartAppointmentBody {
+  if (!raw) return {};
+
+  const parsed: unknown = JSON.parse(raw);
+  if (typeof parsed === "string") {
+    return JSON.parse(parsed) as StartAppointmentBody;
+  }
+
+  return (parsed ?? {}) as StartAppointmentBody;
+}
 
 export async function POST(
   req: NextRequest,
@@ -9,19 +26,32 @@ export async function POST(
   try {
     const { id: appointmentId } = await params;
 
-    let body: any = {};
+    if (!appointmentId) {
+      return NextResponse.json(
+        { error: "Missing appointment id" },
+        { status: 400 },
+      );
+    }
+
+    let body: StartAppointmentBody = {};
     try {
       const raw = await req.text();
-      body = raw ? JSON.parse(raw) : {};
-      if (typeof body === "string") body = JSON.parse(body);
+      body = parseBody(raw);
     } catch {
       body = {};
     }
 
     const staffId =
-      typeof body.staffId === "string" && body.staffId.trim()
+      typeof body.staffId === "string" && body.staffId.trim().length > 0
         ? body.staffId.trim()
-        : null;
+        : undefined;
+
+    if (!staffId) {
+      return NextResponse.json(
+        { error: "staffId is required" },
+        { status: 400 },
+      );
+    }
 
     const result = await prisma.$transaction(async (tx) => {
       const appointment = await tx.appointment.findUnique({
@@ -29,6 +59,11 @@ export async function POST(
         include: {
           workSessions: {
             where: { endedAt: null },
+          },
+          assignments: {
+            select: {
+              staffId: true,
+            },
           },
         },
       });
@@ -41,8 +76,31 @@ export async function POST(
         throw new Error("Completed appointment cannot be started");
       }
 
+      if (appointment.status === "CANCELLED") {
+        throw new Error("Cancelled appointment cannot be started");
+      }
+
       if (appointment.workSessions.length > 0) {
         throw new Error("Appointment is already running");
+      }
+
+      if (staffId) {
+        const staffUser = await tx.user.findUnique({
+          where: { id: staffId },
+          select: { id: true, role: true },
+        });
+
+        if (!staffUser || staffUser.role !== Role.STAFF) {
+          throw new Error("Invalid staffId");
+        }
+
+        const assignedStaffIds = new Set(
+          appointment.assignments.map((a) => a.staffId),
+        );
+
+        if (!assignedStaffIds.has(staffId)) {
+          throw new Error("Staff member is not assigned to this appointment");
+        }
       }
 
       await tx.appointmentWorkSession.create({
@@ -53,23 +111,62 @@ export async function POST(
         },
       });
 
-      return tx.appointment.findUnique({
+      const fullAppointment = await tx.appointment.findUnique({
         where: { id: appointmentId },
         include: {
-          workSessions: { orderBy: { startedAt: "asc" } },
-          staff: true,
+          workSessions: {
+            orderBy: { startedAt: "asc" },
+            include: {
+              staff: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  role: true,
+                },
+              },
+            },
+          },
+          assignments: {
+            include: {
+              staff: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  role: true,
+                },
+              },
+            },
+            orderBy: { createdAt: "asc" },
+          },
           notes: true,
           images: true,
-          job: { include: { client: true, address: true } },
+          job: {
+            include: {
+              client: true,
+              address: true,
+            },
+          },
         },
       });
+
+      return fullAppointment;
     });
 
-    return NextResponse.json(result);
-  } catch (error: any) {
+    return NextResponse.json({
+      ...result,
+      staff: result?.assignments.map((a) => a.staff) ?? [],
+    });
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : "Failed to start appointment";
+
     return NextResponse.json(
-      { error: error?.message || "Failed to start appointment" },
-      { status: 400 },
+      { error: message },
+      {
+        status: message === "Appointment not found" ? 404 : 400,
+      },
     );
   }
 }

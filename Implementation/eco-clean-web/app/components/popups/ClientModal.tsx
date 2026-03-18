@@ -1,4 +1,5 @@
 "use client";
+
 import { createClient, updateClient } from "@/lib/api/client";
 import {
   Modal,
@@ -15,20 +16,15 @@ import {
   Divider,
   Textarea,
   Radio,
+  Loader,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
-import {
-  IoAttachOutline,
-  IoGlobeOutline,
-  IoMailOpenOutline,
-  IoMegaphoneOutline,
-  IoTextOutline,
-} from "react-icons/io5";
+import { notifications } from "@mantine/notifications";
 
 type AddressForm = {
-  id?: string; // include for edit
+  id?: string;
   street1: string;
   street2?: string;
   city: string;
@@ -58,13 +54,97 @@ type Props = {
   clientId?: string;
 };
 
+const DEFAULT_VALUES: ClientForm = {
+  title: "No title",
+  firstName: "",
+  lastName: "",
+  company: "",
+  phone: "",
+  email: "",
+  preferredContact: "email",
+  leadSource: "",
+  note: "",
+  addresses: [
+    {
+      street1: "",
+      street2: "",
+      city: "",
+      province: "",
+      postalCode: "",
+      country: "Canada",
+      billingSameAsProperty: true,
+    },
+  ],
+};
+
+const PROVINCES = ["QC"];
+
+function formatPostalCode(value: string) {
+  const cleaned = value.replace(/\s/g, "").toUpperCase().slice(0, 6);
+  if (cleaned.length <= 3) return cleaned;
+  return `${cleaned.slice(0, 3)} ${cleaned.slice(3, 6)}`;
+}
+
+function formatPhone(value: string) {
+  const cleaned = value.replace(/\D/g, "").slice(0, 11);
+
+  if (cleaned.length <= 1 && cleaned.startsWith("1")) return cleaned;
+  const digits = cleaned.startsWith("1") ? cleaned.slice(1) : cleaned;
+
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
+}
+
 export default function ClientPropertyModal({
   opened,
   onClose,
   clientId,
   onSuccess,
 }: Props) {
-  const { data: client, isLoading: clientLoading } = useQuery({
+  const queryClient = useQueryClient();
+
+  const form = useForm<ClientForm>({
+    initialValues: DEFAULT_VALUES,
+    validate: {
+      firstName: (v) => (!v.trim() ? "First name is required" : null),
+      lastName: (v) => (!v.trim() ? "Last name is required" : null),
+      email: (v) =>
+        /^\S+@\S+\.\S+$/.test(v.trim()) ? null : "Invalid email address",
+      phone: (value) => {
+        if (!value) return "Phone number is required";
+        const cleaned = value.replace(/\D/g, "");
+        if (!/^1?\d{10}$/.test(cleaned)) {
+          return "Enter a valid Canadian phone number";
+        }
+        return null;
+      },
+      addresses: {
+        street1: (v) => (!v.trim() ? "Street address is required" : null),
+        city: (v) => (!v.trim() ? "City is required" : null),
+        province: (v) => (!v ? "Province is required" : null),
+        postalCode: (value) => {
+          if (!value) return "Postal code is required";
+
+          const regex =
+            /^[ABCEGHJ-NPRSTVXY]\d[ABCEGHJ-NPRSTV-Z][ ]?\d[ABCEGHJ-NPRSTV-Z]\d$/i;
+
+          if (!regex.test(value.trim())) {
+            return "Enter a valid Canadian postal code (e.g. H3B 4G5)";
+          }
+
+          return null;
+        },
+      },
+    },
+  });
+
+  const {
+    data: client,
+    isLoading: clientLoading,
+    isFetching: clientFetching,
+    isError: clientError,
+  } = useQuery({
     queryKey: ["client", clientId],
     enabled: opened && !!clientId,
     queryFn: async () => {
@@ -75,141 +155,100 @@ export default function ClientPropertyModal({
     },
   });
 
-  const queryClient = useQueryClient();
-
   const mutation = useMutation({
     mutationFn: async ({ id, payload }: { id?: string; payload: any }) => {
       return id ? updateClient(id, payload) : createClient(payload);
     },
     onSuccess: async (_data, variables) => {
       await queryClient.invalidateQueries({ queryKey: ["clients"] });
+
       if (variables?.id) {
         await queryClient.invalidateQueries({
           queryKey: ["client", variables.id],
         });
       }
+
+      notifications.show({
+        title: "Success",
+        message: variables?.id
+          ? "Client updated successfully"
+          : "Client created successfully",
+        color: "green",
+      });
+
       onSuccess?.();
-      onClose();
       form.reset();
+      onClose();
     },
-    onError: (error) => console.error(error),
-  });
-
-  const form = useForm({
-    initialValues: {
-      title: "No title",
-      firstName: "",
-      lastName: "",
-      company: "",
-      phone: "",
-      email: "",
-      preferredContact: "email",
-      leadSource: "",
-      note: "",
-
-      addresses: [
-        {
-          street1: "",
-          street2: "",
-          city: "",
-          province: "",
-          postalCode: "",
-          country: "Canada",
-          billingSameAsProperty: true,
-        },
-      ],
-    },
-
-    validate: {
-      firstName: (v) => (!v ? "First name is required" : null),
-      lastName: (v) => (!v ? "Last name is required" : null),
-      email: (v) => (/^\S+@\S+$/.test(v) ? null : "Invalid email address"),
-      phone: (v) => (v.length < 10 ? "Invalid phone number" : null),
-
-      addresses: {
-        street1: (v) => (!v ? "Street address is required" : null),
-        city: (v) => (!v ? "City is required" : null),
-        province: (v) => (!v ? "Province is required" : null),
-        postalCode: (v) => (!v ? "Postal code is required" : null),
-      },
+    onError: (error) => {
+      console.error(error);
+      notifications.show({
+        title: "Failed",
+        message: "Could not save client. Please try again.",
+        color: "red",
+      });
     },
   });
 
-  const handleSubmit = async (values: ClientForm) => {
-    try {
-      form.clearErrors();
+  const isBusy = mutation.isPending || clientLoading || clientFetching;
 
-      const payload = {
-        title: values.title,
-        firstName: values.firstName,
-        lastName: values.lastName,
-        companyName: values.company,
-        phone: values.phone,
-        email: values.email,
-        preferredContact: values.preferredContact,
-        leadSource: values.leadSource,
-        note: values.note,
-        addresses: values.addresses.map((a) => ({
-          id: a.id,
-          street1: a.street1,
-          street2: a.street2,
-          city: a.city,
-          province: a.province,
-          postalCode: a.postalCode,
-          country: a.country,
-        })),
-      };
+  const handleSubmit = (values: ClientForm) => {
+    form.clearErrors();
 
-      mutation.mutate({ id: clientId, payload });
-      form.reset();
-      onSuccess?.();
-      onClose();
-    } catch (err) {
-      console.error(err);
-    }
+    const payload = {
+      title: values.title,
+      firstName: values.firstName.trim(),
+      lastName: values.lastName.trim(),
+      companyName: values.company.trim(),
+      phone: values.phone.trim(),
+      email: values.email.trim().toLowerCase(),
+      preferredContact:
+        values.preferredContact === "call"
+          ? "PHONE"
+          : values.preferredContact === "sms"
+            ? "TEXT"
+            : "EMAIL",
+      leadSource: values.leadSource.trim(),
+      note: values.note.trim(),
+      addresses: values.addresses.map((a) => ({
+        id: a.id,
+        street1: a.street1.trim(),
+        street2: a.street2?.trim() || "",
+        city: a.city.trim(),
+        province: a.province,
+        postalCode: formatPostalCode(a.postalCode),
+        country: a.country,
+        isBilling: !a.billingSameAsProperty,
+      })),
+    };
+
+    mutation.mutate({ id: clientId, payload });
   };
 
   useEffect(() => {
     if (!opened) return;
 
-    // create mode
     if (!clientId) {
-      form.setValues({
-        title: "No title",
-        firstName: "",
-        lastName: "",
-        company: "",
-        phone: "",
-        email: "",
-        preferredContact: "email",
-        leadSource: "",
-        note: "",
-        addresses: [
-          {
-            street1: "",
-            street2: "",
-            city: "",
-            province: "",
-            postalCode: "",
-            country: "Canada",
-            billingSameAsProperty: true,
-          },
-        ],
-      });
+      form.setValues(DEFAULT_VALUES);
+      form.resetDirty(DEFAULT_VALUES);
       return;
     }
 
-    // edit mode
     if (!client) return;
 
-    form.setValues({
+    const nextValues: ClientForm = {
       title: client.title ?? "No title",
       firstName: client.firstName ?? "",
       lastName: client.lastName ?? "",
-      company: client.companyName ?? "", // IMPORTANT: companyName -> company
+      company: client.companyName ?? "",
       phone: client.phone ?? "",
       email: client.email ?? "",
-      preferredContact: client.preferredContact ?? "email",
+      preferredContact:
+        client.preferredContact === "PHONE"
+          ? "call"
+          : client.preferredContact === "TEXT"
+            ? "sms"
+            : "email",
       leadSource: client.leadSource ?? "",
       note: client.notes?.[0]?.content ?? "",
       addresses: (client.addresses?.length ? client.addresses : []).map(
@@ -221,23 +260,50 @@ export default function ClientPropertyModal({
           province: a.province ?? "",
           postalCode: a.postalCode ?? "",
           country: a.country ?? "Canada",
-          billingSameAsProperty: false, // since API has isBilling; set however you want
+          billingSameAsProperty: !a.isBilling,
         }),
       ),
-    });
-  }, [opened, clientId, client]);
+    };
+
+    form.setValues(nextValues);
+    form.resetDirty(nextValues);
+  }, [opened, clientId, client]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <Modal
       size="xl"
       centered
       opened={opened}
-      onClose={onClose}
-      title={client ? "Edit client" : "Add client"}
+      onClose={isBusy ? () => {} : onClose}
+      title={clientId ? "Edit client" : "Add client"}
       radius="lg"
+      closeOnClickOutside={!isBusy}
+      closeOnEscape={!isBusy}
+      withCloseButton={!isBusy}
     >
-      <form onSubmit={form.onSubmit((values) => handleSubmit(values))}>
+      <form onSubmit={form.onSubmit(handleSubmit)}>
         <Stack gap="xl">
+          {(clientLoading || mutation.isPending) && (
+            <Paper withBorder p="sm" radius="md">
+              <Group gap="xs">
+                <Loader size="sm" />
+                <Text size="sm">
+                  {clientLoading
+                    ? "Loading client details..."
+                    : "Saving client..."}
+                </Text>
+              </Group>
+            </Paper>
+          )}
+
+          {clientError && clientId ? (
+            <Paper withBorder p="sm" radius="md">
+              <Text size="sm" c="red">
+                Failed to load client details.
+              </Text>
+            </Paper>
+          ) : null}
+
           <Grid>
             <Grid.Col span={12}>
               <Title order={5}>Primary contact details</Title>
@@ -252,58 +318,71 @@ export default function ClientPropertyModal({
                 <Grid>
                   <Grid.Col span={3}>
                     <Select
-                      leftSection={<IoTextOutline />}
                       label="Title"
                       data={["No title", "Mr.", "Mrs.", "Ms.", "Dr."]}
+                      disabled={isBusy}
                       {...form.getInputProps("title")}
                     />
                   </Grid.Col>
 
                   <Grid.Col span={4.5}>
                     <TextInput
-                      leftSection={<IoTextOutline />}
                       label="First name"
                       placeholder="Enter first name"
                       withAsterisk
+                      disabled={isBusy}
                       {...form.getInputProps("firstName")}
                     />
                   </Grid.Col>
 
                   <Grid.Col span={4.5}>
                     <TextInput
-                      leftSection={<IoTextOutline />}
                       label="Last name"
                       placeholder="Enter last name"
                       withAsterisk
+                      disabled={isBusy}
                       {...form.getInputProps("lastName")}
                     />
                   </Grid.Col>
                 </Grid>
+
                 <TextInput
                   label="Company name"
-                  leftSection={<IoTextOutline />}
                   placeholder="Enter company name"
+                  disabled={isBusy}
                   {...form.getInputProps("company")}
                 />
+
                 <Divider />
+
                 <Title order={6}>Communication</Title>
+
                 <TextInput
-                  leftSection={<IoMegaphoneOutline />}
                   label="Phone number"
                   type="tel"
-                  placeholder="Enter phone number"
+                  placeholder="(604) 123-4567"
+                  disabled={isBusy}
                   {...form.getInputProps("phone")}
+                  onChange={(e) =>
+                    form.setFieldValue(
+                      "phone",
+                      formatPhone(e.currentTarget.value),
+                    )
+                  }
                 />
+
                 <TextInput
                   label="Email"
-                  leftSection={<IoMailOpenOutline />}
                   placeholder="Enter email address"
                   withAsterisk
                   type="email"
+                  disabled={isBusy}
                   {...form.getInputProps("email")}
                 />
+
                 <Radio.Group
                   label="Preferred communication method"
+                  disabled={isBusy}
                   {...form.getInputProps("preferredContact")}
                 >
                   <Group mt="xs">
@@ -312,18 +391,23 @@ export default function ClientPropertyModal({
                     <Radio value="email" label="Email" />
                   </Group>
                 </Radio.Group>
+
                 <Divider />
+
                 <Title order={6}>Lead information</Title>
+
                 <TextInput
                   label="Lead source"
-                  leftSection={<IoTextOutline />}
                   placeholder="How did this client hear about us?"
+                  disabled={isBusy}
                   {...form.getInputProps("leadSource")}
                 />
               </Stack>
             </Grid.Col>
           </Grid>
+
           <Divider />
+
           <Grid>
             <Grid.Col span={12}>
               <Title order={5}>Property address</Title>
@@ -332,6 +416,7 @@ export default function ClientPropertyModal({
                 additional locations where services may take place.
               </Text>
             </Grid.Col>
+
             <Grid.Col span={12}>
               <Stack gap="md">
                 {form.values.addresses.map((_, index) => (
@@ -343,8 +428,10 @@ export default function ClientPropertyModal({
                         {form.values.addresses.length > 1 && (
                           <Button
                             size="xs"
-                            variant="subtle"
+                            variant="light"
                             color="red"
+                            type="button"
+                            disabled={isBusy}
                             onClick={() =>
                               form.removeListItem("addresses", index)
                             }
@@ -356,15 +443,15 @@ export default function ClientPropertyModal({
 
                       <TextInput
                         label="Street 1"
-                        leftSection={<IoTextOutline />}
                         placeholder="Enter address"
+                        disabled={isBusy}
                         {...form.getInputProps(`addresses.${index}.street1`)}
                       />
 
                       <TextInput
                         label="Street 2"
-                        leftSection={<IoTextOutline />}
                         placeholder="Enter address"
+                        disabled={isBusy}
                         {...form.getInputProps(`addresses.${index}.street2`)}
                       />
 
@@ -373,16 +460,17 @@ export default function ClientPropertyModal({
                           <TextInput
                             label="City"
                             placeholder="Enter city"
-                            leftSection={<IoTextOutline />}
+                            disabled={isBusy}
                             {...form.getInputProps(`addresses.${index}.city`)}
                           />
                         </Grid.Col>
 
                         <Grid.Col span={6}>
-                          <TextInput
+                          <Select
                             label="Province"
-                            placeholder="Enter province"
-                            leftSection={<IoTextOutline />}
+                            placeholder="Select province"
+                            data={PROVINCES}
+                            disabled={isBusy}
                             {...form.getInputProps(
                               `addresses.${index}.province`,
                             )}
@@ -394,19 +482,31 @@ export default function ClientPropertyModal({
                         <Grid.Col span={6}>
                           <TextInput
                             label="Postal code"
-                            leftSection={<IoTextOutline />}
-                            placeholder="Enter postal code"
+                            placeholder="H3B 4G5"
+                            disabled={isBusy}
                             {...form.getInputProps(
                               `addresses.${index}.postalCode`,
                             )}
+                            onChange={(e) =>
+                              form.setFieldValue(
+                                `addresses.${index}.postalCode`,
+                                e.currentTarget.value.toUpperCase(),
+                              )
+                            }
+                            onBlur={(e) =>
+                              form.setFieldValue(
+                                `addresses.${index}.postalCode`,
+                                formatPostalCode(e.currentTarget.value),
+                              )
+                            }
                           />
                         </Grid.Col>
 
                         <Grid.Col span={6}>
                           <Select
                             label="Country"
-                            leftSection={<IoGlobeOutline />}
-                            data={["Canada", "United States"]}
+                            data={["Canada"]}
+                            disabled={isBusy}
                             {...form.getInputProps(
                               `addresses.${index}.country`,
                             )}
@@ -416,6 +516,7 @@ export default function ClientPropertyModal({
 
                       <Checkbox
                         label="Billing address is the same as property address"
+                        disabled={isBusy}
                         {...form.getInputProps(
                           `addresses.${index}.billingSameAsProperty`,
                           { type: "checkbox" },
@@ -427,6 +528,8 @@ export default function ClientPropertyModal({
 
                 <Button
                   variant="light"
+                  type="button"
+                  disabled={isBusy}
                   onClick={() =>
                     form.insertListItem("addresses", {
                       street1: "",
@@ -444,6 +547,7 @@ export default function ClientPropertyModal({
               </Stack>
             </Grid.Col>
           </Grid>
+
           <Grid>
             <Grid.Col span={12}>
               <Title order={5}>Add notes</Title>
@@ -454,22 +558,34 @@ export default function ClientPropertyModal({
                 profile.
               </Text>
             </Grid.Col>
+
             <Grid.Col span={12}>
               <Textarea
-                leftSection={<IoAttachOutline />}
                 placeholder="Type your note here..."
                 minRows={4}
                 autosize
+                disabled={isBusy}
                 {...form.getInputProps("note")}
               />
             </Grid.Col>
           </Grid>
 
           <Group justify="flex-end">
-            <Button variant="default" onClick={onClose}>
+            <Button
+              variant="default"
+              type="button"
+              disabled={isBusy}
+              onClick={onClose}
+            >
               Cancel
             </Button>
-            <Button type="submit">{client ? "Update" : "Create"}</Button>
+            <Button
+              type="submit"
+              loading={mutation.isPending}
+              disabled={isBusy}
+            >
+              {clientId ? "Update" : "Create"}
+            </Button>
           </Group>
         </Stack>
       </form>

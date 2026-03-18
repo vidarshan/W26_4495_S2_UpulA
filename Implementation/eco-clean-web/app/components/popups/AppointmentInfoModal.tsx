@@ -38,15 +38,13 @@ import {
 
 import Loader from "../UI/Loader";
 import { useDashboardUI } from "@/stores/store";
-import { useAppointment } from "@/hooks/useAppointment";
+import { Status, useAppointment } from "@/hooks/useAppointment";
 import { getStaff } from "@/lib/api/users";
 import { updateAppointment } from "@/lib/api/appointments";
 import { dateOnlyAndHHmmToIso, isoToDateOnly, isoToHHmm } from "@/lib/dateTime";
 import { deleteAppointmentImage } from "@/lib/uploadthing";
 
 import classes from "./AppointmentInfoModal.module.css";
-
-type Status = "SCHEDULED" | "COMPLETED" | "CANCELLED";
 
 type AppointmentImage = {
   id: string;
@@ -281,7 +279,7 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       ) ?? [];
   console.log(appointment);
-  const sortedJobNotes: JobNote[] =
+  const sortedJobNotes =
     appointment?.job?.notes?.slice().sort((a, b) => {
       if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
@@ -295,7 +293,7 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
       startTime: isoToHHmm(appointment.startTime),
       endTime: isoToHHmm(appointment.endTime),
       status: appointment.status,
-      staff: (appointment.staff ?? []).map((s) => s.id),
+      staff: (appointment.assignments ?? []).map((a) => a.staff.id),
       note: latestAppointmentNote,
     });
 
@@ -641,7 +639,7 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
                   <Divider label="Job Notes" labelPosition="left" />
 
                   <Stack gap="sm">
-                    {sortedJobNotes.map((note: JobNote) => (
+                    {sortedJobNotes.map((note) => (
                       <Paper key={note.id} withBorder radius="md" p="sm">
                         <Group
                           justify="space-between"

@@ -66,6 +66,7 @@ export async function POST(
     const result = await prisma.$transaction(async (tx: Tx) => {
       const appointment = await tx.appointment.findUnique({
         where: { id: appointmentId },
+        select: { id: true },
       });
 
       if (!appointment) {
@@ -112,11 +113,16 @@ export async function POST(
         });
       }
 
-      return tx.appointment.findUnique({
+      const fullAppointment = await tx.appointment.findUnique({
         where: { id: appointmentId },
         include: {
-          staff: {
-            select: { id: true, name: true, email: true, role: true },
+          assignments: {
+            include: {
+              staff: {
+                select: { id: true, name: true, email: true, role: true },
+              },
+            },
+            orderBy: { createdAt: "asc" },
           },
           notes: {
             orderBy: { createdAt: "desc" },
@@ -144,14 +150,23 @@ export async function POST(
           },
         },
       });
+
+      return fullAppointment;
     });
 
-    return NextResponse.json(result);
+    return NextResponse.json({
+      ...result,
+      staff: result?.assignments.map((a) => a.staff) ?? [],
+    });
   } catch (err: any) {
     console.error("POST /api/appointments/[id]/visit-note error:", err);
+
+    const message =
+      err instanceof Error ? err.message : "Failed to save visit note";
+
     return NextResponse.json(
-      { error: err?.message || "Failed to save visit note" },
-      { status: 500 },
+      { error: message },
+      { status: message === "Appointment not found" ? 404 : 500 },
     );
   }
 }

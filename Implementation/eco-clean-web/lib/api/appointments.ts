@@ -3,7 +3,7 @@ import { apiClient } from "./client";
 export type UpdateAppointmentPayload = Partial<{
   startTime: string; // ISO
   endTime: string; // ISO
-  status: "SCHEDULED" | "COMPLETED" | "CANCELLED";
+  status: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "LATE";
   staffIds: string[];
   note: string | null;
 }>;
