@@ -17,7 +17,7 @@ import {
   ThemeIcon,
   Title,
 } from "@mantine/core";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { DateTime } from "luxon";
 import { APP_TZ } from "@/lib/dateTime";
 import { useQuery } from "@tanstack/react-query";
@@ -36,6 +36,7 @@ import { signOut, useSession } from "next-auth/react";
 import { getServerSession } from "next-auth";
 import { AppointmentReminderWatcher } from "@/app/components/AppointmentReminderWatcher";
 import { LocalNotificationDemo } from "@/app/components/LocalNotificationDemo";
+import { requestPermission } from "@/lib/notifications/showNotification";
 
 type Appointment = {
   id: string;
@@ -65,6 +66,10 @@ const Page = () => {
   const router = useRouter();
 
   const [value, setValue] = useState<string>("upcoming");
+
+  useEffect(() => {
+    requestPermission();
+  }, []);
 
   const range = useMemo(() => {
     const now = DateTime.now().setZone(APP_TZ);
