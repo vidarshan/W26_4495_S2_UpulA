@@ -803,42 +803,89 @@ async function createGuaranteedReminderTestAppointments(
     },
   });
 
+  if (!clients.length) {
+    console.log("ℹ️ No clients found for SEED_TEST_EMAIL.");
+    return 0;
+  }
+
+  function reminderDateUtc(daysFromNow: number, hour = 16) {
+    const now = new Date();
+
+    return new Date(
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate() + daysFromNow,
+        hour,
+        0,
+        0,
+        0,
+      ),
+    );
+  }
+
+  const templates = [
+    {
+      label: "5-day",
+      daysFromNow: 5,
+      startTime: reminderDateUtc(5, 16),
+      endTime: reminderDateUtc(5, 19),
+    },
+    {
+      label: "1-day",
+      daysFromNow: 1,
+      startTime: reminderDateUtc(1, 16),
+      endTime: reminderDateUtc(1, 19),
+    },
+    {
+      label: "control",
+      daysFromNow: 3,
+      startTime: reminderDateUtc(3, 16),
+      endTime: reminderDateUtc(3, 19),
+    },
+  ];
+
   let created = 0;
 
-  for (let i = 0; i < clients.length; i++) {
-    const client = clients[i];
+  for (let i = 0; i < templates.length; i++) {
+    const template = templates[i];
+    const client = clients[i % clients.length];
     const address = client.addresses[0];
+
     if (!address) continue;
 
     const job = await prisma.job.create({
       data: {
-        title: `Reminder Test Job ${i + 1}`,
+        title: `Reminder Test Job (${template.label})`,
         type: JobType.ONE_OFF,
         clientId: client.id,
         addressId: address.id,
         isAnytime: false,
-        visitInstructions: "Guaranteed seed appointment for reminder testing.",
+        visitInstructions: `Guaranteed seed appointment for ${template.label} reminder testing.`,
       },
     });
-
-    const startTime = addHours(addDays(new Date(), 5), 9 + i);
-    const endTime = addHours(startTime, 3);
 
     await prisma.appointment.create({
       data: {
         jobId: job.id,
-        startTime,
-        endTime,
+        startTime: template.startTime,
+        endTime: template.endTime,
         status: AppointmentStatus.SCHEDULED,
         reminder5dSent: false,
         reminder3dSent: false,
         reminder1dSent: false,
         completionSent: false,
-        assignments: {
-          create: [{ staffId: staff[i % staff.length].id }],
-        },
+        assignments: staff.length
+          ? {
+              create: [{ staffId: staff[i % staff.length].id }],
+            }
+          : undefined,
       },
     });
+
+    console.log(
+      `Created guaranteed ${template.label} reminder test appointment for ${client.email} at ${template.startTime.toISOString()}`,
+    );
 
     created++;
   }

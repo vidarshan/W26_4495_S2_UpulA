@@ -15,12 +15,29 @@ const REMINDERS: ReminderConfig[] = [
 function getReminderWindow(daysBefore: number) {
   const now = new Date();
 
-  const start = new Date(now);
-  start.setDate(start.getDate() + daysBefore);
-  start.setHours(0, 0, 0, 0);
+  const start = new Date(
+    Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate() + daysBefore,
+      0,
+      0,
+      0,
+      0,
+    ),
+  );
 
-  const end = new Date(start);
-  end.setDate(end.getDate() + 1);
+  const end = new Date(
+    Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate() + daysBefore + 1,
+      0,
+      0,
+      0,
+      0,
+    ),
+  );
 
   return { start, end };
 }
