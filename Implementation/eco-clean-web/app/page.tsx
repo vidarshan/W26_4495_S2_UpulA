@@ -1,13 +1,21 @@
-"use client";
-import { useSession } from "next-auth/react";
+import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import { authOptions } from "@/lib/auth-options";
 
 export default async function HomePage() {
-  const { data } = useSession();
+  const session = await getServerSession(authOptions);
+  console.log(session);
+  if (!session) {
+    redirect("/login");
+  }
 
-  if (data?.user.role === "STAFF") {
+  if (session.user.role === "STAFF") {
     redirect("/staff/tasks");
   }
 
-  redirect("/admin");
+  if (session.user.role === "ADMIN") {
+    redirect("/admin");
+  }
+
+  redirect("/login");
 }
