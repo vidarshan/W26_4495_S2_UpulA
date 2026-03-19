@@ -6,25 +6,25 @@ import {
   Box,
   Button,
   Card,
+  Center,
   Container,
   Grid,
   Group,
+  Loader,
+  Modal,
   Stack,
   Text,
   TextInput,
   Title,
-  Loader,
-  Center,
-  Modal,
 } from '@mantine/core';
 import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import {
-  IoSettingsOutline,
-  IoPencilOutline,
   IoCheckmarkOutline,
   IoCloseOutline,
+  IoPencilOutline,
+  IoSettingsOutline,
 } from 'react-icons/io5';
-import { useEffect, useState } from 'react';
 
 type EmergencyContact = {
   name: string;
@@ -233,22 +233,24 @@ export default function StaffProfilePage() {
 
       <Grid mt="xl" gutter="lg">
         <Grid.Col span={{ base: 12, sm: 6 }}>
-          <BigActionButton onClick={() => router.push('/enter-time')}>
+          <BigActionButton onClick={() => router.push('/staff/enter-time')}>
             Enter Time
           </BigActionButton>
         </Grid.Col>
         <Grid.Col span={{ base: 12, sm: 6 }}>
-          <BigActionButton onClick={() => console.log('Pay stubs')}>
+          <BigActionButton onClick={() => router.push('/staff/pay-history')}>
             Pay Stubs
           </BigActionButton>
         </Grid.Col>
         <Grid.Col span={{ base: 12, sm: 6 }}>
-          <BigActionButton onClick={() => router.push('/enter-availability')}>
+          <BigActionButton
+            onClick={() => router.push('/staff/enter-availability')}
+          >
             Availability
           </BigActionButton>
         </Grid.Col>
         <Grid.Col span={{ base: 12, sm: 6 }}>
-          <BigActionButton onClick={() => router.push('/apply-leave')}>
+          <BigActionButton onClick={() => router.push('/staff/apply-leave')}>
             Apply Leave
           </BigActionButton>
         </Grid.Col>

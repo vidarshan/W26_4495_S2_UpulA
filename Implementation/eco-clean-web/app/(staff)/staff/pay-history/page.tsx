@@ -27,6 +27,14 @@ type PayStatement = {
   netEarnings: number;
 };
 
+type SessionUser = {
+  id: string;
+  name?: string;
+  email?: string;
+};
+
+
+
 export default function PayHistoryPage() {
   const { data: session } = useSession();
   const [statements, setStatements] = useState<PayStatement[]>([]);
@@ -36,10 +44,10 @@ export default function PayHistoryPage() {
 
   useEffect(() => {
     async function fetchHistory() {
-      const userId = '3b32d468-9f20-4808-9f25-bffabed6a9cb';
+      if (!session?.user?.id) return;
 
       try {
-        const res = await fetch(`/api/staff/${userId}/pay-statements`);
+        const res = await fetch(`/api/staff/${session.user.id}/pay-statements`);
         const data = await res.json();
         setStatements(data);
       } catch (error) {

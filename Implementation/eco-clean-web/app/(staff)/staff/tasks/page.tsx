@@ -57,6 +57,7 @@ type Appointment = {
   notes?: { id: string; content: string }[];
 };
 
+
 const Page = () => {
   const { data: session } = useSession();
   console.log(session);
@@ -122,14 +123,45 @@ const Page = () => {
 
   return (
     <Container p={0} bg="#f5f6f7" mih="100vh">
+
       <Drawer size="60%" opened={opened} onClose={close} title="Eco Clean">
+        <Stack gap="md">
+
         <Button
           radius="lg"
+          onClick={() => router.push('/staff/staff-profile')}
+          fullWidth
+        >
+          Staff Profile
+        </Button>
+
+        <Button
+          radius="lg"
+
+          onClick={() => router.push('/staff/apply-leave')}
+          fullWidth
+        >
+          Time-off
+        </Button>
+
+        <Button
+          radius="lg"
+          onClick={() => router.push('/staff/enter-availability')}
+          fullWidth
+        >
+          Availability
+        </Button>
+
+        <Button
+          radius="lg"
+                    color="gray"
+
           onClick={() => signOut({ callbackUrl: "/login" })}
           fullWidth
         >
           Logout
         </Button>
+        </Stack>
       </Drawer>
 
       <TopBar back={false} onClick={open} title="Eco Clean" />

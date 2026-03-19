@@ -6,6 +6,13 @@ import {
   JobType,
   AppointmentStatus,
   JobNoteCategory,
+<<<<<<< Updated upstream
+=======
+  AssignmentStatus,
+  LeaveType,
+  TimesheetStatus,
+  TimesheetPeriodStatus,
+>>>>>>> Stashed changes
 } from "@prisma/client";
 import { faker } from "@faker-js/faker";
 import { PrismaPg } from "@prisma/adapter-pg";
@@ -262,7 +269,63 @@ function computeReminderFlags(startTime: Date, status: AppointmentStatus) {
   };
 }
 
+<<<<<<< Updated upstream
 async function resetDatabase() {
+=======
+function fakeAssignmentStatus(
+  appointmentStatus: AppointmentStatus,
+): AssignmentStatus {
+  if (appointmentStatus === AppointmentStatus.CANCELLED) {
+    return AssignmentStatus.PENDING;
+  }
+  if (appointmentStatus === AppointmentStatus.COMPLETED) {
+    return AssignmentStatus.COMPLETED;
+  }
+  if (appointmentStatus === AppointmentStatus.LATE) {
+    return pick([
+      AssignmentStatus.EN_ROUTE,
+      AssignmentStatus.ON_SITE,
+      AssignmentStatus.COMPLETED,
+    ]);
+  }
+  return pick([
+    AssignmentStatus.PENDING,
+    AssignmentStatus.EN_ROUTE,
+    AssignmentStatus.ON_SITE,
+  ]);
+}
+
+function startOfDay(date: Date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function endOfDay(date: Date) {
+  const d = new Date(date);
+  d.setHours(23, 59, 59, 999);
+  return d;
+}
+
+function fmtMoney(n: number) {
+  return Number(n.toFixed(2));
+}
+
+async function resetDatabase() {
+  await prisma.payStatement.deleteMany();
+  await prisma.timesheetDay.deleteMany();
+  await prisma.timesheet.deleteMany();
+  await prisma.timesheetPeriod.deleteMany();
+  await prisma.leave.deleteMany();
+
+  await prisma.staffAvailability.deleteMany();
+  await prisma.assignment.deleteMany();
+  await prisma.emergencyContact.deleteMany();
+  await prisma.staffAddress.deleteMany();
+  await prisma.staffProfile.deleteMany();
+
+  await prisma.appointmentAiInsight.deleteMany();
+>>>>>>> Stashed changes
   await prisma.appointmentWorkSession.deleteMany();
   await prisma.appointmentImage.deleteMany();
   await prisma.visitNote.deleteMany();
@@ -434,6 +497,15 @@ async function createJobsForClients(
       select: { id: true },
     });
 
+    const staffProfiles = await prisma.staffProfile.findMany({
+      where: { userId: { in: staff.map((s) => s.id) } },
+      select: { userId: true, hourlyRate: true },
+    });
+
+    const hourlyRateMap = new Map(
+      staffProfiles.map((p) => [p.userId, p.hourlyRate]),
+    );
+
     const jobsCount = randInt(cfg.jobsPerClientMin, cfg.jobsPerClientMax);
 
     for (let j = 0; j < jobsCount; j++) {
@@ -563,8 +635,25 @@ async function createJobsForClients(
             completionSent: reminderFlags.completionSent,
             reminder1dSent: reminderFlags.reminder1dSent,
             reminder5dSent: reminderFlags.reminder5dSent,
+<<<<<<< Updated upstream
             staff: {
               connect: assignedStaff.map((id) => ({ id })),
+=======
+            assignments: {
+              create: assignedStaff.map((staffId) => ({
+                staffId,
+                status: fakeAssignmentStatus(status),
+                plannedStart: maybe(0.7)
+                  ? addMinutes(startTime, randInt(-15, 15))
+                  : null,
+                plannedEnd: maybe(0.7)
+                  ? addMinutes(endTime, randInt(-15, 20))
+                  : null,
+                hourlyRateAtTime: hourlyRateMap.get(staffId) ?? 0,
+                breakMinutes: maybe(0.5) ? pick([0, 15, 30]) : 0,
+                notes: maybe(0.25) ? faker.lorem.sentence() : null,
+              })),
+>>>>>>> Stashed changes
             },
           },
           include: {
@@ -648,6 +737,233 @@ async function createJobsForClients(
   };
 }
 
+async function createLeaves(staff: { id: string }[]) {
+  const leaveRows: Prisma.LeaveCreateManyInput[] = [];
+
+  for (const member of staff) {
+    const leaveCount = randInt(0, 3);
+
+    for (let i = 0; i < leaveCount; i++) {
+      const startAt = startOfDay(addDays(new Date(), randInt(-60, 45)));
+      const durationDays = randInt(1, 4);
+      const endAt = endOfDay(addDays(startAt, durationDays - 1));
+
+      leaveRows.push({
+        staffId: member.id,
+        type: pick([
+          LeaveType.PAID_SICK,
+          LeaveType.VACATION,
+          LeaveType.PERSONAL,
+          LeaveType.UNPAID_SICK,
+        ]),
+        startAt,
+        endAt,
+        reason: maybe(0.7) ? faker.lorem.sentence() : null,
+        createdAt: faker.date.between({
+          from: addDays(startAt, -14),
+          to: startAt,
+        }),
+      });
+    }
+  }
+
+  if (leaveRows.length) {
+    await prisma.leave.createMany({ data: leaveRows });
+  }
+
+  return leaveRows.length;
+}
+
+async function createTimesheetsAndPayroll(
+  staff: { id: string }[],
+  admins: { id: string }[],
+) {
+  let periodsCreated = 0;
+  let timesheetsCreated = 0;
+  let timesheetDaysCreated = 0;
+  let payStatementsCreated = 0;
+
+  const profiles = await prisma.staffProfile.findMany({
+    where: { userId: { in: staff.map((s) => s.id) } },
+    select: { userId: true, hourlyRate: true },
+  });
+
+  const hourlyRateMap = new Map(profiles.map((p) => [p.userId, p.hourlyRate]));
+  const approverId = admins[0]?.id ?? null;
+
+  const baseStart = startOfDay(addDays(new Date(), -42));
+
+  const periodDefs = [
+    {
+      startDate: baseStart,
+      endDate: endOfDay(addDays(baseStart, 13)),
+      status: TimesheetPeriodStatus.LOCKED,
+      lockedAt: addDays(baseStart, 15),
+    },
+    {
+      startDate: startOfDay(addDays(baseStart, 14)),
+      endDate: endOfDay(addDays(baseStart, 27)),
+      status: TimesheetPeriodStatus.LOCKED,
+      lockedAt: addDays(baseStart, 29),
+    },
+    {
+      startDate: startOfDay(addDays(baseStart, 28)),
+      endDate: endOfDay(addDays(baseStart, 41)),
+      status: TimesheetPeriodStatus.OPEN,
+      lockedAt: null,
+    },
+  ];
+
+  for (const periodDef of periodDefs) {
+    const period = await prisma.timesheetPeriod.create({
+      data: periodDef,
+    });
+
+    periodsCreated++;
+
+    for (const member of staff) {
+      const hourlyRate = hourlyRateMap.get(member.id) ?? 0;
+      const isLocked = period.status === TimesheetPeriodStatus.LOCKED;
+
+      const days: Prisma.TimesheetDayCreateWithoutTimesheetInput[] = [];
+      let cursor = new Date(period.startDate);
+
+      while (cursor <= period.endDate) {
+        const dayOfWeek = cursor.getDay();
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+        if (!isWeekend && maybe(0.82)) {
+          const minutesWorked = pick([240, 300, 360, 420, 480]);
+          days.push({
+            workDate: new Date(cursor),
+            minutesWorked,
+            hourlyRate,
+            notes: maybe(0.18) ? faker.lorem.sentence() : null,
+          });
+        }
+
+        cursor = addDays(cursor, 1);
+      }
+
+      const timesheet = await prisma.timesheet.create({
+        data: {
+          periodId: period.id,
+          staffId: member.id,
+          status: isLocked
+            ? TimesheetStatus.APPROVED
+            : maybe(0.45)
+              ? TimesheetStatus.SUBMITTED
+              : TimesheetStatus.OPEN,
+          submittedAt: isLocked
+            ? addDays(period.endDate, 1)
+            : maybe(0.45)
+              ? new Date()
+              : null,
+          approvedAt: isLocked ? addDays(period.endDate, 2) : null,
+          approvedById: isLocked ? approverId : null,
+          notes: maybe(0.2) ? faker.lorem.sentence() : null,
+          days: {
+            create: days,
+          },
+        },
+        include: {
+          days: true,
+        },
+      });
+
+      timesheetsCreated++;
+      timesheetDaysCreated += timesheet.days.length;
+
+      if (isLocked) {
+        const gross = fmtMoney(
+          timesheet.days.reduce((sum, day) => {
+            const rate = day.hourlyRate ?? hourlyRate;
+            return sum + (day.minutesWorked / 60) * rate;
+          }, 0),
+        );
+
+        const deductions = fmtMoney(gross * 0.12);
+        const net = fmtMoney(gross - deductions);
+
+        await prisma.payStatement.create({
+          data: {
+            userId: member.id,
+            timesheetPeriodId: period.id,
+            payPeriodStart: period.startDate,
+            payPeriodEnd: period.endDate,
+            payDate: addDays(period.endDate, 5),
+            grossEarnings: gross,
+            totalDeductions: deductions,
+            netEarnings: net,
+            breakdown: {
+              hours: fmtMoney(
+                timesheet.days.reduce(
+                  (sum, day) => sum + day.minutesWorked / 60,
+                  0,
+                ),
+              ),
+              hourlyRate,
+              deductionRate: 0.12,
+              source: "seed",
+            },
+          },
+        });
+
+        payStatementsCreated++;
+      }
+    }
+  }
+
+  return {
+    periodsCreated,
+    timesheetsCreated,
+    timesheetDaysCreated,
+    payStatementsCreated,
+  };
+}
+
+async function createAppointmentAiInsights() {
+  const completedAppointments = await prisma.appointment.findMany({
+    where: {
+      status: AppointmentStatus.COMPLETED,
+    },
+    take: 25,
+    orderBy: { createdAt: "desc" },
+    select: { id: true },
+  });
+
+  let created = 0;
+
+  for (const appt of completedAppointments) {
+    if (!maybe(0.55)) continue;
+
+    await prisma.appointmentAiInsight.create({
+      data: {
+        appointmentId: appt.id,
+        type: pick(["SUMMARY", "QUALITY_CHECK", "FOLLOW_UP"]),
+        model: pick(["gpt-4.1-mini", "gpt-4.1", "gpt-4o-mini"]),
+        promptVersion: pick(["v1", "v2"]),
+        payload: {
+          summary: faker.lorem.sentences({ min: 2, max: 4 }),
+          actionItems: Array.from({ length: randInt(1, 3) }).map(() =>
+            faker.lorem.sentence(),
+          ),
+          confidence: faker.number.float({
+            min: 0.72,
+            max: 0.98,
+            fractionDigits: 2,
+          }),
+          source: "seed",
+        },
+      },
+    });
+
+    created++;
+  }
+
+  return created;
+}
+
 async function createGuaranteedReminderTestAppointments(
   staff: { id: string }[],
 ) {
@@ -657,6 +973,15 @@ async function createGuaranteedReminderTestAppointments(
     );
     return 0;
   }
+
+  const staffProfiles = await prisma.staffProfile.findMany({
+    where: { userId: { in: staff.map((s) => s.id) } },
+    select: { userId: true, hourlyRate: true },
+  });
+
+  const hourlyRateMap = new Map(
+    staffProfiles.map((p) => [p.userId, p.hourlyRate]),
+  );
 
   const clients = await prisma.client.findMany({
     where: { email: SEED_TEST_EMAIL },
@@ -669,6 +994,48 @@ async function createGuaranteedReminderTestAppointments(
     },
   });
 
+<<<<<<< Updated upstream
+=======
+  if (!clients.length) {
+    console.log("ℹ️ No clients found for SEED_TEST_EMAIL.");
+    return 0;
+  }
+
+  function reminderDateUtc(daysFromNow: number, hour = 16) {
+    const now = new Date();
+
+    return new Date(
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate() + daysFromNow,
+        hour,
+        0,
+        0,
+        0,
+      ),
+    );
+  }
+
+  const templates = [
+    {
+      label: "5-day",
+      startTime: reminderDateUtc(5, 16),
+      endTime: reminderDateUtc(5, 19),
+    },
+    {
+      label: "1-day",
+      startTime: reminderDateUtc(1, 16),
+      endTime: reminderDateUtc(1, 19),
+    },
+    {
+      label: "control",
+      startTime: reminderDateUtc(3, 16),
+      endTime: reminderDateUtc(3, 19),
+    },
+  ];
+
+>>>>>>> Stashed changes
   let created = 0;
 
   for (let i = 0; i < clients.length; i++) {
@@ -688,8 +1055,12 @@ async function createGuaranteedReminderTestAppointments(
       },
     });
 
+<<<<<<< Updated upstream
     const startTime = addHours(addDays(new Date(), 5), 9 + i);
     const endTime = addHours(startTime, 3);
+=======
+    const assignedStaffId = staff.length ? staff[i % staff.length].id : null;
+>>>>>>> Stashed changes
 
     await prisma.appointment.create({
       data: {
@@ -700,9 +1071,23 @@ async function createGuaranteedReminderTestAppointments(
         reminder5dSent: false,
         reminder1dSent: false,
         completionSent: false,
+<<<<<<< Updated upstream
         staff: {
           connect: [{ id: staff[i % staff.length].id }],
         },
+=======
+        assignments: assignedStaffId
+          ? {
+              create: [
+                {
+                  staffId: assignedStaffId,
+                  hourlyRateAtTime: hourlyRateMap.get(assignedStaffId) ?? 0,
+                  breakMinutes: 0,
+                },
+              ],
+            }
+          : undefined,
+>>>>>>> Stashed changes
       },
     });
 
@@ -720,6 +1105,12 @@ async function main() {
   const users = await createUsers();
   const clients = await createClients();
   const counts = await createJobsForClients(clients, users.staff);
+  const leaveCount = await createLeaves(users.staff);
+  const payrollCounts = await createTimesheetsAndPayroll(
+    users.staff,
+    users.admins,
+  );
+  const aiInsightCount = await createAppointmentAiInsights();
   const guaranteedReminderAppointments =
     await createGuaranteedReminderTestAppointments(users.staff);
 
@@ -738,6 +1129,12 @@ async function main() {
     jobNoteImages: counts.jobNoteImagesCreated,
     recurrences: counts.recurrencesCreated,
     lineItems: counts.lineItemsCreated,
+    leaves: leaveCount,
+    timesheetPeriods: payrollCounts.periodsCreated,
+    timesheets: payrollCounts.timesheetsCreated,
+    timesheetDays: payrollCounts.timesheetDaysCreated,
+    payStatements: payrollCounts.payStatementsCreated,
+    appointmentAiInsights: aiInsightCount,
     guaranteedReminderAppointments,
     loginPassword: DEFAULT_PASSWORD,
     seedTestEmail: SEED_TEST_EMAIL || "(not set)",
