@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import TopBar from '@/app/components/pwa/TopBar';
-import { useStaffUiStore } from '@/stores/store';
+import TopBar from "@/app/components/pwa/TopBar";
+import { useStaffUiStore } from "@/stores/store";
 import {
   ActionIcon,
   Box,
@@ -12,17 +12,17 @@ import {
   Stack,
   Text,
   UnstyledButton,
-} from '@mantine/core';
-import { signOut } from 'next-auth/react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+} from "@mantine/core";
+import { signOut } from "next-auth/react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   IoCalendarClearOutline,
   IoCheckboxOutline,
   IoCloseOutline,
   IoPersonOutline,
   IoTimeOutline,
-} from 'react-icons/io5';
+} from "react-icons/io5";
 
 type MenuItemProps = {
   href: string;
@@ -39,17 +39,17 @@ function MenuItem({ href, label, icon, active, onClick }: MenuItemProps) {
       href={href}
       onClick={onClick}
       style={{
-        width: '100%',
-        padding: '10px 4px',
+        width: "100%",
+        padding: "10px 4px",
         borderRadius: 12,
       }}
     >
       <Group gap="sm">
         <Box
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            color: 'var(--mantine-color-dark-8)',
+            display: "flex",
+            alignItems: "center",
+            color: "var(--mantine-color-dark-8)",
           }}
         >
           {icon}
@@ -93,14 +93,14 @@ export default function StaffShell({
         styles={{
           body: {
             padding: 0,
-            height: '100%',
+            height: "100%",
           },
           content: {
-            backgroundColor: 'white',
+            backgroundColor: "white",
           },
         }}
       >
-        <Box px="lg" pt="lg" pb="md" h="100%">
+        <Box pt="lg" px="sm">
           <Group justify="space-between" align="center" mb="xl">
             <Text size="xl" fw={500}>
               Eco Clean
@@ -115,53 +115,70 @@ export default function StaffShell({
               <IoCloseOutline size={28} />
             </ActionIcon>
           </Group>
-
-          <Stack gap="md" justify="space-between" h="calc(100% - 60px)">
-            <Stack gap="xs">
-              <MenuItem
-                href="/staff/tasks"
-                label="My Tasks"
-                icon={<IoCheckboxOutline size={24} />}
-                active={pathname === '/staff/tasks'}
-                onClick={closeDrawer}
-              />
-
-              <MenuItem
-                href="/staff/staff-profile"
-                label="Profile"
-                icon={<IoPersonOutline size={24} />}
-                active={pathname === '/staff/staff-profile'}
-                onClick={closeDrawer}
-              />
-
-              <MenuItem
-                href="/staff/apply-leave"
-                label="Time-off"
-                icon={<IoCalendarClearOutline size={24} />}
-                active={pathname === '/staff/apply-leave'}
-                onClick={closeDrawer}
-              />
-
-              <MenuItem
-                href="/staff/enter-availability"
-                label="Availability"
-                icon={<IoTimeOutline size={24} />}
-                active={pathname === '/staff/enter-availability'}
-                onClick={closeDrawer}
-              />
-            </Stack>
-
-            <Button
-              radius="xl"
-              size="lg"
-              color="green"
-              fullWidth
-              onClick={() => signOut({ callbackUrl: '/login' })}
-            >
-              Logout
-            </Button>
-          </Stack>
         </Box>
+        <Stack px="sm" gap="xs">
+          <Button
+            component={Link}
+            href="/staff/tasks"
+            variant="subtle"
+            radius="md"
+            fullWidth
+            justify="flex-start"
+            onClick={closeDrawer}
+            color="dark"
+            leftSection={<IoCheckboxOutline />}
+          >
+            My Tasks
+          </Button>
+
+          <Button
+            component={Link}
+            href="/staff/profile"
+            variant="subtle"
+            radius="md"
+            fullWidth
+            color="dark"
+            justify="flex-start"
+            onClick={closeDrawer}
+            leftSection={<IoPersonOutline />}
+          >
+            Profile
+          </Button>
+          <Button
+            component={Link}
+            variant="subtle"
+            href="/staff/apply-leave"
+            radius="md"
+            fullWidth
+            justify="flex-start"
+            onClick={closeDrawer}
+            color="dark"
+            leftSection={<IoCalendarClearOutline />}
+          >
+            Time-off
+          </Button>
+          <Button
+            component={Link}
+            variant="subtle"
+            href="/staff/enter-availability"
+            radius="md"
+            fullWidth
+            justify="flex-start"
+            onClick={closeDrawer}
+            color="dark"
+            leftSection={<IoTimeOutline />}
+          >
+            Availability
+          </Button>
+
+          <Button
+            radius="md"
+            onClick={() => signOut({ callbackUrl: "/login" })}
+            fullWidth
+          >
+            Logout
+          </Button>
+        </Stack>
       </Drawer>
 
       <TopBar

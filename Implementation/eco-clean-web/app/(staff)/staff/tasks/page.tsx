@@ -134,7 +134,7 @@ const Page = () => {
   });
 
   const upcomingCount = filteredTasks.filter(
-    (t) => t.status !== "COMPLETED",
+    (t) => t.status !== "SCHEDULED",
   ).length;
   const completedCount = filteredTasks.filter(
     (t) => t.status === "COMPLETED",

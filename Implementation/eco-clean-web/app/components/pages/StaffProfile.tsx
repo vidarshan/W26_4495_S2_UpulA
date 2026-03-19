@@ -63,7 +63,7 @@ type InfoRowProps = {
 function InfoRow({ icon, label, value }: InfoRowProps) {
   return (
     <Group align="flex-start" wrap="nowrap">
-      <ThemeIcon variant="light" radius="xl" size={36}>
+      <ThemeIcon variant="light" color="orange" radius="xl" size="md">
         {icon}
       </ThemeIcon>
 
@@ -125,17 +125,23 @@ export default function StaffProfileDetailsCard() {
     : null;
 
   return (
-    <Box p='md'>
+    <Box p="md">
       <Stack gap="lg">
         <Group justify="space-between" align="flex-start">
           <Group align="center" wrap="nowrap">
-            <Avatar radius="xl" size={64} name={data.name} color="initials" />
+            <Avatar
+              radius="xl"
+              size={64}
+              name={data.name}
+              variant="filled"
+              color="green"
+            />
 
             <Stack gap={4}>
               <Title order={3}>{data.name}</Title>
 
               <Group gap="xs">
-                <Badge variant="light" radius="sm">
+                <Badge variant="filled" color="blue" radius="sm">
                   {data.role}
                 </Badge>
 
@@ -152,26 +158,22 @@ export default function StaffProfileDetailsCard() {
         <Divider />
 
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg" verticalSpacing="lg">
-          <InfoRow
-            icon={<IoMailOutline size={18} />}
-            label="Email"
-            value={data.email}
-          />
+          <InfoRow icon={<IoMailOutline />} label="Email" value={data.email} />
 
           <InfoRow
-            icon={<IoTimeOutline size={18} />}
+            icon={<IoTimeOutline />}
             label="Joined"
             value={new Date(data.createdAt).toLocaleDateString()}
           />
 
           <InfoRow
-            icon={<IoPersonOutline size={18} />}
+            icon={<IoPersonOutline />}
             label="Position"
             value={profile?.position}
           />
 
           <InfoRow
-            icon={<IoShieldOutline size={18} />}
+            icon={<IoShieldOutline />}
             label="Hourly Rate"
             value={
               profile?.hourlyRate != null
