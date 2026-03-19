@@ -39,7 +39,7 @@ import { DateTime } from "luxon";
 import { APP_TZ } from "@/lib/dateTime";
 import { useUploadThing } from "@/lib/uploadthing";
 import { notifications } from "@mantine/notifications";
-import { AIInsightsSection } from "../cards/AIInsightsSection";
+// import { AIInsightsSection } from "../cards/AiTaskAssistantCard";
 
 interface Props {
   opened: boolean;
@@ -683,7 +683,7 @@ export default function NewJobModal({
             />
           </Grid.Col>
           <Grid.Col span={12}>
-            <AIInsightsSection insights={[]} />
+            {/* <AIInsightsSection insights={[]} /> */}
           </Grid.Col>
           <Grid.Col span={12}>
             <MultiSelect

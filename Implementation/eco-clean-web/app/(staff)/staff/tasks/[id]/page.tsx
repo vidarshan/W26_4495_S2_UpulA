@@ -1,7 +1,20 @@
 "use client";
 
 import TopBar from "@/app/components/pwa/TopBar";
+import AiTaskAssistantCard from "@/app/components/cards/AiTaskAssistantCard";
 import { useAppointmentDetails } from "@/hooks/useAppointmentDetails";
+import {
+  completeAppointment,
+  pauseAppointment,
+  saveVisitNote,
+  startAppointment,
+} from "@/lib/api/appointments";
+import { showLocalNotification } from "@/lib/notifications/showNotification";
+import { useUploadThing } from "@/lib/uploadthing";
+import formatPrettyDate from "@/lib/utils/formatPrettyDate";
+import { TaskAssistantResponse } from "@/lib/ai/schemas";
+import { APP_TZ } from "@/lib/dateTime";
+import { WorkSession } from "@/types";
 import {
   Badge,
   Box,
@@ -21,37 +34,28 @@ import {
   Textarea,
   ThemeIcon,
 } from "@mantine/core";
+import { Dropzone } from "@mantine/dropzone";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { DateTime } from "luxon";
 import { useParams, useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
-import { DateTime } from "luxon";
-import { APP_TZ } from "@/lib/dateTime";
 import {
   IoArrowBackOutline,
   IoCallOutline,
   IoChatbubbleEllipsesOutline,
-  IoMapOutline,
-  IoPauseOutline,
-  IoPlayOutline,
-  IoPersonOutline,
-  IoTimeOutline,
   IoDocumentTextOutline,
   IoLocationOutline,
-  IoPinOutline,
+  IoMapOutline,
+  IoPauseOutline,
+  IoPersonOutline,
+  IoPlayOutline,
+  IoTimeOutline,
 } from "react-icons/io5";
-import {
-  completeAppointment,
-  pauseAppointment,
-  saveVisitNote,
-  startAppointment,
-} from "@/lib/api/appointments";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { notifications } from "@mantine/notifications";
-import { WorkSession } from "@/types";
-import { useDisclosure } from "@mantine/hooks";
-import { useUploadThing } from "@/lib/uploadthing";
-import { Dropzone } from "@mantine/dropzone";
-import formatPrettyDate from "@/lib/utils/formatPrettyDate";
-import { showLocalNotification } from "@/lib/notifications/showNotification";
+
+const HERO_RADIUS = "lg";
+const CARD_RADIUS = "md";
+const HERO_PADDING = "lg";
+const CARD_PADDING = "md";
 
 function formatAddress(address?: {
   street1?: string | null;
@@ -131,8 +135,18 @@ const Page = () => {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const appointmentId = params?.id;
+
   const [imgOpened, setImgOpened] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [visitNote, setVisitNote] = useState("");
+  const [visitImages, setVisitImages] = useState<File[]>([]);
+  const [uploadedVisitImages, setUploadedVisitImages] = useState<
+    { url: string; fileKey: string }[]
+  >([]);
+  const [nowMs, setNowMs] = useState(Date.now());
+
+  const qc = useQueryClient();
+  const { startUpload, isUploading } = useUploadThing("appointmentImages");
 
   const {
     data: appointment,
@@ -140,16 +154,51 @@ const Page = () => {
     error,
   } = useAppointmentDetails(appointmentId);
 
-  const [visitNote, setVisitNote] = useState("");
-  const [visitImages, setVisitImages] = useState<File[]>([]);
-  const [uploadedVisitImages, setUploadedVisitImages] = useState<
-    { url: string; fileKey: string }[]
-  >([]);
-  const { startUpload, isUploading } = useUploadThing("appointmentImages");
+  const {
+    data: aiTaskAssistant,
+    isLoading: isAssistantLoading,
+    isFetching: isAssistantFetching,
+  } = useQuery<TaskAssistantResponse>({
+    queryKey: ["ai-task-assistant", appointmentId],
+    queryFn: async () => {
+      const res = await fetch(
+        `/api/ai/appointments/${appointmentId}/task-assistant`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mode: "plan",
+            includePreviousVisit: true,
+          }),
+        },
+      );
+
+      if (!res.ok) {
+        throw new Error("Failed to load AI task assistant");
+      }
+
+      return res.json();
+    },
+    enabled: !!appointmentId,
+  });
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNowMs(Date.now());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const refreshAppointment = (updated: unknown) => {
+    qc.setQueryData(["appointment-details", appointmentId], updated);
+    qc.invalidateQueries({ queryKey: ["appointment-details", appointmentId] });
+    qc.invalidateQueries({ queryKey: ["staff-tasks"] });
+  };
 
   const saveVisitNoteMutation = useMutation({
     mutationFn: async () =>
-      await saveVisitNote(appointment.id, {
+      await saveVisitNote(appointment!.id, {
         content: visitNote,
         images: uploadedVisitImages.map((img) => ({
           url: img.url,
@@ -167,24 +216,6 @@ const Page = () => {
       showLocalNotification("Failed to save note", "/staff/tasks");
     },
   });
-
-  // ✅ ALL HOOKS MUST BE HERE, BEFORE RETURNS
-  const [nowMs, setNowMs] = useState(Date.now());
-  const qc = useQueryClient();
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setNowMs(Date.now());
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  const refreshAppointment = (updated: any) => {
-    qc.setQueryData(["appointment-details", appointmentId], updated);
-    qc.invalidateQueries({ queryKey: ["appointment-details", appointmentId] });
-    qc.invalidateQueries({ queryKey: ["staff-tasks"] });
-  };
 
   const startMutation = useMutation({
     mutationFn: () =>
@@ -229,7 +260,6 @@ const Page = () => {
     },
   });
 
-  // ✅ RETURNS AFTER ALL HOOKS
   if (isLoading) {
     return (
       <Container h="100vh" py="md">
@@ -264,6 +294,7 @@ const Page = () => {
     setSelectedImage(imgUrl);
     setImgOpened(true);
   };
+
   const start = DateTime.fromISO(appointment.startTime).setZone(APP_TZ);
   const end = DateTime.fromISO(appointment.endTime).setZone(APP_TZ);
 
@@ -276,7 +307,6 @@ const Page = () => {
     .join(" ");
 
   const phone = appointment.job.client.phone;
-  const visitInstructions = appointment.job.visitInstructions?.trim();
   const notes = appointment.job.notes;
   const fullAddress = formatAddress(appointment.job.address);
 
@@ -292,17 +322,20 @@ const Page = () => {
         1000,
     ),
   );
+
   const overtimeSeconds = Math.max(0, elapsedSeconds - scheduledSeconds);
 
   const progressPct =
     scheduledSeconds > 0
       ? Math.min(100, Math.round((elapsedSeconds / scheduledSeconds) * 100))
       : 0;
+
   const isOvertime = elapsedSeconds > scheduledSeconds;
 
   return (
     <Container p={0} bg="#f5f6f7" mih="100vh">
       <TopBar back onClick={() => router.back()} title="Back" />
+
       <Drawer
         opened={imgOpened}
         overlayProps={{ backgroundOpacity: 0.55, blur: 3 }}
@@ -312,7 +345,7 @@ const Page = () => {
         }}
         position="bottom"
         size="90%"
-        radius="lg"
+        radius={CARD_RADIUS}
         title="Image Preview"
         padding="md"
       >
@@ -322,15 +355,16 @@ const Page = () => {
               src={selectedImage}
               alt="Preview"
               fit="contain"
-              radius="md"
+              radius={CARD_RADIUS}
               mah="75vh"
               w="100%"
             />
           </Flex>
         ) : null}
       </Drawer>
-      <Stack gap="md" p="md">
-        <Card radius="xl" withBorder shadow="xs" p="lg">
+
+      <Stack gap="sm" p="md">
+        <Card radius={HERO_RADIUS} withBorder shadow="xs" p={HERO_PADDING}>
           <Group justify="space-between" align="start" mb="sm">
             <Box>
               <Text fw={700} size="lg">
@@ -343,7 +377,7 @@ const Page = () => {
 
             <Badge
               size="lg"
-              radius="xl"
+              radius="md"
               color={appointment.job.type === "ONE_OFF" ? "green" : "blue"}
               variant="filled"
             >
@@ -363,12 +397,12 @@ const Page = () => {
             <Text fw={800} fz={44} lh={1}>
               {formatSeconds(elapsedSeconds)}
             </Text>
-
             <Text fw={700} fz={34} lh={1.1}>
               {formatSeconds(scheduledSeconds)}
             </Text>
           </Stack>
-          <Progress value={progressPct} />
+
+          <Progress value={progressPct} radius="xl" />
           <Text mt={6} fw={600} size="xs" c={isOvertime ? "red" : "dimmed"}>
             {isOvertime
               ? `Overtime by ${formatSeconds(overtimeSeconds)}`
@@ -381,12 +415,12 @@ const Page = () => {
             mt="md"
             p="sm"
             style={{
-              borderRadius: 12,
+              borderRadius: 10,
               background: "#f8f9fa",
             }}
           >
             <Group gap="xs" align="flex-start">
-              <ThemeIcon variant="light" radius="xl" color="green">
+              <ThemeIcon variant="light" radius="md" color="green">
                 <IoTimeOutline size={16} />
               </ThemeIcon>
               <Box>
@@ -400,7 +434,7 @@ const Page = () => {
             </Group>
 
             <Group gap="xs" align="flex-start">
-              <ThemeIcon variant="light" radius="xl" color="green">
+              <ThemeIcon variant="light" radius="md" color="green">
                 <IoTimeOutline size={16} />
               </ThemeIcon>
               <Box>
@@ -415,10 +449,10 @@ const Page = () => {
           </Flex>
         </Card>
 
-        <SimpleGrid cols={2} spacing="md">
+        <SimpleGrid cols={2} spacing="sm">
           <Button
             leftSection={<IoPlayOutline />}
-            radius="xl"
+            radius="md"
             size="md"
             color="green"
             fullWidth
@@ -431,7 +465,7 @@ const Page = () => {
 
           <Button
             leftSection={<IoPauseOutline />}
-            radius="xl"
+            radius="md"
             size="md"
             color="lime"
             fullWidth
@@ -444,8 +478,7 @@ const Page = () => {
         </SimpleGrid>
 
         <Button
-          mt="sm"
-          radius="xl"
+          radius="md"
           color="blue"
           fullWidth
           disabled={appointment.status === "COMPLETED"}
@@ -455,12 +488,73 @@ const Page = () => {
           Complete Job
         </Button>
 
-        <Card radius="xl" withBorder shadow="xs" p="lg">
-          <Group mb="md" gap="xs">
-            <ThemeIcon radius="xl" variant="light" color="blue">
+        {isAssistantLoading ? (
+          <Card radius={CARD_RADIUS} withBorder shadow="xs" p={CARD_PADDING}>
+            <Group gap="sm">
+              <Loader size="sm" />
+              <Text size="sm" c="dimmed">
+                Loading AI task assistant...
+              </Text>
+            </Group>
+          </Card>
+        ) : aiTaskAssistant ? (
+          <AiTaskAssistantCard data={aiTaskAssistant} />
+        ) : null}
+
+        <Card radius={CARD_RADIUS} withBorder shadow="xs" p={CARD_PADDING}>
+          <Group mb="sm" gap="xs">
+            <ThemeIcon radius="md" variant="light" color="teal">
+              <IoLocationOutline size={16} />
+            </ThemeIcon>
+            <Text fw={700} size="sm">
+              Directions
+            </Text>
+          </Group>
+
+          <Flex justify="space-between" align="center" gap="md">
+            <Box style={{ flex: 1 }}>
+              <Text size="sm" fw={600}>
+                {appointment.job.address.street1}
+              </Text>
+
+              {appointment.job.address.street2 ? (
+                <Text size="sm">{appointment.job.address.street2}</Text>
+              ) : null}
+
+              <Text size="sm">
+                {appointment.job.address.city},{" "}
+                {appointment.job.address.province}
+              </Text>
+
+              <Text size="sm">{appointment.job.address.postalCode}</Text>
+            </Box>
+
+            <Button
+              leftSection={<IoMapOutline />}
+              radius="md"
+              color="green"
+              onClick={() => {
+                const url = buildDirectionsUrl(appointment.job.address);
+                window.open(url, "_blank");
+              }}
+            >
+              Directions
+            </Button>
+          </Flex>
+
+          <Text size="xs" c="dimmed" mt="sm">
+            {fullAddress}
+          </Text>
+        </Card>
+
+        <Card radius={CARD_RADIUS} withBorder shadow="xs" p={CARD_PADDING}>
+          <Group mb="sm" gap="xs">
+            <ThemeIcon radius="md" variant="light" color="blue">
               <IoPersonOutline size={16} />
             </ThemeIcon>
-            <Text fw={700}>Client Details</Text>
+            <Text fw={700} size="sm">
+              Client Details
+            </Text>
           </Group>
 
           <Stack gap={4}>
@@ -482,7 +576,7 @@ const Page = () => {
           <Group mt="md" grow>
             <Button
               component="a"
-              radius="xl"
+              radius="md"
               color="green"
               leftSection={<IoCallOutline />}
               href={phone ? `tel:${phone}` : undefined}
@@ -493,7 +587,7 @@ const Page = () => {
 
             <Button
               component="a"
-              radius="xl"
+              radius="md"
               color="blue"
               leftSection={<IoChatbubbleEllipsesOutline />}
               href={phone ? `sms:${phone}` : undefined}
@@ -504,66 +598,69 @@ const Page = () => {
           </Group>
         </Card>
 
-        <Card radius="xl" withBorder shadow="xs" p="lg">
-          <Group mb="md" gap="xs">
-            <ThemeIcon radius="xl" variant="light" color="grape">
+        <Card radius={CARD_RADIUS} withBorder shadow="xs" p={CARD_PADDING}>
+          <Group mb="sm" gap="xs">
+            <ThemeIcon radius="md" variant="light" color="grape">
               <IoDocumentTextOutline size={16} />
             </ThemeIcon>
-            <Text fw={700}>Instructions</Text>
+            <Text fw={700} size="sm">
+              Instructions
+            </Text>
           </Group>
 
-          <Stack gap="sm">
+          <Stack gap="xs">
             {notes?.length ? (
-              (notes || []).map((note: Note) => (
-                <Paper key={note.id} radius="lg" p="xs" withBorder>
-                  <Group justify="space-between" align="flex-start" mb={8}>
+              notes.map((note: Note) => (
+                <Paper key={note.id} radius="md" p="sm" withBorder>
+                  <Group justify="space-between" align="flex-start" mb={6}>
                     <Box style={{ flex: 1 }}>
-                      <Text fw={700} size="sm">
+                      <Text fw={600} size="sm">
                         {note.title?.trim() || "Untitled note"}
                       </Text>
                     </Box>
 
-                    <Text size="xs" c="dimmed" mt={2}>
+                    <Text size="xs" c="dimmed">
                       {formatPrettyDate(note.createdAt)}
                     </Text>
                   </Group>
 
-                  <Text size="sm" c="dark.7" lh={1.5}>
+                  <Text size="sm" c="dark.7" lh={1.45}>
                     {note.content}
                   </Text>
-                  {note.category ? (
-                    <Badge
-                      variant="light"
-                      radius="xl"
-                      size="sm"
-                      mr="xs"
-                      color={note.isPinned ? "yellow" : "gray"}
-                    >
-                      {note.category.replaceAll("_", " ")}{" "}
-                      {note.isPinned && "• Pinned"}
-                    </Badge>
-                  ) : null}
 
-                  {note.isClientVisible ? (
-                    <Badge variant="light" radius="xl" size="sm" color="blue">
-                      Client visible
-                    </Badge>
-                  ) : null}
+                  <Group mt="xs" gap={6}>
+                    {note.category ? (
+                      <Badge
+                        variant="light"
+                        radius="md"
+                        size="sm"
+                        color={note.isPinned ? "yellow" : "gray"}
+                      >
+                        {note.category.replaceAll("_", " ")}
+                        {note.isPinned ? " • Pinned" : ""}
+                      </Badge>
+                    ) : null}
+
+                    {note.isClientVisible ? (
+                      <Badge variant="light" radius="md" size="sm" color="blue">
+                        Client visible
+                      </Badge>
+                    ) : null}
+                  </Group>
+
                   {note.images?.length ? (
                     <Group mt="sm" gap="xs">
                       {note.images.map((img) => (
-                        <>
-                          <Image
-                            onClick={() => openImagePreview(img.url)}
-                            key={img.id}
-                            src={img.url}
-                            alt="note image"
-                            w={76}
-                            h={76}
-                            radius="md"
-                            fit="cover"
-                          />
-                        </>
+                        <Image
+                          onClick={() => openImagePreview(img.url)}
+                          key={img.id}
+                          src={img.url}
+                          alt="note image"
+                          w={76}
+                          h={76}
+                          radius="md"
+                          fit="cover"
+                        />
                       ))}
                     </Group>
                   ) : null}
@@ -576,18 +673,21 @@ const Page = () => {
             )}
           </Stack>
         </Card>
-        <Card radius="xl" withBorder shadow="xs" p="lg">
-          <Group mb="md" gap="xs">
-            <ThemeIcon radius="xl" variant="light" color="orange">
+
+        <Card radius={CARD_RADIUS} withBorder shadow="xs" p={CARD_PADDING}>
+          <Group mb="sm" gap="xs">
+            <ThemeIcon radius="md" variant="light" color="orange">
               <IoDocumentTextOutline size={16} />
             </ThemeIcon>
-            <Text fw={700}>Visit History</Text>
+            <Text fw={700} size="sm">
+              Visit History
+            </Text>
           </Group>
 
-          <Stack gap="sm">
+          <Stack gap="xs">
             {appointment.notes?.length ? (
               appointment.notes.map((note: Note) => (
-                <Paper key={note.id} radius="lg" p="md" withBorder>
+                <Paper key={note.id} radius="md" p="sm" withBorder>
                   <Group justify="space-between" mb={6}>
                     <Text fw={600} size="sm">
                       Visit note
@@ -597,24 +697,23 @@ const Page = () => {
                     </Text>
                   </Group>
 
-                  <Text mt="sm" mb="md" size="sm">
+                  <Text size="sm" lh={1.45}>
                     {note.content}
                   </Text>
+
                   {appointment.images?.length ? (
                     <Group mt="sm" gap="xs">
                       {appointment.images.map((img: AppointmentImage) => (
-                        <>
-                          <Image
-                            onClick={() => openImagePreview(img.url)}
-                            key={img.id}
-                            src={img.url}
-                            alt="note image"
-                            w={76}
-                            h={76}
-                            radius="md"
-                            fit="cover"
-                          />
-                        </>
+                        <Image
+                          onClick={() => openImagePreview(img.url)}
+                          key={img.id}
+                          src={img.url}
+                          alt="note image"
+                          w={76}
+                          h={76}
+                          radius="md"
+                          fit="cover"
+                        />
                       ))}
                     </Group>
                   ) : null}
@@ -627,12 +726,15 @@ const Page = () => {
             )}
           </Stack>
         </Card>
-        <Card radius="xl" withBorder shadow="xs" p="lg">
-          <Group mb="md" gap="xs">
-            <ThemeIcon radius="xl" variant="light" color="orange">
+
+        <Card radius={CARD_RADIUS} withBorder shadow="xs" p={CARD_PADDING}>
+          <Group mb="sm" gap="xs">
+            <ThemeIcon radius="md" variant="light" color="orange">
               <IoDocumentTextOutline size={16} />
             </ThemeIcon>
-            <Text fw={700}>Visit Note</Text>
+            <Text fw={700} size="sm">
+              Add Visit Note
+            </Text>
           </Group>
 
           <Stack gap="sm">
@@ -677,21 +779,21 @@ const Page = () => {
                 );
               }}
             >
-              <Flex direction="column" align="center">
+              <Flex direction="column" align="center" py="xs">
                 <IoDocumentTextOutline size={24} />
                 <Text mt="xs" size="xs">
                   Drag visit images here or click to upload
                 </Text>
-                {isUploading && (
+                {isUploading ? (
                   <Text mt="xs" size="xs" c="dimmed">
                     Uploading...
                   </Text>
-                )}
+                ) : null}
               </Flex>
             </Dropzone>
 
             <Button
-              radius="xl"
+              radius="md"
               color="orange"
               loading={saveVisitNoteMutation.isPending}
               disabled={
@@ -703,49 +805,6 @@ const Page = () => {
               Save Visit Note
             </Button>
           </Stack>
-        </Card>
-        <Card radius="xl" withBorder shadow="xs" p="lg">
-          <Group mb="md" gap="xs">
-            <ThemeIcon radius="xl" variant="light" color="teal">
-              <IoLocationOutline size={16} />
-            </ThemeIcon>
-            <Text fw={700}>Directions</Text>
-          </Group>
-
-          <Flex justify="space-between" align="center" gap="md">
-            <Box style={{ flex: 1 }}>
-              <Text size="sm" fw={600}>
-                {appointment.job.address.street1}
-              </Text>
-
-              {appointment.job.address.street2 ? (
-                <Text size="sm">{appointment.job.address.street2}</Text>
-              ) : null}
-
-              <Text size="sm">
-                {appointment.job.address.city},{" "}
-                {appointment.job.address.province}
-              </Text>
-
-              <Text size="sm">{appointment.job.address.postalCode}</Text>
-            </Box>
-
-            <Button
-              leftSection={<IoMapOutline />}
-              radius="xl"
-              color="green"
-              onClick={() => {
-                const url = buildDirectionsUrl(appointment.job.address);
-                window.open(url, "_blank");
-              }}
-            >
-              Directions
-            </Button>
-          </Flex>
-
-          <Text size="xs" c="dimmed" mt="sm">
-            {fullAddress}
-          </Text>
         </Card>
       </Stack>
     </Container>

@@ -82,7 +82,6 @@ export async function getAppointmentById(id: string) {
     const err = await res.json().catch(() => null);
     throw new Error(err?.error || "Failed to fetch appointment");
   }
-
   return res.json();
 }
 
