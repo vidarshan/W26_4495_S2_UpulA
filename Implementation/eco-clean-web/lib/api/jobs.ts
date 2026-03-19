@@ -92,7 +92,7 @@ type JobType = "ONE_OFF" | "RECURRING";
 export function createJob(data: CreateJobPayload) {
   return apiClient("/api/jobs", {
     method: "POST",
-    body: JSON.stringify(data),
+    body: data,
   });
 }
 
