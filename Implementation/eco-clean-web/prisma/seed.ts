@@ -6,13 +6,10 @@ import {
   JobType,
   AppointmentStatus,
   JobNoteCategory,
-<<<<<<< Updated upstream
-=======
   AssignmentStatus,
   LeaveType,
   TimesheetStatus,
   TimesheetPeriodStatus,
->>>>>>> Stashed changes
 } from "@prisma/client";
 import { faker } from "@faker-js/faker";
 import { PrismaPg } from "@prisma/adapter-pg";
@@ -269,9 +266,6 @@ function computeReminderFlags(startTime: Date, status: AppointmentStatus) {
   };
 }
 
-<<<<<<< Updated upstream
-async function resetDatabase() {
-=======
 function fakeAssignmentStatus(
   appointmentStatus: AppointmentStatus,
 ): AssignmentStatus {
@@ -317,15 +311,12 @@ async function resetDatabase() {
   await prisma.timesheet.deleteMany();
   await prisma.timesheetPeriod.deleteMany();
   await prisma.leave.deleteMany();
-
   await prisma.staffAvailability.deleteMany();
   await prisma.assignment.deleteMany();
   await prisma.emergencyContact.deleteMany();
   await prisma.staffAddress.deleteMany();
   await prisma.staffProfile.deleteMany();
-
   await prisma.appointmentAiInsight.deleteMany();
->>>>>>> Stashed changes
   await prisma.appointmentWorkSession.deleteMany();
   await prisma.appointmentImage.deleteMany();
   await prisma.visitNote.deleteMany();
@@ -635,10 +626,6 @@ async function createJobsForClients(
             completionSent: reminderFlags.completionSent,
             reminder1dSent: reminderFlags.reminder1dSent,
             reminder5dSent: reminderFlags.reminder5dSent,
-<<<<<<< Updated upstream
-            staff: {
-              connect: assignedStaff.map((id) => ({ id })),
-=======
             assignments: {
               create: assignedStaff.map((staffId) => ({
                 staffId,
@@ -653,11 +640,14 @@ async function createJobsForClients(
                 breakMinutes: maybe(0.5) ? pick([0, 15, 30]) : 0,
                 notes: maybe(0.25) ? faker.lorem.sentence() : null,
               })),
->>>>>>> Stashed changes
             },
           },
           include: {
-            staff: { select: { id: true } },
+            assignments: {
+              select: {
+                staffId: true,
+              },
+            },
           },
         });
 
@@ -671,9 +661,9 @@ async function createJobsForClients(
             from: addDays(startTime, -2),
             to: addDays(startTime, 2),
           }),
-          createdById:
-            maybe(0.85) && appointment.staff.length
-              ? pick(appointment.staff).id
+          reatedById:
+            maybe(0.85) && appointment.assignments.length
+              ? pick(appointment.assignments).staffId
               : maybe(0.4)
                 ? pick(createdByCandidates)
                 : null,
@@ -699,8 +689,8 @@ async function createJobsForClients(
           appointmentImagesCreated += appointmentImages.length;
         }
 
-        if (shouldCreateWorkSession(status) && appointment.staff.length) {
-          const sessions = appointment.staff.map((member) => {
+        if (shouldCreateWorkSession(status) && appointment.assignments.length) {
+          const sessions = appointment.assignments.map((member) => {
             const startedAt = addMinutes(startTime, randInt(-10, 25));
             const endedAt =
               status === AppointmentStatus.COMPLETED
@@ -711,7 +701,7 @@ async function createJobsForClients(
 
             return {
               appointmentId: appointment.id,
-              staffId: member.id,
+              staffId: member.staffId,
               startedAt,
               endedAt,
             };
@@ -994,8 +984,6 @@ async function createGuaranteedReminderTestAppointments(
     },
   });
 
-<<<<<<< Updated upstream
-=======
   if (!clients.length) {
     console.log("ℹ️ No clients found for SEED_TEST_EMAIL.");
     return 0;
@@ -1035,7 +1023,6 @@ async function createGuaranteedReminderTestAppointments(
     },
   ];
 
->>>>>>> Stashed changes
   let created = 0;
 
   for (let i = 0; i < clients.length; i++) {
@@ -1043,39 +1030,29 @@ async function createGuaranteedReminderTestAppointments(
     const address = client.addresses[0];
     if (!address) continue;
 
+    const template = templates[i % templates.length];
+    const assignedStaffId = staff.length ? staff[i % staff.length].id : null;
+
     const job = await prisma.job.create({
       data: {
-        title: `Reminder Test Job ${i + 1}`,
+        title: `Reminder Test Job ${i + 1} (${template.label})`,
         type: JobType.ONE_OFF,
         clientId: client.id,
         addressId: address.id,
         isAnytime: false,
-        visitInstructions:
-          "Guaranteed seed appointment for 5-day reminder testing.",
+        visitInstructions: `Guaranteed seed appointment for ${template.label} reminder testing.`,
       },
     });
-
-<<<<<<< Updated upstream
-    const startTime = addHours(addDays(new Date(), 5), 9 + i);
-    const endTime = addHours(startTime, 3);
-=======
-    const assignedStaffId = staff.length ? staff[i % staff.length].id : null;
->>>>>>> Stashed changes
 
     await prisma.appointment.create({
       data: {
         jobId: job.id,
-        startTime,
-        endTime,
+        startTime: template.startTime,
+        endTime: template.endTime,
         status: AppointmentStatus.SCHEDULED,
         reminder5dSent: false,
         reminder1dSent: false,
         completionSent: false,
-<<<<<<< Updated upstream
-        staff: {
-          connect: [{ id: staff[i % staff.length].id }],
-        },
-=======
         assignments: assignedStaffId
           ? {
               create: [
@@ -1087,7 +1064,6 @@ async function createGuaranteedReminderTestAppointments(
               ],
             }
           : undefined,
->>>>>>> Stashed changes
       },
     });
 
