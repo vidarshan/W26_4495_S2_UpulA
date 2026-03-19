@@ -112,11 +112,12 @@ model Appointment {
   timeSpent      Int?
   completedAt    DateTime?         @db.Timestamptz(6)
 
-  job          Job                      @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  images       AppointmentImage[]
-  notes        VisitNote[]
-  workSessions AppointmentWorkSession[]
-  assignments  Assignment[]
+  job                  Job                      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  images               AppointmentImage[]
+  notes                VisitNote[]
+  workSessions         AppointmentWorkSession[]
+  assignments          Assignment[]
+  appointmentAiInsight AppointmentAiInsight?
 
   @@index([jobId])
   @@index([startTime])
@@ -260,17 +261,17 @@ model EmergencyContact {
 }
 
 model Assignment {
-  id            String           @id @default(uuid())
-  appointmentId String
-  staffId       String
-  status        AssignmentStatus @default(PENDING)
-  plannedStart  DateTime?        @db.Timestamptz(6)
+  id               String           @id @default(uuid())
+  appointmentId    String
+  staffId          String
+  status           AssignmentStatus @default(PENDING)
+  plannedStart     DateTime?        @db.Timestamptz(6)
   hourlyRateAtTime Float            @default(0)
-  breakMinutes Int @default(0)
-  plannedEnd    DateTime?        @db.Timestamptz(6)
-  notes         String?
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  breakMinutes     Int              @default(0)
+  plannedEnd       DateTime?        @db.Timestamptz(6)
+  notes            String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
 
   appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
   staff       User        @relation(fields: [staffId], references: [id], onDelete: Cascade)
@@ -413,6 +414,21 @@ model PayStatement {
   @@unique([userId, timesheetPeriodId])
   @@index([userId])
   @@index([timesheetPeriodId])
+}
+
+model AppointmentAiInsight {
+  id            String   @id @default(uuid())
+  appointmentId String   @unique
+  type          String
+  model         String?
+  promptVersion String?
+  payload       Json
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@index([appointmentId])
 }
 
 enum JobNoteCategory {
