@@ -27,6 +27,7 @@ export default function StaffShell({
     back,
     refreshing,
     onRefresh,
+    onBack,
   } = useStaffUiStore();
 
   return (
@@ -80,7 +81,7 @@ export default function StaffShell({
 
       <TopBar
         back={back}
-        onClick={openDrawer}
+        onClick={back ? (onBack ?? (() => window.history.back())) : openDrawer}
         title={title}
         onRefresh={() => onRefresh?.()}
         refreshing={refreshing}

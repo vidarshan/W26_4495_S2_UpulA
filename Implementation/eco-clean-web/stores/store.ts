@@ -20,11 +20,12 @@ type StaffUiState = {
   back: boolean;
   refreshing: boolean;
   onRefresh: (() => void) | null;
-
+  onBack: (() => void) | null;
   openDrawer: () => void;
   closeDrawer: () => void;
   setTitle: (title: string) => void;
   setBack: (back: boolean) => void;
+  setOnBack: (fn: (() => void) | null) => void;
   setRefreshing: (refreshing: boolean) => void;
   setOnRefresh: (fn?: (() => void) | null) => void;
   resetTopBar: () => void;
@@ -140,6 +141,7 @@ export const useStaffUiStore = create<StaffUiState>((set) => ({
   back: false,
   refreshing: false,
   onRefresh: null,
+  onBack: null,
 
   openDrawer: () => set({ drawerOpened: true }),
   closeDrawer: () => set({ drawerOpened: false }),
@@ -147,11 +149,13 @@ export const useStaffUiStore = create<StaffUiState>((set) => ({
   setBack: (back) => set({ back }),
   setRefreshing: (refreshing) => set({ refreshing }),
   setOnRefresh: (fn) => set({ onRefresh: fn ?? null }),
+  setOnBack: (fn) => set({ onBack: fn }),
   resetTopBar: () =>
     set({
       title: "Eco Clean",
       back: false,
       refreshing: false,
       onRefresh: null,
+      onBack: null,
     }),
 }));

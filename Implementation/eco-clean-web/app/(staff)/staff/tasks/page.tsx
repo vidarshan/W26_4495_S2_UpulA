@@ -133,8 +133,12 @@ const Page = () => {
     return task.status !== "COMPLETED";
   });
 
-  const upcomingCount = tasks.filter((t) => t.status !== "COMPLETED").length;
-  const completedCount = tasks.filter((t) => t.status === "COMPLETED").length;
+  const upcomingCount = filteredTasks.filter(
+    (t) => t.status !== "COMPLETED",
+  ).length;
+  const completedCount = filteredTasks.filter(
+    (t) => t.status === "COMPLETED",
+  ).length;
 
   if (error) {
     return (
@@ -149,7 +153,7 @@ const Page = () => {
       <AppointmentReminderWatcher appointments={tasks} />
       <LocalNotificationDemo />
       <Stack gap="md" p="md">
-        <Card radius="lg" withBorder shadow="xs" p="lg">
+        <Card radius="lg" withBorder p="lg">
           <Group justify="space-between" align="start">
             <Box>
               <Title order={3}>My Tasks</Title>
@@ -183,20 +187,22 @@ const Page = () => {
             </Box>
           </Group>
         </Card>
-        <Center>
-          <MiniCalendar
-            numberOfDays={7}
-            value={selectedDate}
-            onChange={setSelectedDate}
-            getDayProps={(date) => ({
-              style: {
-                color: [0, 6].includes(dayjs(date).day())
-                  ? "var(--mantine-color-red-8)"
-                  : undefined,
-              },
-            })}
-          />
-        </Center>
+        <Card radius="lg" withBorder>
+          <Center>
+            <MiniCalendar
+              numberOfDays={7}
+              value={selectedDate}
+              onChange={setSelectedDate}
+              getDayProps={(date) => ({
+                style: {
+                  color: [0, 6].includes(dayjs(date).day())
+                    ? "var(--mantine-color-red-8)"
+                    : undefined,
+                },
+              })}
+            />
+          </Center>
+        </Card>
         <Group gap="sm">
           <Chip.Group
             multiple={false}
@@ -216,7 +222,7 @@ const Page = () => {
 
         <Stack gap="md">
           {isLoading ? (
-            <Card radius="lg" withBorder shadow="xs" p="lg">
+            <Card radius="lg" withBorder p="lg">
               <Flex direction="column" align="center" justify="center" py="md">
                 <Loader size="sm" />
                 <Text size="sm" fw={600} mt="sm">
@@ -225,13 +231,13 @@ const Page = () => {
               </Flex>
             </Card>
           ) : error ? (
-            <Card radius="lg" withBorder shadow="xs" p="lg">
+            <Card radius="lg" withBorder p="lg">
               <Text c="red" size="sm">
                 Failed to load tasks
               </Text>
             </Card>
           ) : filteredTasks.length === 0 ? (
-            <Card radius="lg" withBorder shadow="xs" p="lg">
+            <Card radius="lg" withBorder p="lg">
               <Text c="dimmed">No tasks found for this section.</Text>
             </Card>
           ) : (
@@ -244,7 +250,6 @@ const Page = () => {
                   key={task.id}
                   withBorder
                   radius="lg"
-                  shadow="xs"
                   p="lg"
                   style={{ cursor: "pointer" }}
                   onClick={() => router.push(`/staff/tasks/${task.id}`)}

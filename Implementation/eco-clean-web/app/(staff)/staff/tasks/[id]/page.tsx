@@ -1,6 +1,5 @@
 "use client";
 
-import TopBar from "@/app/components/pwa/TopBar";
 import AiTaskAssistantCard from "@/app/components/cards/AiTaskAssistantCard";
 import { useAppointmentDetails } from "@/hooks/useAppointmentDetails";
 import {
@@ -51,6 +50,7 @@ import {
   IoPlayOutline,
   IoTimeOutline,
 } from "react-icons/io5";
+import { useStaffUiStore } from "@/stores/store";
 
 const HERO_RADIUS = "lg";
 const CARD_RADIUS = "md";
@@ -144,7 +144,12 @@ const Page = () => {
     { url: string; fileKey: string }[]
   >([]);
   const [nowMs, setNowMs] = useState(Date.now());
-
+  const setTitle = useStaffUiStore((s) => s.setTitle);
+  const setBack = useStaffUiStore((s) => s.setBack);
+  const setOnBack = useStaffUiStore((s) => s.setOnBack);
+  const setOnRefresh = useStaffUiStore((s) => s.setOnRefresh);
+  const setRefreshing = useStaffUiStore((s) => s.setRefreshing);
+  const resetTopBar = useStaffUiStore((s) => s.resetTopBar);
   const qc = useQueryClient();
   const { startUpload, isUploading } = useUploadThing("appointmentImages");
 
@@ -260,6 +265,28 @@ const Page = () => {
     },
   });
 
+  useEffect(() => {
+    setTitle("Task Details");
+    setBack(true);
+    setOnBack(() => {
+      router.back();
+    });
+    setOnRefresh(null);
+    setRefreshing(false);
+
+    return () => {
+      resetTopBar();
+    };
+  }, [
+    router,
+    setTitle,
+    setBack,
+    setOnBack,
+    setOnRefresh,
+    setRefreshing,
+    resetTopBar,
+  ]);
+
   if (isLoading) {
     return (
       <Container h="100vh" py="md">
@@ -334,8 +361,6 @@ const Page = () => {
 
   return (
     <Container p={0} bg="#f5f6f7" mih="100vh">
-      <TopBar back onClick={() => router.back()} title="Back" />
-
       <Drawer
         opened={imgOpened}
         overlayProps={{ backgroundOpacity: 0.55, blur: 3 }}
