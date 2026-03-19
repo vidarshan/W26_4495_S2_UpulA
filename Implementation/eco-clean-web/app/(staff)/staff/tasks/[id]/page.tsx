@@ -555,13 +555,11 @@ const Page = () => {
             </Box>
 
             <Button
+              component="a"
+              href={buildDirectionsUrl(appointment.job.address)}
               leftSection={<IoMapOutline />}
               radius="md"
               color="green"
-              onClick={() => {
-                const url = buildDirectionsUrl(appointment.job.address);
-                window.open(url, "_blank");
-              }}
             >
               Directions
             </Button>
