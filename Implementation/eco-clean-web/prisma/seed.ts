@@ -6,7 +6,13 @@ import {
   JobType,
   AppointmentStatus,
   JobNoteCategory,
+<<<<<<< Updated upstream
+=======
   AssignmentStatus,
+  LeaveType,
+  TimesheetStatus,
+  TimesheetPeriodStatus,
+>>>>>>> Stashed changes
 } from "@prisma/client";
 import { faker } from "@faker-js/faker";
 import { PrismaPg } from "@prisma/adapter-pg";
@@ -22,9 +28,9 @@ const adapter = new PrismaPg({
 
 const prisma = new PrismaClient({ adapter });
 
-type SeedMode = "tiny" | "small" | "medium" | "large";
+type SeedMode = "small" | "medium" | "large";
 
-const mode = (process.argv[2] as SeedMode) || "small";
+const mode = (process.argv[2] as SeedMode) || "large";
 const DEFAULT_PASSWORD = "Password123!";
 const SEED_TEST_EMAIL = process.env.SEED_TEST_EMAIL?.toLowerCase().trim();
 
@@ -41,45 +47,35 @@ const CONFIG: Record<
     appointmentsPerJobMax: number;
   }
 > = {
-  tiny: {
-    adminCount: 1,
-    staffCount: 1,
-    clientUserCount: 1,
-    clientCount: 3,
-    jobsPerClientMin: 1,
-    jobsPerClientMax: 1,
-    appointmentsPerJobMin: 1,
-    appointmentsPerJobMax: 1,
-  },
   small: {
     adminCount: 1,
-    staffCount: 2,
-    clientUserCount: 2,
-    clientCount: 8,
-    jobsPerClientMin: 1,
-    jobsPerClientMax: 1,
-    appointmentsPerJobMin: 1,
-    appointmentsPerJobMax: 2,
-  },
-  medium: {
-    adminCount: 1,
-    staffCount: 6,
-    clientUserCount: 12,
-    clientCount: 50,
+    staffCount: 4,
+    clientUserCount: 10,
+    clientCount: 30,
     jobsPerClientMin: 1,
     jobsPerClientMax: 2,
     appointmentsPerJobMin: 2,
     appointmentsPerJobMax: 4,
   },
-  large: {
+  medium: {
     adminCount: 1,
-    staffCount: 12,
+    staffCount: 8,
     clientUserCount: 25,
-    clientCount: 150,
-    jobsPerClientMin: 2,
+    clientCount: 120,
+    jobsPerClientMin: 1,
     jobsPerClientMax: 3,
     appointmentsPerJobMin: 3,
     appointmentsPerJobMax: 6,
+  },
+  large: {
+    adminCount: 1,
+    staffCount: 14,
+    clientUserCount: 50,
+    clientCount: 320,
+    jobsPerClientMin: 2,
+    jobsPerClientMax: 4,
+    appointmentsPerJobMin: 4,
+    appointmentsPerJobMax: 8,
   },
 };
 
@@ -225,6 +221,11 @@ function fakeImageUrl(seed: string) {
   return `https://picsum.photos/seed/${seed}/1200/900`;
 }
 
+/**
+ * Status logic for realism:
+ * - Future: mostly SCHEDULED, some CANCELLED
+ * - Past: mostly COMPLETED, some CANCELLED, some LATE, small number SCHEDULED
+ */
 function deriveAppointmentStatus(startTime: Date): AppointmentStatus {
   const now = new Date();
 
@@ -256,7 +257,6 @@ function computeReminderFlags(startTime: Date, status: AppointmentStatus) {
 
     return {
       reminder5dSent: daysUntil < 5 ? maybe(0.25) : false,
-      reminder3dSent: daysUntil < 3 ? maybe(0.2) : false,
       reminder1dSent: daysUntil < 1 ? maybe(0.25) : false,
       completionSent: false,
     };
@@ -264,12 +264,14 @@ function computeReminderFlags(startTime: Date, status: AppointmentStatus) {
 
   return {
     reminder5dSent: maybe(0.85),
-    reminder3dSent: maybe(0.85),
     reminder1dSent: maybe(0.9),
     completionSent: status === AppointmentStatus.COMPLETED ? maybe(0.8) : false,
   };
 }
 
+<<<<<<< Updated upstream
+async function resetDatabase() {
+=======
 function fakeAssignmentStatus(
   appointmentStatus: AppointmentStatus,
 ): AssignmentStatus {
@@ -293,46 +295,62 @@ function fakeAssignmentStatus(
   ]);
 }
 
+function startOfDay(date: Date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function endOfDay(date: Date) {
+  const d = new Date(date);
+  d.setHours(23, 59, 59, 999);
+  return d;
+}
+
+function fmtMoney(n: number) {
+  return Number(n.toFixed(2));
+}
+
 async function resetDatabase() {
   await prisma.payStatement.deleteMany();
   await prisma.timesheetDay.deleteMany();
   await prisma.timesheet.deleteMany();
   await prisma.timesheetPeriod.deleteMany();
   await prisma.leave.deleteMany();
+
   await prisma.staffAvailability.deleteMany();
   await prisma.assignment.deleteMany();
   await prisma.emergencyContact.deleteMany();
   await prisma.staffAddress.deleteMany();
   await prisma.staffProfile.deleteMany();
 
+  await prisma.appointmentAiInsight.deleteMany();
+>>>>>>> Stashed changes
   await prisma.appointmentWorkSession.deleteMany();
   await prisma.appointmentImage.deleteMany();
   await prisma.visitNote.deleteMany();
   await prisma.appointment.deleteMany();
-
   await prisma.jobNoteImage.deleteMany();
   await prisma.jobNote.deleteMany();
   await prisma.jobLineItem.deleteMany();
   await prisma.recurrence.deleteMany();
   await prisma.job.deleteMany();
-
   await prisma.clientNote.deleteMany();
   await prisma.address.deleteMany();
   await prisma.client.deleteMany();
-
   await prisma.user.deleteMany();
 }
 
 async function createUsers() {
   const users: Prisma.UserCreateManyInput[] = [];
-  const passwordHash = await bcrypt.hash(DEFAULT_PASSWORD, 10);
+  const PASSWORD = await bcrypt.hash(DEFAULT_PASSWORD, 10);
 
   for (let i = 0; i < cfg.adminCount; i++) {
     users.push({
       name: `Admin ${i + 1}`,
       email: uniqueSeedEmail("admin", i),
       role: Role.ADMIN,
-      password: passwordHash,
+      password: PASSWORD,
     });
   }
 
@@ -344,7 +362,7 @@ async function createUsers() {
       name: fullName(firstName, lastName),
       email: uniqueSeedEmail("staff", i),
       role: Role.STAFF,
-      password: passwordHash,
+      password: PASSWORD,
     });
   }
 
@@ -356,7 +374,7 @@ async function createUsers() {
       name: fullName(firstName, lastName),
       email: uniqueSeedEmail("client", i),
       role: Role.CLIENT,
-      password: passwordHash,
+      password: PASSWORD,
     });
   }
 
@@ -366,75 +384,9 @@ async function createUsers() {
     orderBy: { createdAt: "asc" },
   });
 
-  const staffUsers = allUsers.filter((u) => u.role === Role.STAFF);
-
-  for (const member of staffUsers) {
-    await prisma.staffProfile.create({
-      data: {
-        userId: member.id,
-        position: pick(["Cleaner", "Senior Cleaner", "Supervisor"]),
-        hourlyRate: faker.number.float({
-          min: 18,
-          max: 32,
-          fractionDigits: 2,
-        }),
-        staffAddress: {
-          create: {
-            street1: faker.location.streetAddress(),
-            street2: maybe(0.2) ? faker.location.secondaryAddress() : null,
-            city: pick([
-              "Vancouver",
-              "Burnaby",
-              "Surrey",
-              "Richmond",
-              "Coquitlam",
-              "New Westminster",
-            ]),
-            province: "BC",
-            postalCode: fakePostalCode(),
-            country: "Canada",
-          },
-        },
-        emergencyContact: {
-          create: {
-            name: faker.person.fullName(),
-            phoneNumber: fakePhone(),
-            relationship: pick(["Parent", "Sibling", "Spouse", "Friend"]),
-          },
-        },
-        availabilities: {
-          create: {
-            effectiveFrom: addDays(new Date(), -30),
-            monActive: true,
-            monS1: maybe(0.8),
-            monS2: maybe(0.8),
-            tueActive: true,
-            tueS1: maybe(0.8),
-            tueS2: maybe(0.8),
-            wedActive: true,
-            wedS1: maybe(0.8),
-            wedS2: maybe(0.8),
-            thuActive: true,
-            thuS1: maybe(0.8),
-            thuS2: maybe(0.8),
-            friActive: true,
-            friS1: maybe(0.8),
-            friS2: maybe(0.8),
-            satActive: maybe(0.4),
-            satS1: maybe(0.35),
-            satS2: maybe(0.35),
-            sunActive: maybe(0.2),
-            sunS1: maybe(0.15),
-            sunS2: maybe(0.15),
-          },
-        },
-      },
-    });
-  }
-
   return {
     admins: allUsers.filter((u) => u.role === Role.ADMIN),
-    staff: staffUsers,
+    staff: allUsers.filter((u) => u.role === Role.STAFF),
     clientUsers: allUsers.filter((u) => u.role === Role.CLIENT),
   };
 }
@@ -534,7 +486,6 @@ async function createJobsForClients(
   let jobNoteImagesCreated = 0;
   let recurrencesCreated = 0;
   let lineItemsCreated = 0;
-  let assignmentsCreated = 0;
 
   const now = new Date();
   const eightMonthsAgo = addDays(now, -240);
@@ -545,6 +496,15 @@ async function createJobsForClients(
       where: { clientId: client.id },
       select: { id: true },
     });
+
+    const staffProfiles = await prisma.staffProfile.findMany({
+      where: { userId: { in: staff.map((s) => s.id) } },
+      select: { userId: true, hourlyRate: true },
+    });
+
+    const hourlyRateMap = new Map(
+      staffProfiles.map((p) => [p.userId, p.hourlyRate]),
+    );
 
     const jobsCount = randInt(cfg.jobsPerClientMin, cfg.jobsPerClientMax);
 
@@ -622,19 +582,14 @@ async function createJobsForClients(
       }
 
       if (job.type === JobType.RECURRING && maybe(0.9)) {
-        const recurrenceEndType = pick(["after", "on"]);
-
         await prisma.recurrence.create({
           data: {
             jobId: job.id,
-            frequency: pick(["weekly", "monthly"]),
+            frequency: pick(["WEEKLY", "BIWEEKLY", "MONTHLY"]),
             interval: pick([1, 1, 2, 4]),
-            endType: recurrenceEndType,
-            endsOn:
-              recurrenceEndType === "on"
-                ? addDays(now, randInt(30, 240))
-                : null,
-            endsAfter: recurrenceEndType === "after" ? randInt(8, 30) : null,
+            endType: pick(["NEVER", "ON_DATE", "AFTER_OCCURRENCES"]),
+            endsOn: maybe(0.35) ? addDays(now, randInt(30, 240)) : null,
+            endsAfter: maybe(0.25) ? randInt(8, 30) : null,
           },
         });
         recurrencesCreated++;
@@ -679,8 +634,11 @@ async function createJobsForClients(
             completedAt,
             completionSent: reminderFlags.completionSent,
             reminder1dSent: reminderFlags.reminder1dSent,
-            reminder3dSent: reminderFlags.reminder3dSent,
             reminder5dSent: reminderFlags.reminder5dSent,
+<<<<<<< Updated upstream
+            staff: {
+              connect: assignedStaff.map((id) => ({ id })),
+=======
             assignments: {
               create: assignedStaff.map((staffId) => ({
                 staffId,
@@ -691,21 +649,19 @@ async function createJobsForClients(
                 plannedEnd: maybe(0.7)
                   ? addMinutes(endTime, randInt(-15, 20))
                   : null,
+                hourlyRateAtTime: hourlyRateMap.get(staffId) ?? 0,
+                breakMinutes: maybe(0.5) ? pick([0, 15, 30]) : 0,
                 notes: maybe(0.25) ? faker.lorem.sentence() : null,
               })),
+>>>>>>> Stashed changes
             },
           },
           include: {
-            assignments: {
-              include: {
-                staff: { select: { id: true } },
-              },
-            },
+            staff: { select: { id: true } },
           },
         });
 
         appointmentsCreated++;
-        assignmentsCreated += appointment.assignments.length;
 
         const visitNotes = Array.from({ length: randInt(0, 3) }).map(() => ({
           appointmentId: appointment.id,
@@ -716,8 +672,8 @@ async function createJobsForClients(
             to: addDays(startTime, 2),
           }),
           createdById:
-            maybe(0.85) && appointment.assignments.length
-              ? pick(appointment.assignments).staff.id
+            maybe(0.85) && appointment.staff.length
+              ? pick(appointment.staff).id
               : maybe(0.4)
                 ? pick(createdByCandidates)
                 : null,
@@ -743,8 +699,8 @@ async function createJobsForClients(
           appointmentImagesCreated += appointmentImages.length;
         }
 
-        if (shouldCreateWorkSession(status) && appointment.assignments.length) {
-          const sessions = appointment.assignments.map((assignment) => {
+        if (shouldCreateWorkSession(status) && appointment.staff.length) {
+          const sessions = appointment.staff.map((member) => {
             const startedAt = addMinutes(startTime, randInt(-10, 25));
             const endedAt =
               status === AppointmentStatus.COMPLETED
@@ -755,7 +711,7 @@ async function createJobsForClients(
 
             return {
               appointmentId: appointment.id,
-              staffId: assignment.staff.id,
+              staffId: member.id,
               startedAt,
               endedAt,
             };
@@ -778,8 +734,234 @@ async function createJobsForClients(
     jobNoteImagesCreated,
     recurrencesCreated,
     lineItemsCreated,
-    assignmentsCreated,
   };
+}
+
+async function createLeaves(staff: { id: string }[]) {
+  const leaveRows: Prisma.LeaveCreateManyInput[] = [];
+
+  for (const member of staff) {
+    const leaveCount = randInt(0, 3);
+
+    for (let i = 0; i < leaveCount; i++) {
+      const startAt = startOfDay(addDays(new Date(), randInt(-60, 45)));
+      const durationDays = randInt(1, 4);
+      const endAt = endOfDay(addDays(startAt, durationDays - 1));
+
+      leaveRows.push({
+        staffId: member.id,
+        type: pick([
+          LeaveType.PAID_SICK,
+          LeaveType.VACATION,
+          LeaveType.PERSONAL,
+          LeaveType.UNPAID_SICK,
+        ]),
+        startAt,
+        endAt,
+        reason: maybe(0.7) ? faker.lorem.sentence() : null,
+        createdAt: faker.date.between({
+          from: addDays(startAt, -14),
+          to: startAt,
+        }),
+      });
+    }
+  }
+
+  if (leaveRows.length) {
+    await prisma.leave.createMany({ data: leaveRows });
+  }
+
+  return leaveRows.length;
+}
+
+async function createTimesheetsAndPayroll(
+  staff: { id: string }[],
+  admins: { id: string }[],
+) {
+  let periodsCreated = 0;
+  let timesheetsCreated = 0;
+  let timesheetDaysCreated = 0;
+  let payStatementsCreated = 0;
+
+  const profiles = await prisma.staffProfile.findMany({
+    where: { userId: { in: staff.map((s) => s.id) } },
+    select: { userId: true, hourlyRate: true },
+  });
+
+  const hourlyRateMap = new Map(profiles.map((p) => [p.userId, p.hourlyRate]));
+  const approverId = admins[0]?.id ?? null;
+
+  const baseStart = startOfDay(addDays(new Date(), -42));
+
+  const periodDefs = [
+    {
+      startDate: baseStart,
+      endDate: endOfDay(addDays(baseStart, 13)),
+      status: TimesheetPeriodStatus.LOCKED,
+      lockedAt: addDays(baseStart, 15),
+    },
+    {
+      startDate: startOfDay(addDays(baseStart, 14)),
+      endDate: endOfDay(addDays(baseStart, 27)),
+      status: TimesheetPeriodStatus.LOCKED,
+      lockedAt: addDays(baseStart, 29),
+    },
+    {
+      startDate: startOfDay(addDays(baseStart, 28)),
+      endDate: endOfDay(addDays(baseStart, 41)),
+      status: TimesheetPeriodStatus.OPEN,
+      lockedAt: null,
+    },
+  ];
+
+  for (const periodDef of periodDefs) {
+    const period = await prisma.timesheetPeriod.create({
+      data: periodDef,
+    });
+
+    periodsCreated++;
+
+    for (const member of staff) {
+      const hourlyRate = hourlyRateMap.get(member.id) ?? 0;
+      const isLocked = period.status === TimesheetPeriodStatus.LOCKED;
+
+      const days: Prisma.TimesheetDayCreateWithoutTimesheetInput[] = [];
+      let cursor = new Date(period.startDate);
+
+      while (cursor <= period.endDate) {
+        const dayOfWeek = cursor.getDay();
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+        if (!isWeekend && maybe(0.82)) {
+          const minutesWorked = pick([240, 300, 360, 420, 480]);
+          days.push({
+            workDate: new Date(cursor),
+            minutesWorked,
+            hourlyRate,
+            notes: maybe(0.18) ? faker.lorem.sentence() : null,
+          });
+        }
+
+        cursor = addDays(cursor, 1);
+      }
+
+      const timesheet = await prisma.timesheet.create({
+        data: {
+          periodId: period.id,
+          staffId: member.id,
+          status: isLocked
+            ? TimesheetStatus.APPROVED
+            : maybe(0.45)
+              ? TimesheetStatus.SUBMITTED
+              : TimesheetStatus.OPEN,
+          submittedAt: isLocked
+            ? addDays(period.endDate, 1)
+            : maybe(0.45)
+              ? new Date()
+              : null,
+          approvedAt: isLocked ? addDays(period.endDate, 2) : null,
+          approvedById: isLocked ? approverId : null,
+          notes: maybe(0.2) ? faker.lorem.sentence() : null,
+          days: {
+            create: days,
+          },
+        },
+        include: {
+          days: true,
+        },
+      });
+
+      timesheetsCreated++;
+      timesheetDaysCreated += timesheet.days.length;
+
+      if (isLocked) {
+        const gross = fmtMoney(
+          timesheet.days.reduce((sum, day) => {
+            const rate = day.hourlyRate ?? hourlyRate;
+            return sum + (day.minutesWorked / 60) * rate;
+          }, 0),
+        );
+
+        const deductions = fmtMoney(gross * 0.12);
+        const net = fmtMoney(gross - deductions);
+
+        await prisma.payStatement.create({
+          data: {
+            userId: member.id,
+            timesheetPeriodId: period.id,
+            payPeriodStart: period.startDate,
+            payPeriodEnd: period.endDate,
+            payDate: addDays(period.endDate, 5),
+            grossEarnings: gross,
+            totalDeductions: deductions,
+            netEarnings: net,
+            breakdown: {
+              hours: fmtMoney(
+                timesheet.days.reduce(
+                  (sum, day) => sum + day.minutesWorked / 60,
+                  0,
+                ),
+              ),
+              hourlyRate,
+              deductionRate: 0.12,
+              source: "seed",
+            },
+          },
+        });
+
+        payStatementsCreated++;
+      }
+    }
+  }
+
+  return {
+    periodsCreated,
+    timesheetsCreated,
+    timesheetDaysCreated,
+    payStatementsCreated,
+  };
+}
+
+async function createAppointmentAiInsights() {
+  const completedAppointments = await prisma.appointment.findMany({
+    where: {
+      status: AppointmentStatus.COMPLETED,
+    },
+    take: 25,
+    orderBy: { createdAt: "desc" },
+    select: { id: true },
+  });
+
+  let created = 0;
+
+  for (const appt of completedAppointments) {
+    if (!maybe(0.55)) continue;
+
+    await prisma.appointmentAiInsight.create({
+      data: {
+        appointmentId: appt.id,
+        type: pick(["SUMMARY", "QUALITY_CHECK", "FOLLOW_UP"]),
+        model: pick(["gpt-4.1-mini", "gpt-4.1", "gpt-4o-mini"]),
+        promptVersion: pick(["v1", "v2"]),
+        payload: {
+          summary: faker.lorem.sentences({ min: 2, max: 4 }),
+          actionItems: Array.from({ length: randInt(1, 3) }).map(() =>
+            faker.lorem.sentence(),
+          ),
+          confidence: faker.number.float({
+            min: 0.72,
+            max: 0.98,
+            fractionDigits: 2,
+          }),
+          source: "seed",
+        },
+      },
+    });
+
+    created++;
+  }
+
+  return created;
 }
 
 async function createGuaranteedReminderTestAppointments(
@@ -792,6 +974,15 @@ async function createGuaranteedReminderTestAppointments(
     return 0;
   }
 
+  const staffProfiles = await prisma.staffProfile.findMany({
+    where: { userId: { in: staff.map((s) => s.id) } },
+    select: { userId: true, hourlyRate: true },
+  });
+
+  const hourlyRateMap = new Map(
+    staffProfiles.map((p) => [p.userId, p.hourlyRate]),
+  );
+
   const clients = await prisma.client.findMany({
     where: { email: SEED_TEST_EMAIL },
     take: 3,
@@ -803,6 +994,8 @@ async function createGuaranteedReminderTestAppointments(
     },
   });
 
+<<<<<<< Updated upstream
+=======
   if (!clients.length) {
     console.log("ℹ️ No clients found for SEED_TEST_EMAIL.");
     return 0;
@@ -827,65 +1020,76 @@ async function createGuaranteedReminderTestAppointments(
   const templates = [
     {
       label: "5-day",
-      daysFromNow: 5,
       startTime: reminderDateUtc(5, 16),
       endTime: reminderDateUtc(5, 19),
     },
     {
       label: "1-day",
-      daysFromNow: 1,
       startTime: reminderDateUtc(1, 16),
       endTime: reminderDateUtc(1, 19),
     },
     {
       label: "control",
-      daysFromNow: 3,
       startTime: reminderDateUtc(3, 16),
       endTime: reminderDateUtc(3, 19),
     },
   ];
 
+>>>>>>> Stashed changes
   let created = 0;
 
-  for (let i = 0; i < templates.length; i++) {
-    const template = templates[i];
-    const client = clients[i % clients.length];
+  for (let i = 0; i < clients.length; i++) {
+    const client = clients[i];
     const address = client.addresses[0];
-
     if (!address) continue;
 
     const job = await prisma.job.create({
       data: {
-        title: `Reminder Test Job (${template.label})`,
+        title: `Reminder Test Job ${i + 1}`,
         type: JobType.ONE_OFF,
         clientId: client.id,
         addressId: address.id,
         isAnytime: false,
-        visitInstructions: `Guaranteed seed appointment for ${template.label} reminder testing.`,
+        visitInstructions:
+          "Guaranteed seed appointment for 5-day reminder testing.",
       },
     });
+
+<<<<<<< Updated upstream
+    const startTime = addHours(addDays(new Date(), 5), 9 + i);
+    const endTime = addHours(startTime, 3);
+=======
+    const assignedStaffId = staff.length ? staff[i % staff.length].id : null;
+>>>>>>> Stashed changes
 
     await prisma.appointment.create({
       data: {
         jobId: job.id,
-        startTime: template.startTime,
-        endTime: template.endTime,
+        startTime,
+        endTime,
         status: AppointmentStatus.SCHEDULED,
         reminder5dSent: false,
-        reminder3dSent: false,
         reminder1dSent: false,
         completionSent: false,
-        assignments: staff.length
+<<<<<<< Updated upstream
+        staff: {
+          connect: [{ id: staff[i % staff.length].id }],
+        },
+=======
+        assignments: assignedStaffId
           ? {
-              create: [{ staffId: staff[i % staff.length].id }],
+              create: [
+                {
+                  staffId: assignedStaffId,
+                  hourlyRateAtTime: hourlyRateMap.get(assignedStaffId) ?? 0,
+                  breakMinutes: 0,
+                },
+              ],
             }
           : undefined,
+>>>>>>> Stashed changes
       },
     });
-
-    console.log(
-      `Created guaranteed ${template.label} reminder test appointment for ${client.email} at ${template.startTime.toISOString()}`,
-    );
 
     created++;
   }
@@ -901,6 +1105,12 @@ async function main() {
   const users = await createUsers();
   const clients = await createClients();
   const counts = await createJobsForClients(clients, users.staff);
+  const leaveCount = await createLeaves(users.staff);
+  const payrollCounts = await createTimesheetsAndPayroll(
+    users.staff,
+    users.admins,
+  );
+  const aiInsightCount = await createAppointmentAiInsights();
   const guaranteedReminderAppointments =
     await createGuaranteedReminderTestAppointments(users.staff);
 
@@ -912,7 +1122,6 @@ async function main() {
     clients: clients.length,
     jobs: counts.jobsCreated + guaranteedReminderAppointments,
     appointments: counts.appointmentsCreated + guaranteedReminderAppointments,
-    assignments: counts.assignmentsCreated + guaranteedReminderAppointments,
     visitNotes: counts.visitNotesCreated,
     appointmentImages: counts.appointmentImagesCreated,
     workSessions: counts.workSessionsCreated,
@@ -920,6 +1129,12 @@ async function main() {
     jobNoteImages: counts.jobNoteImagesCreated,
     recurrences: counts.recurrencesCreated,
     lineItems: counts.lineItemsCreated,
+    leaves: leaveCount,
+    timesheetPeriods: payrollCounts.periodsCreated,
+    timesheets: payrollCounts.timesheetsCreated,
+    timesheetDays: payrollCounts.timesheetDaysCreated,
+    payStatements: payrollCounts.payStatementsCreated,
+    appointmentAiInsights: aiInsightCount,
     guaranteedReminderAppointments,
     loginPassword: DEFAULT_PASSWORD,
     seedTestEmail: SEED_TEST_EMAIL || "(not set)",
@@ -936,7 +1151,7 @@ async function main() {
 
   if (SEED_TEST_EMAIL) {
     console.log(
-      `Guaranteed reminder test emails will go to: ${SEED_TEST_EMAIL}\n`,
+      `Guaranteed 5-day reminder test emails will go to: ${SEED_TEST_EMAIL}\n`,
     );
   }
 }
