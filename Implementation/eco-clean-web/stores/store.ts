@@ -14,6 +14,22 @@ type UserSelectionState = {
   clearSelectedUser: () => void;
 };
 
+type StaffUiState = {
+  drawerOpened: boolean;
+  title: string;
+  back: boolean;
+  refreshing: boolean;
+  onRefresh: (() => void) | null;
+
+  openDrawer: () => void;
+  closeDrawer: () => void;
+  setTitle: (title: string) => void;
+  setBack: (back: boolean) => void;
+  setRefreshing: (refreshing: boolean) => void;
+  setOnRefresh: (fn?: (() => void) | null) => void;
+  resetTopBar: () => void;
+};
+
 interface DashboardUIState {
   // selection
   selectedJobId: string | null;
@@ -116,4 +132,26 @@ export const useUserSelectionStore = create<UserSelectionState>((set) => ({
   selectedUserId: null,
   setSelectedUserId: (id) => set({ selectedUserId: id }),
   clearSelectedUser: () => set({ selectedUserId: null }),
+}));
+
+export const useStaffUiStore = create<StaffUiState>((set) => ({
+  drawerOpened: false,
+  title: "Eco Clean",
+  back: false,
+  refreshing: false,
+  onRefresh: null,
+
+  openDrawer: () => set({ drawerOpened: true }),
+  closeDrawer: () => set({ drawerOpened: false }),
+  setTitle: (title) => set({ title }),
+  setBack: (back) => set({ back }),
+  setRefreshing: (refreshing) => set({ refreshing }),
+  setOnRefresh: (fn) => set({ onRefresh: fn ?? null }),
+  resetTopBar: () =>
+    set({
+      title: "Eco Clean",
+      back: false,
+      refreshing: false,
+      onRefresh: null,
+    }),
 }));

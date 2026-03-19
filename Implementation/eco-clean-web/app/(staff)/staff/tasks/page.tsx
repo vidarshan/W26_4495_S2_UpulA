@@ -3,16 +3,13 @@
 import {
   Badge,
   Box,
-  Button,
   Card,
   Center,
   Chip,
   Container,
-  Drawer,
   Flex,
   Group,
   Loader,
-  NavLink,
   Stack,
   Text,
   ThemeIcon,
@@ -25,19 +22,19 @@ import { useQuery } from "@tanstack/react-query";
 import { getStaffAppointments } from "@/lib/api/appointments";
 import { useRouter } from "next/navigation";
 import { useDisclosure } from "@mantine/hooks";
-import TopBar from "../../../components/pwa/TopBar";
 import {
   IoCheckmarkCircleOutline,
   IoLocationOutline,
   IoPersonOutline,
   IoTimeOutline,
 } from "react-icons/io5";
-import { signOut, useSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { AppointmentReminderWatcher } from "@/app/components/AppointmentReminderWatcher";
 import { LocalNotificationDemo } from "@/app/components/LocalNotificationDemo";
 import { requestPermission } from "@/lib/notifications/showNotification";
 import { MiniCalendar } from "@mantine/dates";
 import dayjs from "dayjs";
+import { useStaffUiStore } from "@/stores/store";
 
 type Appointment = {
   id: string;
@@ -68,11 +65,6 @@ const Page = () => {
     DateTime.now().setZone(APP_TZ).toISODate(),
   );
   const [value, setValue] = useState<string>("upcoming");
-
-  useEffect(() => {
-    requestPermission();
-  }, []);
-
   const range = useMemo(() => {
     const base = selectedDate
       ? DateTime.fromISO(selectedDate, { zone: APP_TZ })
@@ -83,7 +75,11 @@ const Page = () => {
       end: base.endOf("week").toUTC().toISO()!,
     };
   }, [selectedDate]);
-
+  const setTitle = useStaffUiStore((s) => s.setTitle);
+  const setBack = useStaffUiStore((s) => s.setBack);
+  const setRefreshing = useStaffUiStore((s) => s.setRefreshing);
+  const setOnRefresh = useStaffUiStore((s) => s.setOnRefresh);
+  const resetTopBar = useStaffUiStore((s) => s.resetTopBar);
   const { data, refetch, isLoading, isFetching, error } = useQuery({
     queryKey: ["staff-tasks", staffId, range.start, range.end],
     queryFn: () =>
@@ -94,6 +90,32 @@ const Page = () => {
       }),
     enabled: !!staffId,
   });
+
+  useEffect(() => {
+    setTitle("Eco Clean");
+    setBack(false);
+
+    return () => {
+      resetTopBar();
+    };
+  }, [setTitle, setBack, resetTopBar]);
+
+  useEffect(() => {
+    setRefreshing(isFetching);
+  }, [isFetching, setRefreshing]);
+
+  useEffect(() => {
+    setOnRefresh(refetch);
+
+    return () => {
+      setOnRefresh(null);
+      setRefreshing(false);
+    };
+  }, [refetch, setOnRefresh, setRefreshing]);
+
+  useEffect(() => {
+    requestPermission();
+  }, []);
 
   const tasks: Appointment[] = data ?? [];
 
@@ -123,24 +145,7 @@ const Page = () => {
   }
 
   return (
-    <Container p={0} bg="#f5f6f7" mih="100vh">
-      <Drawer size="60%" opened={opened} onClose={close} title="Eco Clean">
-        <Button
-          radius="lg"
-          onClick={() => signOut({ callbackUrl: "/login" })}
-          fullWidth
-        >
-          Logout
-        </Button>
-      </Drawer>
-
-      <TopBar
-        back={false}
-        onClick={open}
-        title="Eco Clean"
-        onRefresh={() => refetch()}
-        refreshing={isFetching}
-      />
+    <Container p={0}>
       <AppointmentReminderWatcher appointments={tasks} />
       <LocalNotificationDemo />
       <Stack gap="md" p="md">

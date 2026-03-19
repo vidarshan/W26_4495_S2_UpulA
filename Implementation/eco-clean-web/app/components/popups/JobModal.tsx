@@ -21,14 +21,16 @@ import {
   Image,
   Checkbox,
   Loader,
+  Box,
+  ActionIcon,
 } from "@mantine/core";
 import { DatePickerInput, TimeInput } from "@mantine/dates";
 import { Dropzone } from "@mantine/dropzone";
 import { useDebouncedValue } from "@mantine/hooks";
 import { useForm } from "@mantine/form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
-import { IoAddOutline, IoImageOutline } from "react-icons/io5";
+import { useEffect, useMemo, useState } from "react";
+import { IoAddOutline, IoCloseOutline, IoImageOutline } from "react-icons/io5";
 import { createJob, CreateJobPayload, JobFormValues } from "@/lib/api/jobs";
 import { getClientAddresses, getClients } from "@/lib/api/client";
 import { getStaff } from "@/lib/api/users";
@@ -39,7 +41,6 @@ import { DateTime } from "luxon";
 import { APP_TZ } from "@/lib/dateTime";
 import { useUploadThing } from "@/lib/uploadthing";
 import { notifications } from "@mantine/notifications";
-// import { AIInsightsSection } from "../cards/AiTaskAssistantCard";
 
 interface Props {
   opened: boolean;
@@ -179,6 +180,52 @@ function blankAppointment(): AppointmentForm {
   };
 }
 
+function buildInitialValues(
+  selectedInfo: CalendarSelection | null,
+): JobFormValuesWithRecurrence {
+  return {
+    title: "",
+    clientId: "",
+    addressId: "",
+    jobType: "ONE_OFF",
+    isAnytime: false,
+    visitInstructions: "",
+    notes: [blankJobNote()],
+    lineItems: [
+      {
+        id: crypto.randomUUID(),
+        name: "",
+        quantity: 1,
+        unitCost: 0,
+        unitPrice: 0,
+        description: "",
+      },
+    ],
+    appointments: [
+      {
+        ...blankAppointment(),
+        startDate: selectedInfo?.start
+          ? new Date(
+              selectedInfo.start.getFullYear(),
+              selectedInfo.start.getMonth(),
+              selectedInfo.start.getDate(),
+            )
+          : null,
+        startTime: selectedInfo?.start ? jsDateToHHmm(selectedInfo.start) : "",
+        endTime: selectedInfo?.end ? jsDateToHHmm(selectedInfo.end) : "",
+      },
+    ],
+    recurrence: {
+      frequency: "weekly",
+      interval: 1,
+      endType: "after",
+      endsAfter: 6,
+      endsUnit: "weeks",
+      endsOn: null,
+    },
+  };
+}
+
 export default function NewJobModal({
   opened,
   onClose,
@@ -188,61 +235,23 @@ export default function NewJobModal({
   const queryClient = useQueryClient();
   const { startUpload, isUploading } = useUploadThing("appointmentImages");
 
+  const initialValues = useMemo(
+    () => buildInitialValues(selectedInfo),
+    [selectedInfo],
+  );
+
   const form = useForm<JobFormValuesWithRecurrence>({
     mode: "controlled",
-    initialValues: {
-      title: "",
-      clientId: "",
-      addressId: "",
-      jobType: "ONE_OFF",
-      isAnytime: false,
-      visitInstructions: "",
-      notes: [blankJobNote()],
-      lineItems: [
-        {
-          id: crypto.randomUUID(),
-          name: "",
-          quantity: 1,
-          unitCost: 0,
-          unitPrice: 0,
-          description: "",
-        },
-      ],
-      appointments: [
-        {
-          ...blankAppointment(),
-          startDate: selectedInfo?.start
-            ? new Date(
-                selectedInfo.start.getFullYear(),
-                selectedInfo.start.getMonth(),
-                selectedInfo.start.getDate(),
-              )
-            : null,
-          startTime: selectedInfo?.start
-            ? jsDateToHHmm(selectedInfo.start)
-            : "",
-          endTime: selectedInfo?.end ? jsDateToHHmm(selectedInfo.end) : "",
-        },
-      ],
-      recurrence: {
-        frequency: "weekly",
-        interval: 1,
-        endType: "after",
-        endsAfter: 6,
-        endsUnit: "weeks",
-        endsOn: null,
-      },
-    },
+    initialValues,
     validate: {
       title: (v) => (!v.trim() ? "Title is required" : null),
       clientId: (v) => (!v ? "Client is required" : null),
       addressId: (v) => (!v ? "Address is required" : null),
       notes: {
-        title: (value, values, path) => {
+        title: (_, values, path) => {
           const match = path.match(/^notes\.(\d+)\.title$/);
           const index = match ? Number(match[1]) : -1;
           const note = values.notes[index];
-
           if (!note) return null;
 
           const hasAnyValue =
@@ -259,11 +268,10 @@ export default function NewJobModal({
 
           return null;
         },
-        content: (value, values, path) => {
+        content: (_, values, path) => {
           const match = path.match(/^notes\.(\d+)\.content$/);
           const index = match ? Number(match[1]) : -1;
           const note = values.notes[index];
-
           if (!note) return null;
 
           const hasAnyValue =
@@ -344,6 +352,15 @@ export default function NewJobModal({
     enabled: opened && !!form.values.clientId,
   });
 
+  const resetModalState = () => {
+    const next = buildInitialValues(selectedInfo);
+    form.setValues(next);
+    form.resetDirty(next);
+    form.clearErrors();
+    setSearchClients("");
+    setSearchAssignees("");
+  };
+
   const createJobMutation = useMutation({
     mutationFn: (payload: CreateJobPayload) => createJob(payload),
     onSuccess: async () => {
@@ -359,8 +376,8 @@ export default function NewJobModal({
         color: "green",
       });
 
+      resetModalState();
       onSuccess();
-      form.reset();
       onClose();
     },
     onError: (error) => {
@@ -397,9 +414,42 @@ export default function NewJobModal({
     ]);
   };
 
+  const addJobNote = () => {
+    form.setFieldValue("notes", [...form.values.notes, blankJobNote()]);
+  };
+
+  const removeJobNote = (id: string) => {
+    form.setFieldValue(
+      "notes",
+      form.values.notes.filter((note) => note.id !== id),
+    );
+  };
+
+  const removeNoteImage = (noteIndex: number, fileKey: string) => {
+    const current = form.values.notes[noteIndex];
+    if (!current) return;
+
+    form.setFieldValue(
+      `notes.${noteIndex}.uploadedImages`,
+      current.uploadedImages.filter((img) => img.fileKey !== fileKey),
+    );
+  };
+
+  const handleClose = () => {
+    if (isBusy) return;
+    resetModalState();
+    onClose();
+  };
+
   const startStr = selectedInfo?.startStr || "";
   const endStr = selectedInfo?.endStr || "";
   const allDay = !!selectedInfo?.allDay;
+
+  useEffect(() => {
+    if (!opened) return;
+    resetModalState();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [opened, selectedInfo]);
 
   useEffect(() => {
     if (!opened || !startStr) return;
@@ -451,7 +501,12 @@ export default function NewJobModal({
         : values.appointments.map(mapAppt);
 
     const notes = values.notes
-      .filter((note) => note.content.trim() || note.title.trim())
+      .filter(
+        (note) =>
+          note.content.trim() ||
+          note.title.trim() ||
+          note.uploadedImages.length > 0,
+      )
       .map((note) => ({
         title: note.title.trim() || undefined,
         content: note.content.trim() || "",
@@ -504,17 +559,6 @@ export default function NewJobModal({
     };
 
     createJobMutation.mutate(payload);
-  };
-
-  const addJobNote = () => {
-    form.setFieldValue("notes", [...form.values.notes, blankJobNote()]);
-  };
-
-  const removeJobNote = (id: string) => {
-    form.setFieldValue(
-      "notes",
-      form.values.notes.filter((note) => note.id !== id),
-    );
   };
 
   const renderJobNotes = () =>
@@ -590,8 +634,10 @@ export default function NewJobModal({
               maxFiles={10}
               disabled={isBusy}
               onDrop={async (files) => {
-                const existing = note.images || [];
-                const nextFiles = [...existing, ...files].slice(0, 10);
+                const currentNote = form.values.notes[index];
+                const existingFiles = currentNote?.images || [];
+                const nextFiles = [...existingFiles, ...files].slice(0, 10);
+
                 form.setFieldValue(`notes.${index}.images`, nextFiles);
 
                 try {
@@ -604,8 +650,11 @@ export default function NewJobModal({
                     }),
                   );
 
+                  const latestUploaded =
+                    form.values.notes[index]?.uploadedImages || [];
+
                   form.setFieldValue(`notes.${index}.uploadedImages`, [
-                    ...(note.uploadedImages || []),
+                    ...latestUploaded,
                     ...imgs,
                   ]);
                 } catch (error) {
@@ -630,6 +679,38 @@ export default function NewJobModal({
                 )}
               </Flex>
             </Dropzone>
+
+            {form.values.notes[index]?.uploadedImages?.length ? (
+              <Group mt="sm">
+                {form.values.notes[index].uploadedImages.map((img) => (
+                  <Box key={img.fileKey} pos="relative">
+                    <Image
+                      src={img.url}
+                      alt="note_image"
+                      w={80}
+                      h={80}
+                      radius="md"
+                      fit="cover"
+                    />
+                    <ActionIcon
+                      size="sm"
+                      radius="xl"
+                      color="red"
+                      variant="filled"
+                      style={{
+                        position: "absolute",
+                        top: 4,
+                        right: 4,
+                      }}
+                      onClick={() => removeNoteImage(index, img.fileKey)}
+                      disabled={isBusy}
+                    >
+                      <IoCloseOutline size={14} />
+                    </ActionIcon>
+                  </Box>
+                ))}
+              </Group>
+            ) : null}
           </Grid.Col>
 
           <Grid.Col span={12}>
@@ -682,9 +763,7 @@ export default function NewJobModal({
               {...form.getInputProps(`appointments.${index}.endTime`)}
             />
           </Grid.Col>
-          <Grid.Col span={12}>
-            {/* <AIInsightsSection insights={[]} /> */}
-          </Grid.Col>
+
           <Grid.Col span={12}>
             <MultiSelect
               label="Staff"
@@ -710,21 +789,23 @@ export default function NewJobModal({
           </Grid.Col>
 
           {appt.uploadedImages?.length ? (
-            <Group mt="xs">
-              {appt.uploadedImages.map((img) => (
-                <Image
-                  key={img.fileKey}
-                  src={img.url}
-                  alt="attached_img"
-                  style={{
-                    width: 64,
-                    height: 64,
-                    objectFit: "cover",
-                    borderRadius: 8,
-                  }}
-                />
-              ))}
-            </Group>
+            <Grid.Col span={12}>
+              <Group mt="xs">
+                {appt.uploadedImages.map((img) => (
+                  <Image
+                    key={img.fileKey}
+                    src={img.url}
+                    alt="attached_img"
+                    style={{
+                      width: 64,
+                      height: 64,
+                      objectFit: "cover",
+                      borderRadius: 8,
+                    }}
+                  />
+                ))}
+              </Group>
+            </Grid.Col>
           ) : null}
         </Grid>
       </Card>
@@ -733,7 +814,7 @@ export default function NewJobModal({
   return (
     <Modal
       opened={opened}
-      onClose={isBusy ? () => {} : onClose}
+      onClose={handleClose}
       size="xl"
       title="New Job"
       centered
@@ -759,6 +840,7 @@ export default function NewJobModal({
           <Paper>
             <SegmentedControl
               mt="sm"
+              color="green"
               value={form.values.jobType}
               disabled={isBusy}
               onChange={(value) =>
@@ -1035,7 +1117,7 @@ export default function NewJobModal({
           <Group justify="right" mt="md">
             <Button
               variant="default"
-              onClick={onClose}
+              onClick={handleClose}
               type="button"
               disabled={isBusy}
             >

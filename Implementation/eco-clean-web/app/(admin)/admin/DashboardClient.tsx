@@ -8,47 +8,50 @@ import {
   Divider,
   Flex,
   Group,
-  Input,
+  LoadingOverlay,
   Paper,
   SegmentedControl,
   Select,
   Text,
   TextInput,
 } from "@mantine/core";
-import FullCalendar from "@fullcalendar/react";
+import { useDebouncedValue } from "@mantine/hooks";
+import { notifications } from "@mantine/notifications";
+import {
+  DateSelectArg,
+  EventClickArg,
+  EventDropArg,
+  EventInput,
+  EventSourceFuncArg,
+} from "@fullcalendar/core";
 import dayGridPlugin from "@fullcalendar/daygrid";
-import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin, {
   EventResizeDoneArg,
 } from "@fullcalendar/interaction";
+import luxonPlugin from "@fullcalendar/luxon3";
+import FullCalendar from "@fullcalendar/react";
+import timeGridPlugin from "@fullcalendar/timegrid";
+import { useQueryClient } from "@tanstack/react-query";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   IoArrowBackOutline,
   IoArrowForwardOutline,
   IoPersonOutline,
-  IoRefreshCircle,
-  IoRefreshCircleOutline,
   IoRefreshSharp,
   IoSearchSharp,
   IoToggleOutline,
 } from "react-icons/io5";
-import { useEffect, useRef, useState } from "react";
-import { DateSelectArg, EventClickArg, EventDropArg } from "@fullcalendar/core";
-import NewJobModal from "../../components/popups/JobModal";
 import AppointmentInfoModal from "../../components/popups/AppointmentInfoModal";
 import ConfirmCancellationModal from "../../components/popups/ConfirmCancellationModal";
-import { useCalendarStore, useDashboardUI } from "@/stores/store";
-import { notifications } from "@mantine/notifications";
+import NewJobModal from "../../components/popups/JobModal";
+import { Staff } from "@/app/components/tables/ClientTable";
+import { useStaff } from "@/hooks/useStaff";
 import { rescheduleAppointment } from "@/lib/api/appointments";
 import { APP_TZ } from "@/lib/dateTime";
-import luxonPlugin from "@fullcalendar/luxon3";
-import { useQueryClient } from "@tanstack/react-query";
-import { useDebouncedValue } from "@mantine/hooks";
-import { useStaff } from "@/hooks/useStaff";
-import { Staff } from "@/app/components/tables/ClientTable";
+import { useCalendarStore, useDashboardUI } from "@/stores/store";
 
 export default function DashboardClient() {
   const qc = useQueryClient();
-
   const calendarRef = useRef<FullCalendar | null>(null);
 
   const {
@@ -61,10 +64,13 @@ export default function DashboardClient() {
     selectedInfo,
   } = useDashboardUI();
 
+  const { setTriggerRefresh } = useCalendarStore();
+
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [assignee, setAssignee] = useState<string | null>(null);
   const [debounced] = useDebouncedValue(search, 200);
+  const [calendarLoading, setCalendarLoading] = useState(false);
   const [view, setView] = useState("week");
   const [currentTitle, setCurrentTitle] = useState("");
 
@@ -82,15 +88,13 @@ export default function DashboardClient() {
     LATE: "Late",
   };
 
-  const { data: staffData, isLoading } = useStaff({
+  const { data: staffData } = useStaff({
     q: "",
     page: 1,
     limit: 10000,
     sort: "newest",
     paginate: true,
   });
-
-  const { setTriggerRefresh } = useCalendarStore();
 
   const handleDateSelect = (selectInfo: DateSelectArg) => {
     openNewJobWithSelection({
@@ -113,19 +117,20 @@ export default function DashboardClient() {
     }
 
     try {
-      const updated = await rescheduleAppointment(info.event.id, start, end);
+      const updated = await rescheduleAppointment(id, start, end);
       info.view.calendar.refetchEvents();
       qc.setQueryData(["appointment", id], updated);
+
       notifications.show({
-        title: `Success`,
-        message: "Created new appointment",
+        title: "Success",
+        message: "Appointment updated",
         color: "green",
       });
     } catch (err) {
       console.error(err);
       notifications.show({
-        title: `Error`,
-        message: "Appointment creation failed",
+        title: "Error",
+        message: "Appointment update failed",
         color: "red",
       });
       info.revert();
@@ -144,7 +149,6 @@ export default function DashboardClient() {
     const prevStart = info.oldEvent.start;
     const prevEnd = info.oldEvent.end;
 
-    // compute duration from old event (fallback 30 mins)
     const durationMs =
       prevStart && prevEnd
         ? prevEnd.getTime() - prevStart.getTime()
@@ -154,21 +158,21 @@ export default function DashboardClient() {
 
     try {
       const updated = await rescheduleAppointment(id, start, end);
-
       info.view.calendar.refetchEvents();
       qc.setQueryData(["appointment", id], updated);
+
       notifications.show({
-        title: `Success`,
+        title: "Success",
         message: "Moved the appointment",
         color: "green",
       });
     } catch (err) {
+      console.error(err);
       notifications.show({
-        title: `Error`,
-        message: "Appointment creation failed",
+        title: "Error",
+        message: "Appointment update failed",
         color: "red",
       });
-      console.error(err);
       info.revert();
     }
   };
@@ -181,11 +185,50 @@ export default function DashboardClient() {
     calendarRef.current?.getApi().refetchEvents();
   };
 
+  const loadEvents = useCallback(
+    (
+      fetchInfo: EventSourceFuncArg,
+      successCallback: (eventInputs: EventInput[]) => void,
+      failureCallback: (error: Error) => void,
+    ): void => {
+      void (async () => {
+        try {
+          const params = new URLSearchParams({
+            start: fetchInfo.startStr,
+            end: fetchInfo.endStr,
+            view: "calendar",
+          });
+
+          if (debounced.trim()) params.set("search", debounced.trim());
+          if (status) params.set("status", status);
+          if (assignee) params.set("staffId", assignee);
+
+          const res = await fetch(`/api/appointments?${params.toString()}`);
+          if (!res.ok) throw new Error("Failed to fetch appointments");
+
+          const data: EventInput[] = await res.json();
+          successCallback(data);
+        } catch (error: unknown) {
+          console.error(error);
+          failureCallback(
+            error instanceof Error ? error : new Error("Unknown error"),
+          );
+        }
+      })();
+    },
+    [debounced, status, assignee],
+  );
+
   useEffect(() => {
     setTriggerRefresh(() => () => {
       calendarRef.current?.getApi().refetchEvents();
     });
-  }, [setTriggerRefresh, search, status, assignee]);
+  }, [setTriggerRefresh]);
+
+  const calendarKey = useMemo(
+    () => `${debounced}|${status ?? ""}|${assignee ?? ""}`,
+    [debounced, status, assignee],
+  );
 
   return (
     <Container fluid>
@@ -266,7 +309,9 @@ export default function DashboardClient() {
               </Button>
             </Button.Group>
           </Flex>
+
           <Divider mb="md" />
+
           <Flex
             justify="space-between"
             align={{ base: "stretch", md: "end" }}
@@ -323,7 +368,7 @@ export default function DashboardClient() {
             <Group justify="flex-end">
               <Button
                 size="sm"
-                radius="xl"
+                radius="md"
                 variant="light"
                 leftSection={<IoRefreshSharp />}
                 onClick={() => calendarRef.current?.getApi().refetchEvents()}
@@ -332,98 +377,93 @@ export default function DashboardClient() {
               </Button>
             </Group>
           </Flex>
+
           <Group mt="md" gap="lg">
-            {Object.entries(STATUS_COLORS).map(([status, color]) => (
-              <Group align="center" key={status} gap={6}>
+            {Object.entries(STATUS_COLORS).map(([statusKey, color]) => (
+              <Group align="center" key={statusKey} gap={6}>
                 <Badge radius="sm" color={color} variant="filled">
-                  {STATUS_LABELS[status as keyof typeof STATUS_LABELS]}
+                  {STATUS_LABELS[statusKey as keyof typeof STATUS_LABELS]}
                 </Badge>
               </Group>
             ))}
           </Group>
         </Paper>
-        <FullCalendar
-          ref={calendarRef}
-          timeZone={APP_TZ}
-          plugins={[
-            timeGridPlugin,
-            dayGridPlugin,
-            interactionPlugin,
-            luxonPlugin,
-          ]}
-          initialView="timeGridWeek"
-          headerToolbar={false}
-          editable
-          selectable
-          nowIndicator
-          allDaySlot={false}
-          eventDisplay="block"
-          events={async (fetchInfo, successCallback, failureCallback) => {
-            try {
-              const params = new URLSearchParams({
-                start: fetchInfo.startStr,
-                end: fetchInfo.endStr,
-                view: "calendar",
-              });
 
-              if (search.trim()) params.set("search", search.trim());
-              if (status) params.set("status", status);
-              if (assignee) params.set("staffId", assignee);
+        <Box pos="relative">
+          {calendarLoading && (
+            <LoadingOverlay
+              visible={true}
+              loaderProps={{ children: "Loading appointments..." }}
+            />
+          )}
 
-              const res = await fetch(`/api/appointments?${params.toString()}`);
-              if (!res.ok) throw new Error("Failed to fetch appointments");
+          <FullCalendar
+            key={calendarKey}
+            ref={calendarRef}
+            timeZone={APP_TZ}
+            plugins={[
+              timeGridPlugin,
+              dayGridPlugin,
+              interactionPlugin,
+              luxonPlugin,
+            ]}
+            initialView="timeGridWeek"
+            headerToolbar={false}
+            editable
+            selectable
+            nowIndicator
+            allDaySlot={false}
+            eventDisplay="block"
+            loading={setCalendarLoading}
+            events={loadEvents}
+            select={handleDateSelect}
+            eventDrop={handleDateDrop}
+            eventResize={handleDateResize}
+            eventClick={handleEventClick}
+            datesSet={(arg) => setCurrentTitle(arg.view.title)}
+            eventDidMount={(info) => {
+              const colors: Record<
+                "SCHEDULED" | "COMPLETED" | "CANCELLED" | "LATE",
+                string
+              > = {
+                SCHEDULED: "#22c55e",
+                COMPLETED: "#3b82f6",
+                CANCELLED: "#ef4444",
+                LATE: "#f59e0b",
+              };
 
-              const data = await res.json();
-              successCallback(data);
-            } catch (error) {
-              console.error(error);
-            }
-          }}
-          select={handleDateSelect}
-          eventDrop={handleDateDrop}
-          eventResize={handleDateResize}
-          eventClick={handleEventClick}
-          datesSet={(arg) => setCurrentTitle(arg.view.title)}
-          eventDidMount={(info) => {
-            const colors: Record<
-              "SCHEDULED" | "COMPLETED" | "CANCELLED" | "LATE",
-              string
-            > = {
-              SCHEDULED: "#22c55e",
-              COMPLETED: "#3b82f6",
-              CANCELLED: "#ef4444",
-              LATE: "#f59e0b",
-            };
+              const statusValue = info.event.extendedProps.status as
+                | "SCHEDULED"
+                | "COMPLETED"
+                | "CANCELLED"
+                | "LATE"
+                | undefined;
 
-            const status = info.event.extendedProps.status as
-              | "SCHEDULED"
-              | "COMPLETED"
-              | "CANCELLED"
-              | "LATE"
-              | undefined;
+              const color = statusValue ? colors[statusValue] : undefined;
 
-            const color = status ? colors[status] : undefined;
+              if (color) {
+                info.el.style.backgroundColor = color;
+                info.el.style.borderColor = color;
+              }
 
-            if (color) {
-              info.el.style.backgroundColor = color;
-              info.el.style.borderColor = color;
-            }
+              info.el.style.borderRadius = "8px";
+              info.el.style.padding = "2px 4px";
+            }}
+            eventContent={(eventInfo) => {
+              const { title } = eventInfo.event;
+              const staffNames = eventInfo.event.extendedProps.staffNames;
 
-            info.el.style.borderRadius = "8px";
-            info.el.style.padding = "2px 4px";
-          }}
-          eventContent={(eventInfo) => {
-            const { title } = eventInfo.event;
-            const staffNames = eventInfo.event.extendedProps.staffNames;
-
-            return (
-              <div style={{ fontSize: 12 }}>
-                <div style={{ fontWeight: 600 }}>{title}</div>
-                {staffNames && <div style={{ opacity: 0.8 }}>{staffNames}</div>}
-              </div>
-            );
-          }}
-        />
+              return (
+                <div style={{ fontSize: 12 }}>
+                  <div style={{ fontWeight: 600 }}>{title}</div>
+                  {staffNames && (
+                    <div style={{ opacity: 0.8 }}>{staffNames}</div>
+                  )}
+                </div>
+              );
+            }}
+          />
+        </Box>
       </Box>
     </Container>
   );
