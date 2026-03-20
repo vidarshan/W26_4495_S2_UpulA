@@ -16,23 +16,61 @@ import {
   Group,
   Loader,
   Select,
+  SimpleGrid,
   Stack,
   Table,
   Text,
   Textarea,
   Title,
+  SegmentedControl,
 } from "@mantine/core";
 import { DatePickerInput, TimeInput } from "@mantine/dates";
+import { useMediaQuery } from "@mantine/hooks";
 
 type Mode = "balances" | "request";
 type Balance = { policy: string; hours: number };
 
-export default function ApplyLeavePage() {
-  const [mode, setMode] = useState<Mode>("balances");
-  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
+type LeaveRecord = {
+  id: string;
+  type: string;
+  startAt: string;
+  endAt: string;
+  reason?: string | null;
+};
 
-  const [leaveType, setLeaveType] = useState<string | null>("FULL_DAY");
-  const [reason, setReason] = useState<string | null>("UNPAID_SICK");
+type LeaveReason = "PAID_SICK" | "UNPAID_SICK" | "PERSONAL" | "VACATION";
+type LeaveDuration = "FULL_DAY" | "HALF_DAY";
+
+type LeaveRequestCardProps = {
+  selectedDate: string | null;
+  setSelectedDate: (value: string | null) => void;
+  leaveType: LeaveDuration | null;
+  setLeaveType: (value: LeaveDuration | null) => void;
+  reason: LeaveReason | null;
+  setReason: (value: LeaveReason | null) => void;
+  startTime: string;
+  setStartTime: (value: string) => void;
+  endTime: string;
+  setEndTime: (value: string) => void;
+  comments: string;
+  setComments: (value: string) => void;
+  hoursScheduled: number;
+  hoursAvailable: number;
+  onPrevious: () => void;
+  onSubmit: () => void;
+  submitting: boolean;
+  isMobile: boolean;
+};
+
+export default function ApplyLeavePage() {
+  const isMobile = useMediaQuery("(max-width: 48em)");
+  const [mode, setMode] = useState<Mode>("balances");
+  const [selectedDate, setSelectedDate] = useState<string | null>(
+    new Date().toISOString().slice(0, 10),
+  );
+
+  const [leaveType, setLeaveType] = useState<LeaveDuration | null>("FULL_DAY");
+  const [reason, setReason] = useState<LeaveReason | null>("UNPAID_SICK");
   const [startTime, setStartTime] = useState<string>("08:00");
   const [endTime, setEndTime] = useState<string>("17:00");
   const [comments, setComments] = useState<string>("");
@@ -42,9 +80,9 @@ export default function ApplyLeavePage() {
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
-  const [leaveData, setLeaveData] = useState<any[]>([]);
+  const [leaveData, setLeaveData] = useState<LeaveRecord[]>([]);
 
-  // Dynamic User Context
+  // TODO: replace with session-based user context
   const staffId = "3b32d468-9f20-4808-9f25-bffabed6a9cb";
 
   useEffect(() => {
@@ -55,17 +93,19 @@ export default function ApplyLeavePage() {
         if (!leaveRes.ok) throw new Error("Could not fetch leave records");
         const data = await leaveRes.json();
         setLeaveData(data);
-      } catch (err) {
+      } catch {
         setErrorMessage("Failed to load records from the server.");
       } finally {
         setLoading(false);
       }
     }
+
     fetchData();
   }, [staffId, successMessage]);
 
   const vacationBalance = useMemo(() => {
-    const startingEntitlement = 80; // User's specific entitlement
+    const startingEntitlement = 80;
+
     const hoursUsed = leaveData
       .filter((l) => l.type === "VACATION")
       .reduce((acc, curr) => {
@@ -73,7 +113,18 @@ export default function ApplyLeavePage() {
           new Date(curr.endAt).getTime() - new Date(curr.startAt).getTime();
         return acc + diff / 3600000;
       }, 0);
+
     return startingEntitlement - hoursUsed;
+  }, [leaveData]);
+
+  const sickHoursUsed = useMemo(() => {
+    return leaveData
+      .filter((l) => l.type.includes("SICK"))
+      .reduce((acc, curr) => {
+        const diff =
+          new Date(curr.endAt).getTime() - new Date(curr.startAt).getTime();
+        return acc + diff / 3600000;
+      }, 0);
   }, [leaveData]);
 
   const hoursScheduled = useMemo(() => {
@@ -82,7 +133,7 @@ export default function ApplyLeavePage() {
 
   const calendarEvents = useMemo(() => {
     return leaveData.map((l) => ({
-      title: `${l.type.replace("_", " ")}`,
+      title: l.type.replaceAll("_", " "),
       start: l.startAt,
       end: l.endAt,
       color: l.type === "VACATION" ? "#228be6" : "#fab005",
@@ -90,15 +141,15 @@ export default function ApplyLeavePage() {
   }, [leaveData]);
 
   const onDateClick = (arg: DateClickArg) => {
-    setSelectedDate(arg.date);
+    setSelectedDate(arg.dateStr);
     setMode("request");
   };
 
-  function combineDateAndTime(date: Date, time: string) {
+  function combineDateAndTime(date: string, time: string) {
+    const [year, month, day] = date.split("-").map(Number);
     const [hours, minutes] = time.split(":").map(Number);
-    const combined = new Date(date);
-    combined.setHours(hours, minutes, 0, 0);
-    return combined;
+
+    return new Date(year, month - 1, day, hours, minutes, 0, 0);
   }
 
   async function handleSubmitLeave() {
@@ -107,11 +158,16 @@ export default function ApplyLeavePage() {
     setSuccessMessage("");
 
     try {
-      if (!selectedDate || !reason)
+      if (!selectedDate || !reason) {
         throw new Error("Please select a date and reason.");
+      }
 
       const startAt = combineDateAndTime(selectedDate, startTime);
       const endAt = combineDateAndTime(selectedDate, endTime);
+
+      if (endAt <= startAt) {
+        throw new Error("End time must be after start time.");
+      }
 
       const response = await fetch(`/api/staff/${staffId}/leave`, {
         method: "POST",
@@ -124,13 +180,17 @@ export default function ApplyLeavePage() {
         }),
       });
 
-      if (!response.ok) throw new Error("Failed to submit request.");
+      if (!response.ok) {
+        throw new Error("Failed to submit request.");
+      }
 
       setSuccessMessage("Leave request submitted successfully.");
       setMode("balances");
       setComments("");
-    } catch (error: any) {
-      setErrorMessage(error.message);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Something went wrong.",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -138,88 +198,135 @@ export default function ApplyLeavePage() {
 
   if (loading && leaveData.length === 0) {
     return (
-      <Container py="xl" ta="center">
-        <Loader size="xl" />
+      <Container size="sm" py="xl">
+        <Stack align="center" py="xl">
+          <Loader size="lg" />
+          <Text c="dimmed">Loading your leave data...</Text>
+        </Stack>
       </Container>
     );
   }
 
   return (
-    <Container size="xl" py="xl">
-      <Title order={2} mb="lg">
-        Your Schedule
-      </Title>
+    <Container size="xl" py="md">
+      <Stack gap="md">
+        <Stack gap={4}>
+          <Title order={2}>Your Schedule</Title>
+          <Text c="dimmed" size="sm">
+            View time off, check balances, and submit leave requests.
+          </Text>
+        </Stack>
 
-      <Group align="flex-start" gap="xl" wrap="nowrap">
-        <Box style={{ flex: 1, minWidth: 720 }}>
-          <Card withBorder radius="md" p="md">
-            <FullCalendar
-              plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-              initialView="dayGridMonth"
-              headerToolbar={{
-                left: "prev,next title",
-                right: "dayGridMonth,timeGridWeek,timeGridDay",
-              }}
-              height="auto"
-              events={calendarEvents}
-              dateClick={onDateClick}
-              selectable
-            />
+        {(errorMessage || successMessage) && (
+          <Stack gap="xs">
+            {errorMessage && <Alert color="red">{errorMessage}</Alert>}
+            {successMessage && <Alert color="green">{successMessage}</Alert>}
+          </Stack>
+        )}
+
+        {isMobile && (
+          <SegmentedControl
+            fullWidth
+            radius="md"
+            value={mode}
+            onChange={(value) => setMode(value as Mode)}
+            data={[
+              { label: "Balances", value: "balances" },
+              { label: "Request", value: "request" },
+            ]}
+          />
+        )}
+
+        <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md" verticalSpacing="md">
+          <Card withBorder radius="md" p={{ base: "sm", sm: "md" }}>
+            <Stack gap="sm">
+              <Group justify="space-between" wrap="wrap">
+                <Text fw={700}>Calendar</Text>
+                <Text size="sm" c="dimmed">
+                  Tap a date to request leave
+                </Text>
+              </Group>
+
+              <Box
+                style={{
+                  overflowX: "auto",
+                }}
+              >
+                <Box
+                  style={{
+                    minWidth: isMobile ? 0 : 0,
+                  }}
+                >
+                  <FullCalendar
+                    plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+                    initialView="dayGridMonth"
+                    headerToolbar={{
+                      left: "prev,next",
+                      center: "title",
+                      right: isMobile
+                        ? "dayGridMonth,timeGridWeek"
+                        : "dayGridMonth,timeGridWeek,timeGridDay",
+                    }}
+                    height="auto"
+                    events={calendarEvents}
+                    dateClick={onDateClick}
+                    selectable
+                    dayMaxEventRows={isMobile ? 2 : 3}
+                  />
+                </Box>
+              </Box>
+            </Stack>
           </Card>
-        </Box>
 
-        <Box style={{ width: 380, minWidth: 320 }}>
-          {errorMessage && (
-            <Alert color="red" mb="md">
-              {errorMessage}
-            </Alert>
-          )}
-          {successMessage && (
-            <Alert color="green" mb="md">
-              {successMessage}
-            </Alert>
-          )}
+          <Stack gap="md">
+            {mode === "balances" ? (
+              <BalancesCard
+                balances={[
+                  { policy: "Vacation Remaining", hours: vacationBalance },
+                  { policy: "Sick Used", hours: sickHoursUsed },
+                ]}
+                onRequest={() => setMode("request")}
+              />
+            ) : (
+              <LeaveRequestCard
+                selectedDate={selectedDate}
+                setSelectedDate={setSelectedDate}
+                leaveType={leaveType}
+                setLeaveType={setLeaveType}
+                reason={reason}
+                setReason={setReason}
+                startTime={startTime}
+                setStartTime={setStartTime}
+                endTime={endTime}
+                setEndTime={setEndTime}
+                comments={comments}
+                setComments={setComments}
+                hoursScheduled={hoursScheduled}
+                hoursAvailable={reason === "VACATION" ? vacationBalance : 40}
+                onPrevious={() => setMode("balances")}
+                onSubmit={handleSubmitLeave}
+                submitting={submitting}
+                isMobile={!!isMobile}
+              />
+            )}
 
-          {mode === "balances" ? (
-            <BalancesCard
-              balances={[
-                { policy: "VAC_HRLY_BC (Remaining)", hours: vacationBalance },
-                {
-                  policy: "SICK_HOURLY_BC (Used)",
-                  hours:
-                    leaveData.filter((l) => l.type.includes("SICK")).length * 8,
-                },
-              ]}
-              onRequest={() => setMode("request")}
-            />
-          ) : (
-            <LeaveRequestCard
-              selectedDate={selectedDate}
-              setSelectedDate={setSelectedDate}
-              leaveType={leaveType}
-              setLeaveType={setLeaveType}
-              reason={reason}
-              setReason={setReason}
-              startTime={startTime}
-              setStartTime={setStartTime}
-              endTime={endTime}
-              setEndTime={setEndTime}
-              comments={comments}
-              setComments={setComments}
-              hoursScheduled={hoursScheduled}
-              hoursAvailable={reason === "VACATION" ? vacationBalance : 40}
-              onPrevious={() => setMode("balances")}
-              onSubmit={handleSubmitLeave}
-              submitting={submitting}
-            />
-          )}
-        </Box>
-      </Group>
+            <Card withBorder radius="md" p="lg">
+              <Stack gap={6}>
+                <Text fw={700}>Quick info</Text>
+                <Text size="sm" c="dimmed">
+                  Vacation is calculated from your remaining balance. Sick and
+                  personal leave availability can be adjusted to match your
+                  policy rules later.
+                </Text>
+              </Stack>
+            </Card>
+          </Stack>
+        </SimpleGrid>
+      </Stack>
     </Container>
   );
 }
 
-// Keeping your EXACT button and table styles below
 function BalancesCard({
   balances,
   onRequest,
@@ -229,43 +336,46 @@ function BalancesCard({
 }) {
   return (
     <Card withBorder radius="md" p="lg">
-      <Button size="md" radius="md" onClick={onRequest} mb="md">
-        Request time off
-      </Button>
-      <Divider my="md" />
-      <Text fw={800} mb="sm">
-        Time Off Balances
-      </Text>
-      <Table withRowBorders withTableBorder highlightOnHover>
-        <Table.Thead>
-          <Table.Tr>
-            <Table.Th>Time Off Policy</Table.Th>
-            <Table.Th style={{ textAlign: "right" }}>Balance</Table.Th>
-          </Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>
-          {balances.map((b) => (
-            <Table.Tr key={b.policy}>
-              <Table.Td>{b.policy}</Table.Td>
-              <Table.Td style={{ textAlign: "right" }}>
-                <Text fw={700}>{b.hours.toFixed(2)} hours</Text>
-              </Table.Td>
+      <Stack gap="md">
+        <Group justify="space-between" align="center">
+          <Text fw={800}>Time Off Balances</Text>
+          <Button size="sm" radius="md" onClick={onRequest}>
+            Request time off
+          </Button>
+        </Group>
+
+        <Divider />
+
+        <Table withRowBorders withTableBorder highlightOnHover>
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th>Policy</Table.Th>
+              <Table.Th style={{ textAlign: "right" }}>Balance</Table.Th>
             </Table.Tr>
-          ))}
-        </Table.Tbody>
-      </Table>
+          </Table.Thead>
+          <Table.Tbody>
+            {balances.map((b) => (
+              <Table.Tr key={b.policy}>
+                <Table.Td>{b.policy}</Table.Td>
+                <Table.Td style={{ textAlign: "right" }}>
+                  <Text fw={700}>{b.hours.toFixed(2)} hours</Text>
+                </Table.Td>
+              </Table.Tr>
+            ))}
+          </Table.Tbody>
+        </Table>
+      </Stack>
     </Card>
   );
 }
 
-function LeaveRequestCard(props: any) {
+function LeaveRequestCard(props: LeaveRequestCardProps) {
   return (
     <Card withBorder radius="md" p="lg">
-      <Title order={3} mb="md">
-        Leave Request
-      </Title>
       <Stack gap="md">
-        <Group grow align="flex-start">
+        <Title order={3}>Leave Request</Title>
+
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
           <Box>
             <Text fw={700} mb={6}>
               Date
@@ -276,13 +386,14 @@ function LeaveRequestCard(props: any) {
               minDate={new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)}
             />
           </Box>
+
           <Box>
             <Text fw={700} mb={6}>
               Reason
             </Text>
             <Select
               value={props.reason}
-              onChange={props.setReason}
+              onChange={(value) => props.setReason(value as LeaveReason | null)}
               data={[
                 { value: "PAID_SICK", label: "Paid Sick" },
                 { value: "UNPAID_SICK", label: "Unpaid Sick" },
@@ -291,21 +402,25 @@ function LeaveRequestCard(props: any) {
               ]}
             />
           </Box>
-        </Group>
-        <Group grow align="flex-start">
+        </SimpleGrid>
+
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
           <Box>
             <Text fw={700} mb={6}>
               Type
             </Text>
             <Select
               value={props.leaveType}
-              onChange={props.setLeaveType}
+              onChange={(value) =>
+                props.setLeaveType(value as LeaveDuration | null)
+              }
               data={[
                 { value: "FULL_DAY", label: "Full Day" },
                 { value: "HALF_DAY", label: "Half Day" },
               ]}
             />
           </Box>
+
           <Box>
             <Text fw={700} mb={6}>
               Comments
@@ -314,10 +429,12 @@ function LeaveRequestCard(props: any) {
               value={props.comments}
               onChange={(e) => props.setComments(e.currentTarget.value)}
               minRows={4}
+              autosize
             />
           </Box>
-        </Group>
-        <Group grow>
+        </SimpleGrid>
+
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
           <Box>
             <Text fw={700} mb={6}>
               Start time
@@ -327,6 +444,7 @@ function LeaveRequestCard(props: any) {
               onChange={(e) => props.setStartTime(e.currentTarget.value)}
             />
           </Box>
+
           <Box>
             <Text fw={700} mb={6}>
               End time
@@ -336,61 +454,57 @@ function LeaveRequestCard(props: any) {
               onChange={(e) => props.setEndTime(e.currentTarget.value)}
             />
           </Box>
-        </Group>
-        <Group grow>
-          <Box>
-            <Text fw={700} mb={6}>
-              Hours Scheduled
-            </Text>
-            <Card
-              withBorder
-              radius="md"
-              p="md"
-              style={{ background: "#868e96" }}
-            >
-              <Text c="white" fw={800} ta="center">
-                {props.hoursScheduled} hours
-              </Text>
-            </Card>
-          </Box>
-          <Box>
-            <Text fw={700} mb={6}>
-              Hours Available
-            </Text>
-            <Card
-              withBorder
-              radius="md"
-              p="md"
-              style={{ background: "#868e96" }}
-            >
-              <Text c="white" fw={800} ta="center">
-                {props.hoursAvailable.toFixed(1)} hours
-              </Text>
-            </Card>
-          </Box>
-        </Group>
-        <Group justify="space-between" mt="sm">
+        </SimpleGrid>
+
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+          <InfoTile
+            label="Hours Scheduled"
+            value={`${props.hoursScheduled} hours`}
+          />
+          <InfoTile
+            label="Hours Available"
+            value={`${props.hoursAvailable.toFixed(1)} hours`}
+          />
+        </SimpleGrid>
+
+        <Group grow={props.isMobile} justify="space-between" mt="sm">
           <Button
-            size="lg"
+            size="md"
             radius="md"
-            color="green"
+            variant="default"
             onClick={props.onPrevious}
-            styles={{ root: { width: 160, height: 56, fontWeight: 800 } }}
+            fullWidth={props.isMobile}
           >
-            Previous
+            Back
           </Button>
+
           <Button
-            size="lg"
+            size="md"
             radius="md"
             color="dark"
             onClick={props.onSubmit}
             loading={props.submitting}
-            styles={{ root: { width: 160, height: 56, fontWeight: 800 } }}
+            fullWidth={props.isMobile}
           >
-            Submit
+            Submit Request
           </Button>
         </Group>
       </Stack>
     </Card>
+  );
+}
+
+function InfoTile({ label, value }: { label: string; value: string }) {
+  return (
+    <Box>
+      <Text fw={700} mb={6}>
+        {label}
+      </Text>
+      <Card withBorder radius="md" p="md" bg="gray.1">
+        <Text fw={800} ta="center">
+          {value}
+        </Text>
+      </Card>
+    </Box>
   );
 }

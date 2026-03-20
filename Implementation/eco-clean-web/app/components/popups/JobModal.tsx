@@ -86,7 +86,7 @@ type JobNoteInput = {
 
 type AppointmentForm = {
   id: string;
-  startDate: Date | null;
+  startDate: string | null;
   startTime: string;
   endTime: string;
   staffId: string[];
@@ -116,18 +116,6 @@ type JobFormValuesWithRecurrence = {
   lineItems: LineItem[];
 };
 
-function jsDateToHHmm(d: Date) {
-  if (!(d instanceof Date) || Number.isNaN(d.getTime())) return "";
-  const dt = DateTime.fromJSDate(d, { zone: APP_TZ });
-  return dt.isValid ? dt.toFormat("HH:mm") : "";
-}
-
-export function toYMD(d: Date | null) {
-  if (!d) return "";
-  const dt = DateTime.fromJSDate(d, { zone: APP_TZ });
-  return dt.isValid ? dt.toFormat("yyyy-LL-dd") : "";
-}
-
 type AppointmentApiPayload = {
   date: string;
   startTime: string | null;
@@ -137,6 +125,23 @@ type AppointmentApiPayload = {
   images?: Array<{ url: string; fileKey?: string | null }>;
 };
 
+function jsDateToHHmm(d: Date) {
+  if (!(d instanceof Date) || Number.isNaN(d.getTime())) return "";
+  const dt = DateTime.fromJSDate(d, { zone: APP_TZ });
+  return dt.isValid ? dt.toFormat("HH:mm") : "";
+}
+
+export function toYMD(d: string | null) {
+  if (!d) return "";
+
+  const iso = DateTime.fromISO(d, { zone: APP_TZ });
+  if (iso.isValid) return iso.toFormat("yyyy-LL-dd");
+
+  const local = DateTime.fromFormat(d, "yyyy-LL-dd", { zone: APP_TZ });
+  if (local.isValid) return local.toFormat("yyyy-LL-dd");
+
+  return "";
+}
 const mapAppt = (appt: AppointmentForm): AppointmentApiPayload => {
   const date = toYMD(appt.startDate);
 
@@ -153,6 +158,17 @@ const mapAppt = (appt: AppointmentForm): AppointmentApiPayload => {
         }))
       : undefined,
   };
+};
+
+const isMeaningfulAppointment = (appt: AppointmentForm) => {
+  return !!(
+    appt.startDate ||
+    appt.startTime.trim() ||
+    appt.endTime.trim() ||
+    appt.staffId.length ||
+    appt.notes.trim() ||
+    appt.uploadedImages.length
+  );
 };
 
 function blankJobNote(): JobNoteInput {
@@ -205,10 +221,8 @@ function buildInitialValues(
       {
         ...blankAppointment(),
         startDate: selectedInfo?.start
-          ? new Date(
-              selectedInfo.start.getFullYear(),
-              selectedInfo.start.getMonth(),
-              selectedInfo.start.getDate(),
+          ? DateTime.fromJSDate(selectedInfo.start, { zone: APP_TZ }).toFormat(
+              "yyyy-LL-dd",
             )
           : null,
         startTime: selectedInfo?.start ? jsDateToHHmm(selectedInfo.start) : "",
@@ -408,6 +422,8 @@ export default function NewJobModal({
   };
 
   const addAppointment = () => {
+    if (form.values.jobType === "RECURRING") return;
+
     form.setFieldValue("appointments", [
       ...form.values.appointments,
       blankAppointment(),
@@ -458,7 +474,8 @@ export default function NewJobModal({
     const endDT = endStr ? DateTime.fromISO(endStr, { zone: APP_TZ }) : null;
     if (!startDT.isValid) return;
 
-    const startDate = new Date(startDT.year, startDT.month - 1, startDT.day);
+    const startDate = startDT.toFormat("yyyy-LL-dd");
+    form.setFieldValue("appointments.0.startDate", startDate);
     const startTime = allDay ? "09:00" : startDT.toFormat("HH:mm");
     const endTime = allDay
       ? "11:00"
@@ -466,7 +483,6 @@ export default function NewJobModal({
         ? endDT.toFormat("HH:mm")
         : "";
 
-    form.setFieldValue("appointments.0.startDate", startDate);
     form.setFieldValue("appointments.0.startTime", startTime);
     form.setFieldValue("appointments.0.endTime", endTime);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -490,15 +506,45 @@ export default function NewJobModal({
   }, [form.values.jobType, form.values.recurrence.endType]);
 
   const handleSubmit = async (values: JobFormValuesWithRecurrence) => {
+    form.clearErrors();
+
     const visitInstructions =
       values.visitInstructions && values.visitInstructions.trim().length
         ? values.visitInstructions.trim()
         : undefined;
 
-    const appointments =
+    const visibleAppointments =
       values.jobType === "RECURRING"
-        ? [mapAppt(values.appointments[0])]
-        : values.appointments.map(mapAppt);
+        ? [values.appointments[0]]
+        : values.appointments.filter(isMeaningfulAppointment);
+
+    const appointments = visibleAppointments.map(mapAppt);
+
+    for (const [index, appt] of appointments.entries()) {
+      if (!appt.date) {
+        form.setFieldError(
+          `appointments.${index}.startDate`,
+          "Date is required",
+        );
+        return;
+      }
+
+      if (!values.isAnytime && !appt.startTime?.trim()) {
+        form.setFieldError(
+          `appointments.${index}.startTime`,
+          "Start time is required",
+        );
+        return;
+      }
+
+      if (!values.isAnytime && !appt.endTime?.trim()) {
+        form.setFieldError(
+          `appointments.${index}.endTime`,
+          "End time is required",
+        );
+        return;
+      }
+    }
 
     const notes = values.notes
       .filter(
@@ -697,11 +743,7 @@ export default function NewJobModal({
                       radius="xl"
                       color="red"
                       variant="filled"
-                      style={{
-                        position: "absolute",
-                        top: 4,
-                        right: 4,
-                      }}
+                      style={{ position: "absolute", top: 4, right: 4 }}
                       onClick={() => removeNoteImage(index, img.fileKey)}
                       disabled={isBusy}
                     >
@@ -738,11 +780,7 @@ export default function NewJobModal({
               placeholder="Date"
               key={form.key(`appointments.${index}.startDate`)}
               {...form.getInputProps(`appointments.${index}.startDate`)}
-              minDate={
-                form.values.appointments?.[0]?.startDate instanceof Date
-                  ? form.values.appointments[0].startDate
-                  : undefined
-              }
+              minDate={form.values.appointments?.[0]?.startDate ?? undefined}
             />
           </Grid.Col>
 
@@ -1069,10 +1107,7 @@ export default function NewJobModal({
                           )
                         }
                         minDate={
-                          form.values.appointments?.[0]?.startDate instanceof
-                          Date
-                            ? form.values.appointments[0].startDate
-                            : undefined
+                          form.values.appointments?.[0]?.startDate ?? undefined
                         }
                       />
                     </Grid.Col>
@@ -1087,7 +1122,7 @@ export default function NewJobModal({
                 leftSection={<IoAddOutline />}
                 size="xs"
                 type="button"
-                disabled={isBusy}
+                disabled={isBusy || form.values.jobType === "RECURRING"}
                 onClick={addAppointment}
               >
                 Add Appointment
