@@ -37,7 +37,8 @@ import { Dropzone } from "@mantine/dropzone";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { DateTime } from "luxon";
 import { useParams, useRouter } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSession } from "next-auth/react";
 import {
   IoArrowBackOutline,
   IoCallOutline,
@@ -136,6 +137,9 @@ const Page = () => {
   const params = useParams<{ id: string }>();
   const appointmentId = params?.id;
 
+  const { data: session, status: sessionStatus } = useSession();
+  const myStaffId = session?.user?.id;
+
   const [imgOpened, setImgOpened] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [visitNote, setVisitNote] = useState("");
@@ -144,12 +148,14 @@ const Page = () => {
     { url: string; fileKey: string }[]
   >([]);
   const [nowMs, setNowMs] = useState(Date.now());
+
   const setTitle = useStaffUiStore((s) => s.setTitle);
   const setBack = useStaffUiStore((s) => s.setBack);
   const setOnBack = useStaffUiStore((s) => s.setOnBack);
   const setOnRefresh = useStaffUiStore((s) => s.setOnRefresh);
   const setRefreshing = useStaffUiStore((s) => s.setRefreshing);
   const resetTopBar = useStaffUiStore((s) => s.resetTopBar);
+
   const qc = useQueryClient();
   const { startUpload, isUploading } = useUploadThing("appointmentImages");
 
@@ -159,33 +165,30 @@ const Page = () => {
     error,
   } = useAppointmentDetails(appointmentId);
 
-  const {
-    data: aiTaskAssistant,
-    isLoading: isAssistantLoading,
-    isFetching: isAssistantFetching,
-  } = useQuery<TaskAssistantResponse>({
-    queryKey: ["ai-task-assistant", appointmentId],
-    queryFn: async () => {
-      const res = await fetch(
-        `/api/ai/appointments/${appointmentId}/task-assistant`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            mode: "plan",
-            includePreviousVisit: true,
-          }),
-        },
-      );
+  const { data: aiTaskAssistant, isLoading: isAssistantLoading } =
+    useQuery<TaskAssistantResponse>({
+      queryKey: ["ai-task-assistant", appointmentId],
+      queryFn: async () => {
+        const res = await fetch(
+          `/api/ai/appointments/${appointmentId}/task-assistant`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              mode: "plan",
+              includePreviousVisit: true,
+            }),
+          },
+        );
 
-      if (!res.ok) {
-        throw new Error("Failed to load AI task assistant");
-      }
+        if (!res.ok) {
+          throw new Error("Failed to load AI task assistant");
+        }
 
-      return res.json();
-    },
-    enabled: !!appointmentId,
-  });
+        return res.json();
+      },
+      enabled: !!appointmentId,
+    });
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -202,14 +205,19 @@ const Page = () => {
   };
 
   const saveVisitNoteMutation = useMutation({
-    mutationFn: async () =>
-      await saveVisitNote(appointment!.id, {
+    mutationFn: async () => {
+      if (!appointment?.id) {
+        throw new Error("Missing appointment");
+      }
+
+      return saveVisitNote(appointment.id, {
         content: visitNote,
         images: uploadedVisitImages.map((img) => ({
           url: img.url,
           fileKey: img.fileKey,
         })),
-      }),
+      });
+    },
     onSuccess: (updated) => {
       refreshAppointment(updated);
       setVisitNote("");
@@ -217,39 +225,59 @@ const Page = () => {
       setUploadedVisitImages([]);
       showLocalNotification("Visit note saved", "/staff/tasks");
     },
-    onError: () => {
-      showLocalNotification("Failed to save note", "/staff/tasks");
+    onError: (error: any) => {
+      showLocalNotification(
+        error?.message || "Failed to save note",
+        "/staff/tasks",
+      );
     },
   });
 
   const startMutation = useMutation({
-    mutationFn: () =>
-      startAppointment(appointment!.id, appointment?.staff?.[0]?.id),
+    mutationFn: () => {
+      if (!appointment?.id || !myStaffId) {
+        throw new Error("Missing appointment or staff id");
+      }
+      return startAppointment(appointment.id, myStaffId);
+    },
     onSuccess: (updated) => {
       refreshAppointment(updated);
       showLocalNotification("Job started", `/staff/tasks/${appointment!.id}`);
     },
-    onError: () => {
-      showLocalNotification("Failed to start job", "/staff/tasks");
+    onError: (error: any) => {
+      showLocalNotification(
+        error?.message || "Failed to start job",
+        "/staff/tasks",
+      );
     },
   });
 
   const pauseMutation = useMutation({
-    mutationFn: () => pauseAppointment(appointment!.id),
+    mutationFn: () => {
+      if (!appointment?.id || !myStaffId) {
+        throw new Error("Missing appointment or staff id");
+      }
+      return pauseAppointment(appointment.id, myStaffId);
+    },
     onSuccess: (updated) => {
       refreshAppointment(updated);
       showLocalNotification("Job paused", `/staff/tasks/${appointment!.id}`);
     },
-    onError: () => {
+    onError: (error: any) => {
       showLocalNotification(
-        "Job pause failed",
+        error?.message || "Job pause failed",
         `/staff/tasks/${appointment!.id}`,
       );
     },
   });
 
   const completeMutation = useMutation({
-    mutationFn: () => completeAppointment(appointment!.id),
+    mutationFn: () => {
+      if (!appointment?.id || !myStaffId) {
+        throw new Error("Missing appointment or staff id");
+      }
+      return completeAppointment(appointment.id);
+    },
     onSuccess: (updated) => {
       refreshAppointment(updated);
       showLocalNotification(
@@ -257,9 +285,9 @@ const Page = () => {
         `/staff/tasks/${appointment!.id}`,
       );
     },
-    onError: () => {
+    onError: (error: any) => {
       showLocalNotification(
-        "Job completion failed",
+        error?.message || "Job completion failed",
         `/staff/tasks/${appointment!.id}`,
       );
     },
@@ -337,9 +365,15 @@ const Page = () => {
   const notes = appointment.job.notes;
   const fullAddress = formatAddress(appointment.job.address);
 
-  const sessions = appointment.workSessions ?? [];
-  const isRunning = sessions.some((s: WorkSession) => !s.endedAt);
-  const elapsedSeconds = getElapsedSeconds(sessions, nowMs);
+  const allSessions = appointment.workSessions ?? [];
+
+  const mySessions = allSessions.filter(
+    (s: WorkSession & { staffId?: string }) => s.staffId === myStaffId,
+  );
+
+  const isAnyoneRunning = allSessions.some((s: WorkSession) => !s.endedAt);
+  const isRunning = mySessions.some((s: WorkSession) => !s.endedAt);
+  const elapsedSeconds = getElapsedSeconds(mySessions, nowMs);
 
   const scheduledSeconds = Math.max(
     0,
@@ -351,6 +385,7 @@ const Page = () => {
   );
 
   const overtimeSeconds = Math.max(0, elapsedSeconds - scheduledSeconds);
+  const remainingSeconds = Math.max(0, scheduledSeconds - elapsedSeconds);
 
   const progressPct =
     scheduledSeconds > 0
@@ -358,6 +393,29 @@ const Page = () => {
       : 0;
 
   const isOvertime = elapsedSeconds > scheduledSeconds;
+
+  const activeStaffIds = new Set(
+    allSessions.filter((s: any) => !s.endedAt).map((s: any) => s.staffId),
+  );
+
+  const assignedStaff = appointment.assignments ?? [];
+
+  const canAct =
+    sessionStatus !== "loading" &&
+    !!myStaffId &&
+    appointment.status !== "COMPLETED" &&
+    appointment.status !== "CANCELLED";
+
+  const getMemberState = (staffId: string) => {
+    const memberSessions = allSessions.filter(
+      (s: any) => s.staffId === staffId,
+    );
+    const isActive = memberSessions.some((s: any) => !s.endedAt);
+
+    if (isActive) return "Running";
+    if (memberSessions.length > 0) return "Paused";
+    return "Not started";
+  };
 
   return (
     <Container p={0} bg="#f5f6f7" mih="100vh">
@@ -389,7 +447,7 @@ const Page = () => {
       </Drawer>
 
       <Stack gap="sm" p="md">
-        <Card radius={HERO_RADIUS} withBorder shadow="xs" p={HERO_PADDING}>
+        <Card radius={HERO_RADIUS} withBorder p={HERO_PADDING}>
           <Group justify="space-between" align="start" mb="sm">
             <Box>
               <Text fw={700} size="lg">
@@ -403,7 +461,7 @@ const Page = () => {
             <Badge
               size="lg"
               radius="md"
-              color={appointment.job.type === "ONE_OFF" ? "green" : "blue"}
+              color={appointment.job.type === "ONE_OFF" ? "lime" : "blue"}
               variant="filled"
             >
               {appointment.job.type === "ONE_OFF" ? "ONE OFF" : "RECURRING"}
@@ -413,25 +471,46 @@ const Page = () => {
           <Text size="sm" c={isRunning ? "green" : "dimmed"} fw={600}>
             {appointment.status === "COMPLETED"
               ? "Completed"
-              : isRunning
-                ? "Currently running"
-                : "Paused / not started"}
+              : appointment.status === "CANCELLED"
+                ? "Cancelled"
+                : isRunning
+                  ? "You are clocked in"
+                  : isAnyoneRunning
+                    ? "Another staff member is working"
+                    : "Not started"}
           </Text>
 
-          <Stack gap={0} align="center" my="md">
-            <Text fw={800} fz={44} lh={1}>
-              {formatSeconds(elapsedSeconds)}
-            </Text>
-            <Text fw={700} fz={34} lh={1.1}>
-              {formatSeconds(scheduledSeconds)}
+          <Stack gap={4} align="center" my="md">
+            <Box ta="center">
+              <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
+                Remaining
+              </Text>
+              <Text fw={800} fz={44} lh={1}>
+                {formatSeconds(remainingSeconds)}
+              </Text>
+            </Box>
+
+            <Text size="sm" c="dimmed">
+              {formatSeconds(elapsedSeconds)} used /{" "}
+              {formatSeconds(scheduledSeconds)} scheduled
             </Text>
           </Stack>
 
-          <Progress value={progressPct} radius="xl" />
+          <Progress
+            value={progressPct}
+            animated={isRunning}
+            color="lime"
+            radius="xl"
+          />
+
           <Text mt={6} fw={600} size="xs" c={isOvertime ? "red" : "dimmed"}>
-            {isOvertime
-              ? `Overtime by ${formatSeconds(overtimeSeconds)}`
-              : `${progressPct}% of scheduled duration used`}
+            {appointment.status === "COMPLETED"
+              ? "Appointment completed"
+              : appointment.status === "CANCELLED"
+                ? "Appointment cancelled"
+                : isOvertime
+                  ? `Overtime by ${formatSeconds(overtimeSeconds)}`
+                  : `${progressPct}% of scheduled duration used`}
           </Text>
 
           <Flex
@@ -444,8 +523,8 @@ const Page = () => {
               background: "#f8f9fa",
             }}
           >
-            <Group gap="xs" align="flex-start">
-              <ThemeIcon variant="light" radius="md" color="green">
+            <Group gap="xs" align="center">
+              <ThemeIcon variant="light" radius="md" color="lime">
                 <IoTimeOutline size={16} />
               </ThemeIcon>
               <Box>
@@ -459,7 +538,7 @@ const Page = () => {
             </Group>
 
             <Group gap="xs" align="flex-start">
-              <ThemeIcon variant="light" radius="md" color="green">
+              <ThemeIcon variant="light" radius="md" color="lime">
                 <IoTimeOutline size={16} />
               </ThemeIcon>
               <Box>
@@ -478,10 +557,9 @@ const Page = () => {
           <Button
             leftSection={<IoPlayOutline />}
             radius="md"
-            size="md"
-            color="green"
+            color="lime"
             fullWidth
-            disabled={isRunning || appointment.status === "COMPLETED"}
+            disabled={!canAct || isRunning}
             loading={startMutation.isPending}
             onClick={() => startMutation.mutate()}
           >
@@ -491,10 +569,9 @@ const Page = () => {
           <Button
             leftSection={<IoPauseOutline />}
             radius="md"
-            size="md"
             color="lime"
             fullWidth
-            disabled={!isRunning || appointment.status === "COMPLETED"}
+            disabled={!canAct || !isRunning}
             loading={pauseMutation.isPending}
             onClick={() => pauseMutation.mutate()}
           >
@@ -506,7 +583,7 @@ const Page = () => {
           radius="md"
           color="blue"
           fullWidth
-          disabled={appointment.status === "COMPLETED"}
+          disabled={!canAct}
           loading={completeMutation.isPending}
           onClick={() => completeMutation.mutate()}
         >
@@ -514,7 +591,7 @@ const Page = () => {
         </Button>
 
         {isAssistantLoading ? (
-          <Card radius={CARD_RADIUS} withBorder shadow="xs" p={CARD_PADDING}>
+          <Card radius={CARD_RADIUS} withBorder p={CARD_PADDING}>
             <Group gap="sm">
               <Loader size="sm" />
               <Text size="sm" c="dimmed">
@@ -526,7 +603,53 @@ const Page = () => {
           <AiTaskAssistantCard data={aiTaskAssistant} />
         ) : null}
 
-        <Card radius={CARD_RADIUS} withBorder shadow="xs" p={CARD_PADDING}>
+        <Card radius="md" withBorder p="md">
+          <Group mb="sm" gap="xs">
+            <ThemeIcon radius="md" variant="light" color="teal">
+              <IoPersonOutline size={16} />
+            </ThemeIcon>
+            <Text fw={700} size="sm">
+              Team Activity
+            </Text>
+          </Group>
+
+          <Stack gap="xs">
+            <Text size="xs" c="dimmed">
+              {activeStaffIds.size} of {assignedStaff.length} active
+            </Text>
+
+            {assignedStaff.map((assignment: any) => {
+              const member = assignment.staff;
+              const isMe = member.id === myStaffId;
+              const memberState = getMemberState(member.id);
+
+              return (
+                <Group key={member.id} justify="space-between">
+                  <Text size="sm" fw={isMe ? 700 : 500}>
+                    {member.name} {isMe ? "(You)" : ""}
+                  </Text>
+
+                  <Badge
+                    size="sm"
+                    radius="md"
+                    color={
+                      memberState === "Running"
+                        ? "green"
+                        : memberState === "Paused"
+                          ? "yellow"
+                          : "gray"
+                    }
+                    variant="light"
+                  >
+                    {memberState}
+                  </Badge>
+                </Group>
+              );
+            })}
+          </Stack>
+        </Card>
+
+        <Card radius={CARD_RADIUS} withBorder p={CARD_PADDING}>
           <Group mb="sm" gap="xs">
             <ThemeIcon radius="md" variant="light" color="teal">
               <IoLocationOutline size={16} />
@@ -559,7 +682,7 @@ const Page = () => {
               href={buildDirectionsUrl(appointment.job.address)}
               leftSection={<IoMapOutline />}
               radius="md"
-              color="green"
+              color="lime"
             >
               Directions
             </Button>
@@ -570,7 +693,7 @@ const Page = () => {
           </Text>
         </Card>
 
-        <Card radius={CARD_RADIUS} withBorder shadow="xs" p={CARD_PADDING}>
+        <Card radius={CARD_RADIUS} withBorder p={CARD_PADDING}>
           <Group mb="sm" gap="xs">
             <ThemeIcon radius="md" variant="light" color="blue">
               <IoPersonOutline size={16} />
@@ -600,7 +723,7 @@ const Page = () => {
             <Button
               component="a"
               radius="md"
-              color="green"
+              color="lime"
               leftSection={<IoCallOutline />}
               href={phone ? `tel:${phone}` : undefined}
               disabled={!phone}
@@ -621,7 +744,7 @@ const Page = () => {
           </Group>
         </Card>
 
-        <Card radius={CARD_RADIUS} withBorder shadow="xs" p={CARD_PADDING}>
+        <Card radius={CARD_RADIUS} withBorder p={CARD_PADDING}>
           <Group mb="sm" gap="xs">
             <ThemeIcon radius="md" variant="light" color="grape">
               <IoDocumentTextOutline size={16} />
@@ -697,7 +820,7 @@ const Page = () => {
           </Stack>
         </Card>
 
-        <Card radius={CARD_RADIUS} withBorder shadow="xs" p={CARD_PADDING}>
+        <Card radius={CARD_RADIUS} withBorder p={CARD_PADDING}>
           <Group mb="sm" gap="xs">
             <ThemeIcon radius="md" variant="light" color="orange">
               <IoDocumentTextOutline size={16} />
@@ -750,7 +873,7 @@ const Page = () => {
           </Stack>
         </Card>
 
-        <Card radius={CARD_RADIUS} withBorder shadow="xs" p={CARD_PADDING}>
+        <Card radius={CARD_RADIUS} withBorder p={CARD_PADDING}>
           <Group mb="sm" gap="xs">
             <ThemeIcon radius="md" variant="light" color="orange">
               <IoDocumentTextOutline size={16} />

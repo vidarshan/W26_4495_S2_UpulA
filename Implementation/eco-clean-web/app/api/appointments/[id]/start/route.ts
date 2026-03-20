@@ -79,9 +79,14 @@ export async function POST(
       if (appointment.status === "CANCELLED") {
         throw new Error("Cancelled appointment cannot be started");
       }
+      const myActiveSession = appointment.workSessions.find(
+        (session) => session.staffId === staffId,
+      );
 
-      if (appointment.workSessions.length > 0) {
-        throw new Error("Appointment is already running");
+      if (myActiveSession) {
+        throw new Error(
+          "You already have an active session for this appointment",
+        );
       }
 
       if (staffId) {

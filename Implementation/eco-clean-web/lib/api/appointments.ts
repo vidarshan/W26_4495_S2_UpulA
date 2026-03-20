@@ -100,9 +100,11 @@ export async function startAppointment(id: string, staffId?: string) {
   return json;
 }
 
-export async function pauseAppointment(id: string) {
+export async function pauseAppointment(id: string, staffId?: string) {
   const res = await fetch(`/api/appointments/${id}/pause`, {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ staffId }),
   });
 
   const json = await res.json().catch(() => null);

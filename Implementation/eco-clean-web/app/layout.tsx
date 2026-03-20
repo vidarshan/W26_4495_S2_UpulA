@@ -48,7 +48,7 @@ export default function RootLayout({
         <ColorSchemeScript />
       </head>
       <body className={`${comicNeue.variable} antialiased`}>
-        <MantineProvider theme={{ defaultRadius: "md", primaryColor: "green" }}>
+        <MantineProvider theme={{ defaultRadius: "md", primaryColor: "lime" }}>
           <Notifications position="top-right" />
           <QueryProvider>
             <PWARegister />

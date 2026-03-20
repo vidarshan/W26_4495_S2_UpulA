@@ -10,6 +10,7 @@ import {
   Flex,
   Group,
   Loader,
+  SegmentedControl,
   Stack,
   Text,
   ThemeIcon,
@@ -123,22 +124,23 @@ const Page = () => {
     ? DateTime.fromISO(selectedDate, { zone: APP_TZ })
     : DateTime.now().setZone(APP_TZ);
 
-  const filteredTasks = tasks.filter((task) => {
+  const dayTasks = tasks.filter((task) => {
     const taskDate = DateTime.fromISO(task.startTime).setZone(APP_TZ);
-    const isSameDay = taskDate.hasSame(selected, "day");
-
-    if (!isSameDay) return false;
-
-    if (value === "completed") return task.status === "COMPLETED";
-    return task.status !== "COMPLETED";
+    return taskDate.hasSame(selected, "day");
   });
 
-  const upcomingCount = filteredTasks.filter(
-    (t) => t.status !== "SCHEDULED",
+  const upcomingCount = dayTasks.filter(
+    (t) => t.status === "SCHEDULED" || t.status === "LATE",
   ).length;
-  const completedCount = filteredTasks.filter(
+
+  const completedCount = dayTasks.filter(
     (t) => t.status === "COMPLETED",
   ).length;
+
+  const filteredTasks = dayTasks.filter((task) => {
+    if (value === "completed") return task.status === "COMPLETED";
+    return task.status === "SCHEDULED" || task.status === "LATE";
+  });
 
   if (error) {
     return (
@@ -153,7 +155,7 @@ const Page = () => {
       <AppointmentReminderWatcher appointments={tasks} />
       <LocalNotificationDemo />
       <Stack gap="md" p="md">
-        <Card radius="lg" withBorder p="lg">
+        <Card radius="lg" withBorder p="sm">
           <Group justify="space-between" align="start">
             <Box>
               <Title order={3}>My Tasks</Title>
@@ -161,10 +163,6 @@ const Page = () => {
                 {selected.toFormat("cccc, LLL d")}
               </Text>
             </Box>
-
-            <ThemeIcon radius="lg" size="lg" variant="light" color="green">
-              <IoCheckmarkCircleOutline size={18} />
-            </ThemeIcon>
           </Group>
 
           <Group mt="md" grow>
@@ -203,22 +201,16 @@ const Page = () => {
             />
           </Center>
         </Card>
-        <Group gap="sm">
-          <Chip.Group
-            multiple={false}
-            value={value}
-            onChange={(v) => setValue(v || "upcoming")}
-          >
-            <Group gap="sm">
-              <Chip radius="md" size="md" value="upcoming">
-                Upcoming
-              </Chip>
-              <Chip radius="md" size="md" value="completed">
-                Completed
-              </Chip>
-            </Group>
-          </Chip.Group>
-        </Group>
+        <SegmentedControl
+          value={value}
+          color="lime"
+          radius="md"
+          onChange={(v) => setValue(v || "upcoming")}
+          data={[
+            { value: "upcoming", label: "Upcoming" },
+            { value: "completed", label: "Completed" },
+          ]}
+        />
 
         <Stack gap="md">
           {isLoading ? (
