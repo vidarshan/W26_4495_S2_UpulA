@@ -1,4 +1,40 @@
 AI: ChatGPT 5.3 Plus
+Prompt: Improving appointment API structure and handling updates for scheduling, status, and staff assignments
+Value Addition: Helped refine backend logic for more consistent data handling and improved reliability of appointment updates
+
+AI: ChatGPT 5.3 Plus
+Prompt: Debugging Prisma migration failure related to enum conflicts during deployment
+Value Addition: Identified root cause of migration error and guided resolution for successful deployment
+
+AI: ChatGPT 5.3 Plus
+Prompt: Resolving type mismatch issues between Mantine DatePicker and application state handling
+Value Addition: Clarified type expectations and improved integration between UI components and data handling
+
+AI: ChatGPT 5.3 Plus
+Prompt: Designing and structuring AI task assistant response format for actionable insights
+Value Addition: Provided structured schema for AI outputs including prioritization, time planning, and risk evaluation
+
+AI: ChatGPT 5.3 Plus
+Prompt: Improving UI design for AI insights section and refining visual balance and gradients
+Value Addition: Suggested design improvements for cleaner, more user-friendly presentation of AI-generated content
+
+AI: ChatGPT 5.3 Plus
+Prompt: Connecting application to OpenAI API and planning integration of AI-driven insights
+Value Addition: Guided integration approach and helped structure how AI features can be incorporated into the system
+
+AI: ChatGPT 5.3 Plus
+Prompt: Understanding proper usage of TanStack Query and Zustand for state management
+Value Addition: Highlighted inconsistencies in current implementation and suggested more structured data flow patterns
+
+AI: ChatGPT 5.3 Plus
+Prompt: Resolving Next.js error related to using useQuery in a server component
+Value Addition: Explained client vs server component boundaries and corrected data-fetching approach
+
+AI: ChatGPT 5.3 Plus
+Prompt: Improving form validation logic and handling edge cases in user input
+Value Addition: Strengthened validation approach to improve data consistency and reduce input errors
+
+AI: ChatGPT 5.3 Plus
 Prompt: Designing automated email reminder system for scheduled appointments
 Value Addition: Helped structure reminder architecture and scheduling logic for automated notifications
 

@@ -1,3 +1,20 @@
+-- Progress Report 5 --
+2026-03-17	9:30–12:30pm	Worked on appointment API improvements, including handling scheduling updates, status changes, staff assignments, and notes
+2026-03-17	1:30–2:30pm	Investigated Prisma migration failure and resolved enum conflict issue during Vercel deployment
+
+2026-03-18	10:00–12:30pm	Refined calendar implementation, explored Mantine vs FullCalendar, and resolved date handling/type issues
+2026-03-18	1:30–2:30pm	Adjusted UI styling to better match Mantine theme and improve visual consistency
+
+2026-03-19	10:00–12:00pm	Worked on AI task assistant UI, structuring outputs and improving how insights are displayed
+2026-03-19	1:00–2:00pm	Iterated on AI section design (gradients, layout, visual balance) for better dashboard integration
+
+2026-03-20	10:00–11:00am	Attended project meeting to discuss progress, issues, and next steps
+2026-03-20	11:30am–1:30pm	Explored OpenAI integration and planned how to incorporate AI insights into the application
+
+2026-03-21	10:00–11:30am	Improved form validation and handled edge cases for user input consistency
+2026-03-21	11:30am–1:00pm	Reviewed application architecture, focusing on API structure, TanStack Query usage, and Zustand state management
+2026-03-21	1:30–2:30pm	Debugged client/server boundary issue related to data fet
+
 -- Progress Report 4 --
 2026-03-08 10:00-11:30am Designed backend reminder architecture and planned automated email notification workflow
 2026-03-08 11:30-1:00pm Implemented reminder logic to evaluate upcoming appointments and determine notification thresholds
