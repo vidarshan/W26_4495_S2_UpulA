@@ -369,7 +369,7 @@ export default function DashboardClient() {
               <Button
                 size="sm"
                 radius="md"
-                variant="light"
+                variant="filled"
                 leftSection={<IoRefreshSharp />}
                 onClick={() => calendarRef.current?.getApi().refetchEvents()}
               >
@@ -442,8 +442,8 @@ export default function DashboardClient() {
               const color = statusValue ? colors[statusValue] : undefined;
 
               if (color) {
-                info.el.style.backgroundColor = color;
-                info.el.style.borderColor = color;
+                info.el.style.backgroundColor = `${color}CC`;
+                info.el.style.borderColor = `${color}CC`;
               }
 
               info.el.style.borderRadius = "8px";

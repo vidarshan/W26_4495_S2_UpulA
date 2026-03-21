@@ -66,11 +66,24 @@ export async function GET(
           },
           orderBy: { createdAt: "asc" },
         },
-        notes: true,
+        notes: {
+          orderBy: { createdAt: "desc" },
+        },
         images: true,
         workSessions: {
           orderBy: { startedAt: "asc" },
+          include: {
+            staff: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+              },
+            },
+          },
         },
+        appointmentAiInsight: true,
         job: {
           include: {
             client: true,
