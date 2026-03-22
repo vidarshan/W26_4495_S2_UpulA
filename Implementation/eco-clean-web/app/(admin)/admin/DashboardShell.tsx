@@ -256,7 +256,7 @@ export default function DashboardShell({
               <NavLink
                 onClick={() => setOpened(false)}
                 component={Link}
-                href="/admin/staff-profile"
+                href="/admin/manage-staff"
                 bdrs="md"
                 leftSection={<IoPeopleSharp />}
                 active={pathname.startsWith("/admin/staff-profile")}

@@ -19,11 +19,13 @@ import {
 import { useState, useEffect } from 'react';
 import { generateBiweeklyPeriods } from '@/lib/actions/periods';
 import { IoCalendarOutline, IoTimeOutline } from 'react-icons/io5';
+import { useRouter } from 'next/navigation';
 
 export default function ManagePayPeriodsPage() {
   const [loading, setLoading] = useState(false);
   const [periods, setPeriods] = useState<any[]>([]);
   const [fetching, setFetching] = useState(true);
+  const router = useRouter();
 
   // 1. Fetch existing periods to display in the table
   const fetchPeriods = async () => {
@@ -115,7 +117,7 @@ export default function ManagePayPeriodsPage() {
                         </Badge>
                       </Table.Td>
                       <Table.Td ta="right">
-                        <Button variant="subtle" size="xs">Edit</Button>
+                        <Button variant="subtle" size="xs" onClick={()=> router.push('/admin/pay-periods')}>Edit</Button>
                       </Table.Td>
                     </Table.Tr>
                   ))
