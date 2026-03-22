@@ -22,6 +22,8 @@ import {
   IoCloseOutline,
   IoPersonOutline,
   IoTimeOutline,
+  IoClipboardOutline,
+  IoCashOutline
 } from "react-icons/io5";
 
 type MenuItemProps = {
@@ -143,6 +145,32 @@ export default function StaffShell({
             leftSection={<IoPersonOutline />}
           >
             Profile
+          </Button>
+          <Button
+            component={Link}
+            variant="subtle"
+            href="/staff/enter-time"
+            radius="md"
+            fullWidth
+            justify="flex-start"
+            onClick={closeDrawer}
+            color="dark"
+            leftSection={<IoClipboardOutline />}
+          >
+            Your Time
+          </Button>
+          <Button
+            component={Link}
+            variant="subtle"
+            href="/staff/your-pay"
+            radius="md"
+            fullWidth
+            justify="flex-start"
+            onClick={closeDrawer}
+            color="dark"
+            leftSection={<IoCashOutline />}
+          >
+            Your Pay
           </Button>
           <Button
             component={Link}

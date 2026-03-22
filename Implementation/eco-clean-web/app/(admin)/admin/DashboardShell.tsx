@@ -28,6 +28,7 @@ import {
   IoPeopleOutline,
   IoPersonOutline,
   IoPersonCircleOutline,
+  IoPeopleSharp
 } from "react-icons/io5";
 import ClientPropertyModal from "../../components/popups/ClientModal";
 import NewJobModal from "../../components/popups/JobModal";
@@ -251,13 +252,13 @@ export default function DashboardShell({
               />
             </Tooltip>
 
-            <Tooltip label="Staff" position="right" withArrow>
+            <Tooltip label="Manage Staff" position="right" withArrow>
               <NavLink
                 onClick={() => setOpened(false)}
                 component={Link}
                 href="/admin/staff-profile"
                 bdrs="md"
-                leftSection={<IoPersonCircleOutline />}
+                leftSection={<IoPeopleSharp />}
                 active={pathname.startsWith("/admin/staff-profile")}
                 disabled={isSigningOut}
               />
