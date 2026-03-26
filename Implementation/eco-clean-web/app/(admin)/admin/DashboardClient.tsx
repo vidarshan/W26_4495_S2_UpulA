@@ -12,16 +12,20 @@ import {
   Paper,
   SegmentedControl,
   Select,
+  SimpleGrid,
+  Switch,
   Text,
   TextInput,
 } from "@mantine/core";
-import { useDebouncedValue } from "@mantine/hooks";
+import { DatePickerInput } from "@mantine/dates";
+import { useDebouncedValue, useMediaQuery } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import {
   DateSelectArg,
   EventClickArg,
   EventDropArg,
   EventInput,
+  EventMountArg,
   EventSourceFuncArg,
 } from "@fullcalendar/core";
 import dayGridPlugin from "@fullcalendar/daygrid";
@@ -44,13 +48,14 @@ import {
 import AppointmentInfoModal from "../../components/popups/AppointmentInfoModal";
 import ConfirmCancellationModal from "../../components/popups/ConfirmCancellationModal";
 import NewJobModal from "../../components/popups/JobModal";
-import { Staff } from "@/app/components/tables/ClientTable";
 import { useStaff } from "@/hooks/useStaff";
 import { rescheduleAppointment } from "@/lib/api/appointments";
 import { APP_TZ } from "@/lib/dateTime";
 import { useCalendarStore, useDashboardUI } from "@/stores/store";
+import { Staff } from "@/types";
 
 export default function DashboardClient() {
+  const isNarrow = useMediaQuery("(max-width: 62em)");
   const qc = useQueryClient();
   const calendarRef = useRef<FullCalendar | null>(null);
 
@@ -73,6 +78,14 @@ export default function DashboardClient() {
   const [calendarLoading, setCalendarLoading] = useState(false);
   const [view, setView] = useState("week");
   const [currentTitle, setCurrentTitle] = useState("");
+  const [weekends, setWeekends] = useState(true);
+  const [jumpDate, setJumpDate] = useState<string | null>(null);
+  const [visibleEventStats, setVisibleEventStats] = useState({
+    total: 0,
+    scheduled: 0,
+    completed: 0,
+    attention: 0,
+  });
 
   const STATUS_COLORS = {
     SCHEDULED: "#22c55e",
@@ -87,6 +100,33 @@ export default function DashboardClient() {
     CANCELLED: "Cancelled",
     LATE: "Late",
   };
+
+  const STAT_CARDS = [
+    {
+      key: "total",
+      label: "Visible appointments",
+      value: visibleEventStats.total,
+      tone: "default",
+    },
+    {
+      key: "scheduled",
+      label: "Scheduled",
+      value: visibleEventStats.scheduled,
+      tone: "scheduled",
+    },
+    {
+      key: "completed",
+      label: "Completed",
+      value: visibleEventStats.completed,
+      tone: "completed",
+    },
+    {
+      key: "attention",
+      label: "Needs attention",
+      value: visibleEventStats.attention,
+      tone: "attention",
+    },
+  ] as const;
 
   const { data: staffData } = useStaff({
     q: "",
@@ -185,6 +225,20 @@ export default function DashboardClient() {
     calendarRef.current?.getApi().refetchEvents();
   };
 
+  const changeView = (value: string) => {
+    setView(value);
+    const calendarApi = calendarRef.current?.getApi();
+
+    if (value === "month") calendarApi?.changeView("dayGridMonth");
+    if (value === "week") calendarApi?.changeView("timeGridWeek");
+    if (value === "day") calendarApi?.changeView("timeGridDay");
+  };
+
+  const jumpToDate = (value: string | null) => {
+    if (!value) return;
+    calendarRef.current?.getApi().gotoDate(value);
+  };
+
   const loadEvents = useCallback(
     (
       fetchInfo: EventSourceFuncArg,
@@ -230,8 +284,42 @@ export default function DashboardClient() {
     [debounced, status, assignee],
   );
 
+  const activeFilterCount = [status, assignee, debounced.trim()].filter(
+    Boolean,
+  ).length;
+
+  const handleEventDidMount = (info: EventMountArg) => {
+    const colors: Record<
+      "SCHEDULED" | "COMPLETED" | "CANCELLED" | "LATE",
+      string
+    > = {
+      SCHEDULED: "#16a34a",
+      COMPLETED: "#2563eb",
+      CANCELLED: "#dc2626",
+      LATE: "#d97706",
+    };
+
+    const statusValue = info.event.extendedProps.status as
+      | "SCHEDULED"
+      | "COMPLETED"
+      | "CANCELLED"
+      | "LATE"
+      | undefined;
+
+    const color = statusValue ? colors[statusValue] : "#334155";
+
+    info.el.dataset.status = statusValue?.toLowerCase() ?? "default";
+    info.el.style.setProperty("--calendar-event-accent", color);
+    info.el.style.backgroundColor = `${color}1A`;
+    info.el.style.borderColor = `${color}33`;
+    info.el.style.color = "#0f172a";
+    info.el.style.borderRadius = "14px";
+    info.el.style.padding = "0";
+    info.el.style.boxShadow = "none";
+  };
+
   return (
-    <Container fluid>
+    <Container fluid px={isNarrow ? "xs" : "md"}>
       <NewJobModal
         opened={newJobOpen}
         onClose={closeNewJob}
@@ -247,46 +335,34 @@ export default function DashboardClient() {
       <h1>Dashboard</h1>
 
       <Box>
-        <Paper mb="xs" p="md" radius="lg" withBorder>
+        <Paper
+          mb="xs"
+          p={{ base: "md", md: "lg" }}
+          radius="lg"
+          withBorder
+          className="calendar-command-center"
+        >
           <Flex
             justify="space-between"
             align={{ base: "stretch", md: "center" }}
             direction={{ base: "column", md: "row" }}
             gap="md"
-            mb="md"
+            mb="lg"
           >
             <Box>
-              <Text fw={700} size="lg">
+              <Text fw={800} size="xl">
                 {currentTitle}
               </Text>
               <Text size="sm" c="dimmed">
-                Manage appointments and switch calendar views
+                Manage appointments, scan workload, and adjust the schedule
+                directly from the calendar.
               </Text>
             </Box>
-
-            <SegmentedControl
-              value={view}
-              radius="xl"
-              h="fit-content"
-              onChange={(value) => {
-                setView(value);
-                const calendarApi = calendarRef.current?.getApi();
-
-                if (value === "month") calendarApi?.changeView("dayGridMonth");
-                if (value === "week") calendarApi?.changeView("timeGridWeek");
-                if (value === "day") calendarApi?.changeView("timeGridDay");
-              }}
-              data={[
-                { label: "Month", value: "month" },
-                { label: "Week", value: "week" },
-                { label: "Day", value: "day" },
-              ]}
-            />
 
             <Button.Group>
               <Button
                 variant="default"
-                radius="xl"
+                radius="lg"
                 leftSection={<IoArrowBackOutline />}
                 onClick={() => calendarRef.current?.getApi().prev()}
               >
@@ -294,29 +370,62 @@ export default function DashboardClient() {
               </Button>
               <Button
                 variant="default"
-                radius="xl"
+                radius="lg"
                 onClick={() => calendarRef.current?.getApi().today()}
               >
                 Today
               </Button>
               <Button
                 variant="default"
-                radius="xl"
+                radius="lg"
                 rightSection={<IoArrowForwardOutline />}
                 onClick={() => calendarRef.current?.getApi().next()}
               >
                 Next
               </Button>
             </Button.Group>
+            <SegmentedControl
+              value={view}
+              radius="lg"
+              size="sm"
+              color="lime"
+              h="fit-content"
+              onChange={changeView}
+              fullWidth={isNarrow}
+              data={[
+                { label: "Month", value: "month" },
+                { label: "Week", value: "week" },
+                { label: "Day", value: "day" },
+              ]}
+            />
           </Flex>
 
-          <Divider mb="md" />
+          <SimpleGrid cols={{ base: 1, sm: 2, xl: 4 }} spacing="md" mb="lg">
+            {STAT_CARDS.map((card) => (
+              <Paper
+                key={card.key}
+                radius="lg"
+                p="md"
+                withBorder
+                className={`calendar-stat-card calendar-stat-card--${card.tone}`}
+              >
+                <Text size="xs" tt="uppercase" fw={700} c="dimmed">
+                  {card.label}
+                </Text>
+                <Text mt={6} fw={800} size="1.9rem">
+                  {card.value}
+                </Text>
+              </Paper>
+            ))}
+          </SimpleGrid>
+
+          <Divider mb="lg" />
 
           <Flex
             justify="space-between"
             align={{ base: "stretch", md: "end" }}
             direction={{ base: "column", lg: "row" }}
-            gap="md"
+            gap="lg"
           >
             <Flex gap="sm" wrap="wrap" align="end" style={{ flex: 1 }}>
               <TextInput
@@ -324,7 +433,7 @@ export default function DashboardClient() {
                 placeholder="Search appointment, client, or job"
                 size="sm"
                 leftSection={<IoSearchSharp />}
-                style={{ minWidth: 240, flex: 1 }}
+                style={{ minWidth: isNarrow ? "100%" : 240, flex: 1 }}
                 value={search}
                 onChange={(e) => setSearch(e.currentTarget.value)}
               />
@@ -343,7 +452,7 @@ export default function DashboardClient() {
                 clearable
                 value={status}
                 onChange={setStatus}
-                style={{ minWidth: 170 }}
+                style={{ minWidth: isNarrow ? "calc(50% - 8px)" : 170 }}
               />
 
               <Select
@@ -361,14 +470,25 @@ export default function DashboardClient() {
                 searchable
                 value={assignee}
                 onChange={setAssignee}
-                style={{ minWidth: 180 }}
+                style={{ minWidth: isNarrow ? "calc(50% - 8px)" : 180 }}
+              />
+
+              <DatePickerInput
+                label="Jump to date"
+                placeholder="Pick a date"
+                clearable
+                value={jumpDate}
+                onChange={(value) => {
+                  setJumpDate(value);
+                  jumpToDate(value);
+                }}
+                style={{ minWidth: isNarrow ? "100%" : 180 }}
               />
             </Flex>
 
-            <Group justify="flex-end">
+            <Group justify="flex-end" align="end" wrap="wrap">
               <Button
                 size="sm"
-                radius="md"
                 variant="filled"
                 leftSection={<IoRefreshSharp />}
                 onClick={() => calendarRef.current?.getApi().refetchEvents()}
@@ -377,11 +497,26 @@ export default function DashboardClient() {
               </Button>
             </Group>
           </Flex>
+          <Group mt="sm">
+            <Switch
+              label="Show weekends"
+              checked={weekends}
+              radius="xl"
+              onChange={(event) => setWeekends(event.currentTarget.checked)}
+            />
+          </Group>
+          <Group mt="md" gap="sm">
+            <Badge radius="lg" variant="light" color="gray">
+              {activeFilterCount === 0
+                ? "No active filters"
+                : `${activeFilterCount} active filter${
+                    activeFilterCount > 1 ? "s" : ""
+                  }`}
+            </Badge>
 
-          <Group mt="md" gap="lg">
             {Object.entries(STATUS_COLORS).map(([statusKey, color]) => (
               <Group align="center" key={statusKey} gap={6}>
-                <Badge radius="sm" color={color} variant="filled">
+                <Badge radius="lg" color={color} variant="light">
                   {STATUS_LABELS[statusKey as keyof typeof STATUS_LABELS]}
                 </Badge>
               </Group>
@@ -397,72 +532,119 @@ export default function DashboardClient() {
             />
           )}
 
-          <FullCalendar
-            key={calendarKey}
-            ref={calendarRef}
-            timeZone={APP_TZ}
-            plugins={[
-              timeGridPlugin,
-              dayGridPlugin,
-              interactionPlugin,
-              luxonPlugin,
-            ]}
-            initialView="timeGridWeek"
-            headerToolbar={false}
-            editable
-            selectable
-            nowIndicator
-            allDaySlot={false}
-            eventDisplay="block"
-            loading={setCalendarLoading}
-            events={loadEvents}
-            select={handleDateSelect}
-            eventDrop={handleDateDrop}
-            eventResize={handleDateResize}
-            eventClick={handleEventClick}
-            datesSet={(arg) => setCurrentTitle(arg.view.title)}
-            eventDidMount={(info) => {
-              const colors: Record<
-                "SCHEDULED" | "COMPLETED" | "CANCELLED" | "LATE",
-                string
-              > = {
-                SCHEDULED: "#22c55e",
-                COMPLETED: "#3b82f6",
-                CANCELLED: "#ef4444",
-                LATE: "#f59e0b",
-              };
+          <Box className="professional-calendar professional-calendar--admin admin-calendar-shell">
+            <FullCalendar
+              key={calendarKey}
+              ref={calendarRef}
+              timeZone={APP_TZ}
+              plugins={[
+                timeGridPlugin,
+                dayGridPlugin,
+                interactionPlugin,
+                luxonPlugin,
+              ]}
+              initialView="timeGridWeek"
+              headerToolbar={false}
+              editable
+              selectable
+              selectMirror
+              nowIndicator
+              weekends={weekends}
+              allDaySlot={false}
+              eventDisplay="block"
+              stickyHeaderDates
+              expandRows
+              slotMinTime="06:00:00"
+              slotMaxTime="22:00:00"
+              scrollTime="08:00:00"
+              slotDuration="00:30:00"
+              dayMaxEvents={3}
+              businessHours={{
+                daysOfWeek: [1, 2, 3, 4, 5, 6],
+                startTime: "08:00",
+                endTime: "18:00",
+              }}
+              loading={setCalendarLoading}
+              events={loadEvents}
+              select={handleDateSelect}
+              eventDrop={handleDateDrop}
+              eventResize={handleDateResize}
+              eventClick={handleEventClick}
+              datesSet={(arg) => {
+                setCurrentTitle(arg.view.title);
+                setJumpDate(arg.start.toISOString().slice(0, 10));
+              }}
+              eventsSet={(events) => {
+                const stats = events.reduce(
+                  (acc, event) => {
+                    const eventStatus = event.extendedProps.status as
+                      | "SCHEDULED"
+                      | "COMPLETED"
+                      | "CANCELLED"
+                      | "LATE"
+                      | undefined;
 
-              const statusValue = info.event.extendedProps.status as
-                | "SCHEDULED"
-                | "COMPLETED"
-                | "CANCELLED"
-                | "LATE"
-                | undefined;
+                    acc.total += 1;
+                    if (eventStatus === "SCHEDULED") acc.scheduled += 1;
+                    if (eventStatus === "COMPLETED") acc.completed += 1;
+                    if (eventStatus === "CANCELLED" || eventStatus === "LATE") {
+                      acc.attention += 1;
+                    }
 
-              const color = statusValue ? colors[statusValue] : undefined;
+                    return acc;
+                  },
+                  { total: 0, scheduled: 0, completed: 0, attention: 0 },
+                );
 
-              if (color) {
-                info.el.style.backgroundColor = `${color}CC`;
-                info.el.style.borderColor = `${color}CC`;
+                setVisibleEventStats(stats);
+              }}
+              eventDidMount={handleEventDidMount}
+              dayHeaderFormat={
+                view === "month"
+                  ? { weekday: "short" }
+                  : { weekday: "short", month: "short", day: "numeric" }
               }
+              eventTimeFormat={{
+                hour: "numeric",
+                minute: "2-digit",
+                meridiem: "short",
+              }}
+              eventContent={(eventInfo) => {
+                const { title } = eventInfo.event;
+                const staffNames = eventInfo.event.extendedProps.staffNames;
+                const statusValue = eventInfo.event.extendedProps.status as
+                  | "SCHEDULED"
+                  | "COMPLETED"
+                  | "CANCELLED"
+                  | "LATE"
+                  | undefined;
+                const timeLabel = eventInfo.timeText;
 
-              info.el.style.borderRadius = "8px";
-              info.el.style.padding = "2px 4px";
-            }}
-            eventContent={(eventInfo) => {
-              const { title } = eventInfo.event;
-              const staffNames = eventInfo.event.extendedProps.staffNames;
-
-              return (
-                <div style={{ fontSize: 12 }}>
-                  <div style={{ fontWeight: 600 }}>{title}</div>
-                  {staffNames && (
-                    <div style={{ opacity: 0.8 }}>{staffNames}</div>
-                  )}
-                </div>
-              );
-            }}
-          />
+                return (
+                  <div className="calendar-event-card" style={{ fontSize: 12 }}>
+                    <div className="calendar-event-card__top">
+                      <div className="calendar-event-card__title">{title}</div>
+                      {statusValue && (
+                        <span className="calendar-event-card__status">
+                          {STATUS_LABELS[statusValue]}
+                        </span>
+                      )}
+                    </div>
+                    {timeLabel && (
+                      <div className="calendar-event-card__time">
+                        {timeLabel}
+                      </div>
+                    )}
+                    {staffNames && (
+                      <div className="calendar-event-card__staff">
+                        {staffNames}
+                      </div>
+                    )}
+                  </div>
+                );
+              }}
+            />
+          </Box>
         </Box>
       </Box>
     </Container>

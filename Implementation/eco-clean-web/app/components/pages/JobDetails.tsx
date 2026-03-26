@@ -25,7 +25,7 @@ import { IoPersonOutline, IoTextOutline } from "react-icons/io5";
 import { useQuery } from "@tanstack/react-query";
 import { useDebouncedValue } from "@mantine/hooks";
 import { getClients } from "@/lib/api/client";
-import { Client } from "../tables/ClientTable";
+import { AppointmentStatus, Client } from "@/types";
 
 const JobDetails = () => {
   const params = useParams();
@@ -193,7 +193,7 @@ const JobDetails = () => {
   if (isLoading) return <div>Loading...</div>;
 
   const renderAppointments = (
-    status: "SCHEDULED" | "CANCELLED" | "COMPLETED",
+    status: Exclude<AppointmentStatus, "LATE">,
   ) => {
     return job?.appointments
       .filter((appt) => appt.status === status)

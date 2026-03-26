@@ -257,22 +257,25 @@ export default function ApplyLeavePage() {
                     minWidth: isMobile ? 0 : 0,
                   }}
                 >
-                  <FullCalendar
-                    plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-                    initialView="dayGridMonth"
-                    headerToolbar={{
-                      left: "prev,next",
-                      center: "title",
-                      right: isMobile
-                        ? "dayGridMonth,timeGridWeek"
-                        : "dayGridMonth,timeGridWeek,timeGridDay",
-                    }}
-                    height="auto"
-                    events={calendarEvents}
-                    dateClick={onDateClick}
-                    selectable
-                    dayMaxEventRows={isMobile ? 2 : 3}
-                  />
+                  <Box className="professional-calendar professional-calendar--leave">
+                    <FullCalendar
+                      plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+                      initialView="dayGridMonth"
+                      headerToolbar={{
+                        left: "prev,next",
+                        center: "title",
+                        right: isMobile
+                          ? "dayGridMonth,timeGridWeek"
+                          : "dayGridMonth,timeGridWeek,timeGridDay",
+                      }}
+                      height="auto"
+                      events={calendarEvents}
+                      dateClick={onDateClick}
+                      selectable
+                      dayMaxEventRows={isMobile ? 2 : 3}
+                      eventDisplay="block"
+                    />
+                  </Box>
                 </Box>
               </Box>
             </Stack>

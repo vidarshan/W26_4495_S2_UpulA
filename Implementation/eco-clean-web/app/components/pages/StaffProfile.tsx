@@ -141,12 +141,12 @@ export default function StaffProfileDetailsCard() {
               <Title order={3}>{data.name}</Title>
 
               <Group gap="xs">
-                <Badge variant="filled" color="blue" radius="sm">
+                <Badge variant="filled" color="blue" radius="lg">
                   {data.role}
                 </Badge>
 
                 {profile?.position && (
-                  <Badge variant="outline" radius="sm">
+                  <Badge variant="outline" radius="lg">
                     {profile.position}
                   </Badge>
                 )}

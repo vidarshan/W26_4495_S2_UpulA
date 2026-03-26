@@ -1,7 +1,5 @@
-import { PaginatedResponse } from "@/app/types/api";
+import { PaginatedResponse, Staff, StaffRole, User } from "@/types";
 import { apiClient } from "./client";
-import { Staff } from "@/app/types/staff";
-import { User } from "@/types";
 
 export function getStaff(params?: {
   q?: string;
@@ -40,7 +38,7 @@ type UserPayload = {
   password?: string;
 };
 
-type Role = "ADMIN" | "STAFF";
+type Role = StaffRole;
 
 export function editUser(
   id: string,

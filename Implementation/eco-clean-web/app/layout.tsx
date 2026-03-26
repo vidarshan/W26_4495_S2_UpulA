@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Providers from "./providers/providers";
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
@@ -31,6 +31,14 @@ export const metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
+};
+
 const comicNeue = Comic_Neue({
   subsets: ["latin"],
   weight: ["300", "400", "700"],
@@ -48,7 +56,7 @@ export default function RootLayout({
         <ColorSchemeScript />
       </head>
       <body className={`${comicNeue.variable} antialiased`}>
-        <MantineProvider theme={{ defaultRadius: "md", primaryColor: "lime" }}>
+        <MantineProvider theme={{ defaultRadius: "lg", primaryColor: "lime" }}>
           <Notifications position="top-right" />
           <QueryProvider>
             <PWARegister />

@@ -1,4 +1,4 @@
-import { Job } from "@/types";
+import { Job, JobType, LineItem as SharedLineItem } from "@/types";
 import { apiClient } from "./client";
 
 export type CreateJobPayload = {
@@ -78,16 +78,7 @@ export interface JobFormValues {
   notes: string;
 }
 
-export interface LineItem {
-  id: string;
-  name: string;
-  quantity: number;
-  unitCost: number;
-  unitPrice: number;
-  description: string;
-}
-
-type JobType = "ONE_OFF" | "RECURRING";
+export type LineItem = SharedLineItem;
 
 export function createJob(data: CreateJobPayload) {
   return apiClient("/api/jobs", {

@@ -3,19 +3,17 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  ActionIcon,
-  Center,
   Flex,
   Group,
   Paper,
-  Stack,
   Text,
+  Box,
 } from "@mantine/core";
 import {
   IoCalendarClearOutline,
   IoCheckboxOutline,
-  IoMagnet,
   IoPersonOutline,
+  IoTimeOutline,
 } from "react-icons/io5";
 import { JSX } from "react";
 
@@ -26,9 +24,10 @@ type Tab = {
 };
 
 const TABS: Tab[] = [
-  { href: "/tasks", label: "Tasks", Icon: <IoCheckboxOutline /> },
-  { href: "/calendar", label: "Calendar", Icon: <IoCalendarClearOutline /> },
-  { href: "/profile", label: "Profile", Icon: <IoPersonOutline /> },
+  { href: "/staff/tasks", label: "Tasks", Icon: <IoCheckboxOutline /> },
+  { href: "/staff/apply-leave", label: "Time-off", Icon: <IoCalendarClearOutline /> },
+  { href: "/staff/enter-availability", label: "Hours", Icon: <IoTimeOutline /> },
+  { href: "/staff/profile", label: "Profile", Icon: <IoPersonOutline /> },
 ];
 
 export default function BottomBar() {
@@ -46,25 +45,25 @@ export default function BottomBar() {
         paddingBottom: "max(env(safe-area-inset-bottom), 10px)",
         zIndex: 2000,
       }}
+      className="staff-bottom-bar"
     >
-      <Group justify="space-around" py="xs">
+      <Group justify="space-around" py="xs" wrap="nowrap">
         {TABS.map(({ href, label, Icon }) => {
           const active =
             pathname === href || (href !== "/" && pathname?.startsWith(href));
 
           return (
-            <Flex
+            <Box
+              component={Link}
+              href={href}
               key={label}
-              gap={6}
-              align="center"
-              justify="center"
-              direction="column"
+              className={`staff-bottom-bar__item${active ? " staff-bottom-bar__item--active" : ""}`}
             >
-              <ActionIcon variant="light">{Icon}</ActionIcon>
-              <Text c="green" fw={800} size="xs">
+              <Box className="staff-bottom-bar__icon">{Icon}</Box>
+              <Text fw={700} size="xs" className="staff-bottom-bar__label">
                 {label}
               </Text>
-            </Flex>
+            </Box>
           );
         })}
       </Group>

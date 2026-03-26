@@ -1,5 +1,4 @@
-import { PaginatedResponse } from "@/app/types/api";
-import { Staff } from "@/app/types/staff";
+import { PaginatedResponse, SortOrder, Staff } from "@/types";
 import { getStaff } from "@/lib/api/users";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
@@ -7,7 +6,7 @@ type StaffParams = {
   q?: string;
   page?: number;
   limit?: number;
-  sort?: "newest" | "oldest";
+  sort?: SortOrder;
   paginate?: boolean;
 };
 
@@ -15,7 +14,7 @@ type StaffQueryKey = readonly [
   "staff",
   {
     q: string;
-    sort: "newest" | "oldest";
+    sort: SortOrder;
     paginate: boolean;
     page?: number;
     limit?: number;

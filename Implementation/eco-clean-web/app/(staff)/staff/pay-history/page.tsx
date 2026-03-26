@@ -71,19 +71,19 @@ export default function PayHistoryPage() {
   }
 
   return (
-    <Container fluid px="md" py="xl">
+    <Container fluid px="md" py="xl" className="staff-app-page">
       <Title order={2} ta="center" mb="xl">
         Manage Pay Periods
       </Title>
 
-      <Card withBorder radius="md" p="md">
+      <Card withBorder radius="lg" p="md" className="staff-app-surface">
         {isMobile ? (
           <Stack gap="md">
             {statements.length === 0 ? (
               <Text c="dimmed">No pay statements found.</Text>
             ) : (
               statements.map((s) => (
-                <Card key={s.id} withBorder radius="md" p="md">
+                <Card key={s.id} withBorder radius="lg" p="md" className="staff-app-surface">
                   <Stack gap="xs">
                     <Group justify="space-between">
                       <Text fw={700}>Pay Date</Text>

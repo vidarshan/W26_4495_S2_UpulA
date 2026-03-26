@@ -119,6 +119,15 @@ const Page = () => {
   }, []);
 
   const tasks: Appointment[] = data ?? [];
+  const appointmentDays = useMemo(
+    () =>
+      new Set(
+        tasks.map((task) =>
+          DateTime.fromISO(task.startTime).setZone(APP_TZ).toISODate(),
+        ),
+      ),
+    [tasks],
+  );
 
   const selected = selectedDate
     ? DateTime.fromISO(selectedDate, { zone: APP_TZ })
@@ -151,11 +160,11 @@ const Page = () => {
   }
 
   return (
-    <Container p={0}>
+    <Container p={0} className="staff-app-page">
       <AppointmentReminderWatcher appointments={tasks} />
       <LocalNotificationDemo />
       <Stack gap="md" p="md">
-        <Card radius="lg" withBorder p="sm">
+        <Card radius="lg" withBorder p="md" className="staff-app-surface staff-app-surface--hero">
           <Group justify="space-between" align="start">
             <Box>
               <Title order={3}>My Tasks</Title>
@@ -185,13 +194,17 @@ const Page = () => {
             </Box>
           </Group>
         </Card>
-        <Card radius="lg" withBorder>
+        <Card radius="lg" withBorder className="staff-app-surface">
           <Center>
             <MiniCalendar
+              className="staff-mini-calendar"
               numberOfDays={7}
               value={selectedDate}
               onChange={setSelectedDate}
               getDayProps={(date) => ({
+                className: appointmentDays.has(date)
+                  ? "staff-mini-calendar__day--has-appointments"
+                  : undefined,
                 style: {
                   color: [0, 6].includes(dayjs(date).day())
                     ? "var(--mantine-color-red-8)"
@@ -204,8 +217,9 @@ const Page = () => {
         <SegmentedControl
           value={value}
           color="lime"
-          radius="md"
+          radius="lg"
           onChange={(v) => setValue(v || "upcoming")}
+          className="staff-app-segmented"
           data={[
             { value: "upcoming", label: "Upcoming" },
             { value: "completed", label: "Completed" },
@@ -214,7 +228,7 @@ const Page = () => {
 
         <Stack gap="md">
           {isLoading ? (
-            <Card radius="lg" withBorder p="lg">
+            <Card radius="lg" withBorder p="lg" className="staff-app-surface">
               <Flex direction="column" align="center" justify="center" py="md">
                 <Loader size="sm" />
                 <Text size="sm" fw={600} mt="sm">
@@ -223,13 +237,13 @@ const Page = () => {
               </Flex>
             </Card>
           ) : error ? (
-            <Card radius="lg" withBorder p="lg">
+            <Card radius="lg" withBorder p="lg" className="staff-app-surface">
               <Text c="red" size="sm">
                 Failed to load tasks
               </Text>
             </Card>
           ) : filteredTasks.length === 0 ? (
-            <Card radius="lg" withBorder p="lg">
+            <Card radius="lg" withBorder p="lg" className="staff-app-surface">
               <Text c="dimmed">No tasks found for this section.</Text>
             </Card>
           ) : (
@@ -243,6 +257,7 @@ const Page = () => {
                   withBorder
                   radius="lg"
                   p="lg"
+                  className="staff-app-surface"
                   style={{ cursor: "pointer" }}
                   onClick={() => router.push(`/staff/tasks/${task.id}`)}
                 >

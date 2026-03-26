@@ -1,6 +1,5 @@
-import { Client, MetaData } from "@/app/components/tables/ClientTable";
+import { PaginatedResponse, Client, SortOrder } from "@/types";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
 
 export function useClients({
   query,
@@ -11,9 +10,9 @@ export function useClients({
   query: string;
   page: number;
   limit?: number;
-  sort: "newest" | "oldest";
+  sort: SortOrder;
 }) {
-  return useQuery({
+  return useQuery<PaginatedResponse<Client>>({
     queryKey: ["clients", { query, page, limit, sort }],
     queryFn: async () => {
       const params = new URLSearchParams();

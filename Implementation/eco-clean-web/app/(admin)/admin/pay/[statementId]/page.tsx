@@ -1,14 +1,16 @@
-'use client';
+"use client";
 
-import { Box, Button, Container, Group, Text, Title, Loader, Center, Alert } from '@mantine/core';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
-import { useRef, useEffect, useState } from 'react';
+import { Box, Button, Container, Group, Text, Title, Loader, Center, Alert } from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
+import { useRef, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { IoDownloadOutline } from 'react-icons/io5';
-import Image from 'next/image';
+import { IoDownloadOutline } from "react-icons/io5";
+import Image from "next/image";
 
 export default function PayStubPage() {
+  const isNarrow = useMediaQuery("(max-width: 62em)");
   const params = useParams();
   const statementId = params.statementId as string;
   const pdfRef = useRef<HTMLDivElement>(null);
@@ -68,14 +70,15 @@ export default function PayStubPage() {
 
   return (
     <Container size="lg" py="xl">
-      <Group justify="flex-end" mb="md">
-        <Button leftSection={<IoDownloadOutline size={18} />} onClick={handleDownloadPdf}>
+      <Group justify={isNarrow ? "stretch" : "flex-end"} mb="md">
+        <Button leftSection={<IoDownloadOutline size={18} />} onClick={handleDownloadPdf} fullWidth={isNarrow}>
           Download PDF
         </Button>
       </Group>
 
-      <Box ref={pdfRef} bg="white" p="xl" style={{ border: '1px solid #ddd', maxWidth: 900, margin: '0 auto' }}>
-        <Group justify="space-between" align="flex-start" mb="lg">
+      <Box style={{ overflowX: "auto" }}>
+        <Box ref={pdfRef} bg="white" p={isNarrow ? "md" : "xl"} style={{ border: '1px solid #ddd', maxWidth: 900, minWidth: isNarrow ? 680 : undefined, margin: '0 auto' }}>
+        <Group justify="space-between" align="flex-start" mb="lg" wrap="nowrap">
           <Box>
             <Box style={{ width: 90, height: 90, border: '2px solid #7cb342', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Image src="/logo.png" alt="Company Logo" width={80} height={80} />
@@ -118,6 +121,7 @@ export default function PayStubPage() {
             <Text fw={800} size="xl">Net Earnings</Text>
             <Text fw={800} size="xl">${data.summary.net.toFixed(2)}</Text>
           </Group>
+        </Box>
         </Box>
       </Box>
     </Container>

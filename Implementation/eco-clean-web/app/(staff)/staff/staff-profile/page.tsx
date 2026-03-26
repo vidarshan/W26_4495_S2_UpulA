@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import {
   ActionIcon,
@@ -16,15 +16,15 @@ import {
   Text,
   TextInput,
   Title,
-} from '@mantine/core';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+} from "@mantine/core";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
   IoCheckmarkOutline,
   IoCloseOutline,
   IoPencilOutline,
   IoSettingsOutline,
-} from 'react-icons/io5';
+} from "react-icons/io5";
 
 type EmergencyContact = {
   name: string;
@@ -56,34 +56,34 @@ export default function StaffProfilePage() {
 
   async function fetchProfile() {
     try {
-      const response = await fetch('/api/staff/me');
+      const response = await fetch("/api/staff/me");
       const result = await response.json();
 
       if (!response.ok || !result?.id) {
-        console.error('Invalid profile response:', result);
+        console.error("Invalid profile response:", result);
         return;
       }
 
       setStaff({
         id: result.id,
-        name: result.name ?? '',
+        name: result.name ?? "",
         staffIdDisplay:
           result.staffProfile?.staffId ?? result.id.slice(0, 8).toUpperCase(),
 
-        phone: result.phone ?? '',
+        phone: result.phone ?? "",
 
-        address: result.staffProfile?.staffAddress?.street1 ?? '',
-        postalCode: result.staffProfile?.staffAddress?.postalCode ?? '',
+        address: result.staffProfile?.staffAddress?.street1 ?? "",
+        postalCode: result.staffProfile?.staffAddress?.postalCode ?? "",
 
         emergencyContact: {
-          name: result.staffProfile?.emergencyContact?.name ?? '',
-          phoneNumber: result.staffProfile?.emergencyContact?.phoneNumber ?? '',
+          name: result.staffProfile?.emergencyContact?.name ?? "",
+          phoneNumber: result.staffProfile?.emergencyContact?.phoneNumber ?? "",
           relationship:
-            result.staffProfile?.emergencyContact?.relationship ?? '',
+            result.staffProfile?.emergencyContact?.relationship ?? "",
         },
       });
     } catch (error) {
-      console.error('Failed to load profile:', error);
+      console.error("Failed to load profile:", error);
     } finally {
       setLoading(false);
     }
@@ -95,8 +95,8 @@ export default function StaffProfilePage() {
     setSaving(true);
     try {
       const res = await fetch(`/api/staff/${staff.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           phone: staff.phone,
           address: staff.address,
@@ -107,12 +107,12 @@ export default function StaffProfilePage() {
 
       if (res.ok) {
         setIsEditing(false);
-        alert('Profile updated successfully!');
+        alert("Profile updated successfully!");
       } else {
-        alert('Failed to update profile.');
+        alert("Failed to update profile.");
       }
     } catch (error) {
-      alert('Error saving profile.');
+      alert("Error saving profile.");
     } finally {
       setSaving(false);
     }
@@ -123,7 +123,7 @@ export default function StaffProfilePage() {
       <Container
         size="lg"
         py="xl"
-        style={{ display: 'flex', justifyContent: 'center' }}
+        style={{ display: "flex", justifyContent: "center" }}
       >
         <Loader />
       </Container>
@@ -190,10 +190,10 @@ export default function StaffProfilePage() {
                 w={220}
                 h={220}
                 style={{
-                  borderRadius: '50%',
-                  display: 'grid',
-                  placeItems: 'center',
-                  border: '2px solid var(--mantine-color-blue-filled)',
+                  borderRadius: "50%",
+                  display: "grid",
+                  placeItems: "center",
+                  border: "2px solid var(--mantine-color-blue-filled)",
                 }}
               >
                 <Avatar size={200} radius={200} color="blue" variant="light">
@@ -233,24 +233,24 @@ export default function StaffProfilePage() {
 
       <Grid mt="xl" gutter="lg">
         <Grid.Col span={{ base: 12, sm: 6 }}>
-          <BigActionButton onClick={() => router.push('/staff/enter-time')}>
+          <BigActionButton onClick={() => router.push("/staff/enter-time")}>
             Enter Time
           </BigActionButton>
         </Grid.Col>
         <Grid.Col span={{ base: 12, sm: 6 }}>
-          <BigActionButton onClick={() => router.push('/staff/pay-history')}>
+          <BigActionButton onClick={() => router.push("/staff/pay-history")}>
             Pay Stubs
           </BigActionButton>
         </Grid.Col>
         <Grid.Col span={{ base: 12, sm: 6 }}>
           <BigActionButton
-            onClick={() => router.push('/staff/enter-availability')}
+            onClick={() => router.push("/staff/enter-availability")}
           >
             Availability
           </BigActionButton>
         </Grid.Col>
         <Grid.Col span={{ base: 12, sm: 6 }}>
-          <BigActionButton onClick={() => router.push('/staff/apply-leave')}>
+          <BigActionButton onClick={() => router.push("/staff/apply-leave")}>
             Apply Leave
           </BigActionButton>
         </Grid.Col>
@@ -337,13 +337,13 @@ function LabeledField({
     <Group gap="sm" align="stretch" wrap="nowrap">
       <Box w={140}>
         <Card
-          radius="sm"
+          radius="lg"
           p="sm"
           withBorder
           style={{
-            background: 'var(--mantine-color-blue-filled)',
-            color: 'var(--mantine-color-white)',
-            textAlign: 'center',
+            background: "var(--mantine-color-blue-filled)",
+            color: "var(--mantine-color-white)",
+            textAlign: "center",
           }}
         >
           <Text fw={700} size="sm">
@@ -355,7 +355,7 @@ function LabeledField({
         value={value}
         readOnly={readOnly}
         onChange={(e) => onChange?.(e.currentTarget.value)}
-        variant={readOnly ? 'default' : 'filled'}
+        variant={readOnly ? "default" : "filled"}
         styles={{ input: { height: 44 } }}
         w="100%"
       />
@@ -376,13 +376,13 @@ function ClickableLabeledField({
     <Group gap="sm" align="stretch" wrap="nowrap">
       <Box w={140}>
         <Card
-          radius="sm"
+          radius="lg"
           p="sm"
           withBorder
           style={{
-            background: 'var(--mantine-color-blue-filled)',
-            color: 'var(--mantine-color-white)',
-            textAlign: 'center',
+            background: "var(--mantine-color-blue-filled)",
+            color: "var(--mantine-color-white)",
+            textAlign: "center",
           }}
         >
           <Text fw={700} size="sm">
@@ -396,13 +396,13 @@ function ClickableLabeledField({
         styles={{
           root: {
             height: 44,
-            justifyContent: 'flex-start',
-            width: '100%',
+            justifyContent: "flex-start",
+            width: "100%",
             fontWeight: 400,
           },
         }}
       >
-        {value || 'Add emergency contact'}
+        {value || "Add emergency contact"}
       </Button>
     </Group>
   );

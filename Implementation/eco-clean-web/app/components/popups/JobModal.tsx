@@ -34,9 +34,7 @@ import { IoAddOutline, IoCloseOutline, IoImageOutline } from "react-icons/io5";
 import { createJob, CreateJobPayload, JobFormValues } from "@/lib/api/jobs";
 import { getClientAddresses, getClients } from "@/lib/api/client";
 import { getStaff } from "@/lib/api/users";
-import { Staff } from "@/app/types/staff";
-import { Client } from "../tables/ClientTable";
-import { CalendarSelection } from "@/types";
+import { CalendarSelection, Client, Staff } from "@/types";
 import { DateTime } from "luxon";
 import { APP_TZ } from "@/lib/dateTime";
 import { useUploadThing } from "@/lib/uploadthing";
@@ -859,6 +857,12 @@ export default function NewJobModal({
       closeOnClickOutside={!isBusy}
       closeOnEscape={!isBusy}
       withCloseButton={!isBusy}
+      classNames={{
+        content: "app-modal__content",
+        header: "app-modal__header",
+        title: "app-modal__title",
+        body: "app-modal__body",
+      }}
     >
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Stack gap="sm">

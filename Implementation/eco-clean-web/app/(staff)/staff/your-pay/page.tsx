@@ -36,8 +36,11 @@ export default function YourPayPage() {
     async function fetchPayData() {
       try {
         // Use session ID or the hardcoded dev ID
-        const userId = session?.user?.id || "3b32d468-9f20-4808-9f25-bffabed6a9cb";
-        const response = await fetch(`/api/staff/${userId}/pay-statements/latest`);
+        const userId =
+          session?.user?.id || "3b32d468-9f20-4808-9f25-bffabed6a9cb";
+        const response = await fetch(
+          `/api/staff/${userId}/pay-statements/latest`,
+        );
 
         if (!response.ok) throw new Error("Failed to fetch");
 
@@ -53,18 +56,29 @@ export default function YourPayPage() {
   }, [session]);
 
   if (loading) {
-    return <Center h="100vh"><Loader size="xl" color="#125f82" /></Center>;
+    return (
+      <Center h="100vh">
+        <Loader size="xl" color="#125f82" />
+      </Center>
+    );
   }
 
   if (!data) {
-    return <Center h="100vh"><Text>No pay statement found.</Text></Center>;
+    return (
+      <Center h="100vh">
+        <Text>No pay statement found.</Text>
+      </Center>
+    );
   }
 
   // 2. Mapping dynamic data from the API response
   const earningsBreakdown = [
     { label: "Regular Amount", value: data.details?.regularAmount || 0 },
     { label: "OT Amount", value: data.details?.otAmount || 0 },
-    { label: "Transport Allowance", value: data.details?.transportAllowance || 0 },
+    {
+      label: "Transport Allowance",
+      value: data.details?.transportAllowance || 0,
+    },
   ];
 
   const deductionBreakdown = [
@@ -80,12 +94,16 @@ export default function YourPayPage() {
 
   return (
     <Container size="lg" py="xl">
-      <Title ta="center" mb="xl">Your Pay</Title>
+      <Title ta="center" mb="xl">
+        Your Pay
+      </Title>
 
       <Grid align="start" gutter="xl">
         <Grid.Col span={{ base: 12, md: 6 }}>
           <Card radius="md" p="xl" bg="transparent" withBorder={false}>
-            <Title order={2} ta="center" c="dimmed" mb="md">Gross Pay</Title>
+            <Title order={2} ta="center" c="dimmed" mb="md">
+              Gross Pay
+            </Title>
             <Box h={360}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -100,7 +118,10 @@ export default function YourPayPage() {
                     labelLine={false}
                   >
                     {data.chartData.map((entry: any, index: number) => (
-                      <Cell key={entry.name} fill={COLORS[index % COLORS.length]} />
+                      <Cell
+                        key={entry.name}
+                        fill={COLORS[index % COLORS.length]}
+                      />
                     ))}
                   </Pie>
                   <Tooltip />
@@ -113,13 +134,32 @@ export default function YourPayPage() {
 
         <Grid.Col span={{ base: 12, md: 6 }}>
           <Stack gap="xl">
-            <SummaryBlock title="Gross Earnings" total={gross} items={earningsBreakdown} />
-            <SummaryBlock title="Total Deductions" total={totalDeductions} items={deductionBreakdown} />
+            <SummaryBlock
+              title="Gross Earnings"
+              total={gross}
+              items={earningsBreakdown}
+            />
+            <SummaryBlock
+              title="Total Deductions"
+              total={totalDeductions}
+              items={deductionBreakdown}
+            />
 
-            <Card radius="sm" p="sm" style={{ backgroundColor: "#e9ecef", border: "1px solid #dee2e6" }}>
+            <Card
+              radius="lg"
+              p="sm"
+              style={{
+                backgroundColor: "#e9ecef",
+                border: "1px solid #dee2e6",
+              }}
+            >
               <Group justify="space-between">
-                <Text fw={700} size="lg">Net Earnings</Text>
-                <Text fw={700} size="lg">${net.toFixed(2)}</Text>
+                <Text fw={700} size="lg">
+                  Net Earnings
+                </Text>
+                <Text fw={700} size="lg">
+                  ${net.toFixed(2)}
+                </Text>
               </Group>
             </Card>
           </Stack>
@@ -130,8 +170,16 @@ export default function YourPayPage() {
         <Button
           size="lg"
           radius="md"
-          styles={{ root: { minWidth: 320, height: 58, backgroundColor: "#125f82", fontSize: "1.1rem", fontWeight: 500 } }}
-          onClick={() => window.open('/pay')}
+          styles={{
+            root: {
+              minWidth: 320,
+              height: 58,
+              backgroundColor: "#125f82",
+              fontSize: "1.1rem",
+              fontWeight: 500,
+            },
+          }}
+          onClick={() => window.open("/pay")}
         >
           Download Current Statements
         </Button>
@@ -139,7 +187,15 @@ export default function YourPayPage() {
         <Button
           size="lg"
           radius="md"
-          styles={{ root: { minWidth: 320, height: 58, backgroundColor: "#125f82", fontSize: "1.1rem", fontWeight: 500 } }}
+          styles={{
+            root: {
+              minWidth: 320,
+              height: 58,
+              backgroundColor: "#125f82",
+              fontSize: "1.1rem",
+              fontWeight: 500,
+            },
+          }}
         >
           Download Past Statements
         </Button>
@@ -148,13 +204,29 @@ export default function YourPayPage() {
   );
 }
 
-function SummaryBlock({ title, total, items }: { title: string; total: number; items: { label: string; value: number }[] }) {
+function SummaryBlock({
+  title,
+  total,
+  items,
+}: {
+  title: string;
+  total: number;
+  items: { label: string; value: number }[];
+}) {
   return (
     <Box>
-      <Card radius="sm" p="sm" style={{ backgroundColor: "#e9ecef", border: "1px solid #dee2e6" }}>
+      <Card
+        radius="lg"
+        p="sm"
+        style={{ backgroundColor: "#e9ecef", border: "1px solid #dee2e6" }}
+      >
         <Group justify="space-between">
-          <Text fw={700} size="lg">{title}</Text>
-          <Text fw={700} size="lg">${total.toFixed(2)}</Text>
+          <Text fw={700} size="lg">
+            {title}
+          </Text>
+          <Text fw={700} size="lg">
+            ${total.toFixed(2)}
+          </Text>
         </Group>
       </Card>
       <Stack gap={8} mt="sm" px="sm">

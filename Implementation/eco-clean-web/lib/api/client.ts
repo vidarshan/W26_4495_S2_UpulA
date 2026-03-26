@@ -1,6 +1,4 @@
-import { Client } from "@/app/components/tables/ClientTable";
-import { ListResponse } from "@/app/types/api";
-import { Address } from "@/types";
+import { Address, Client, ListResponse, PaginatedResponse, Staff } from "@/types";
 
 export type CreateClientPayload = {
   title?: string;
@@ -55,19 +53,7 @@ export type GetClientsParams = {
   limit?: number;
 };
 
-export interface ApiListResponse<T> {
-  data: T[];
-}
-
-export interface ClientsResponse {
-  data: Client[];
-  meta: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
-}
+export type ClientsResponse = PaginatedResponse<Client>;
 
 export interface AddressResponse {
   id: string;
@@ -76,12 +62,7 @@ export interface AddressResponse {
   province: string;
 }
 
-export interface StaffResponse {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-}
+export type StaffResponse = Pick<Staff, "id" | "name" | "email" | "role">;
 
 type ApiClientOptions<TBody = unknown> = Omit<RequestInit, "body"> & {
   body?: TBody;

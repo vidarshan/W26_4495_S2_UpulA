@@ -117,7 +117,7 @@ model Appointment {
   notes                VisitNote[]
   workSessions         AppointmentWorkSession[]
   assignments          Assignment[]
-  appointmentAiInsight AppointmentAiInsight?
+  appointmentAiInsights AppointmentAiInsight[]
 
   @@index([jobId])
   @@index([startTime])
@@ -418,7 +418,7 @@ model PayStatement {
 
 model AppointmentAiInsight {
   id            String   @id @default(uuid())
-  appointmentId String   @unique
+  appointmentId String
   type          String
   model         String?
   promptVersion String?
@@ -428,7 +428,9 @@ model AppointmentAiInsight {
 
   appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
 
+  @@unique([appointmentId, type])
   @@index([appointmentId])
+  @@index([type])
 }
 
 enum JobNoteCategory {

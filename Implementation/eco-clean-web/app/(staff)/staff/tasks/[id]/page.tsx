@@ -418,7 +418,7 @@ const Page = () => {
   };
 
   return (
-    <Container p={0} bg="#f5f6f7" mih="100vh">
+    <Container p={0} mih="100vh" className="staff-app-page">
       <Drawer
         opened={imgOpened}
         overlayProps={{ backgroundOpacity: 0.55, blur: 3 }}
@@ -428,7 +428,7 @@ const Page = () => {
         }}
         position="bottom"
         size="90%"
-        radius={CARD_RADIUS}
+        radius="lg"
         title="Image Preview"
         padding="md"
       >
@@ -438,7 +438,7 @@ const Page = () => {
               src={selectedImage}
               alt="Preview"
               fit="contain"
-              radius={CARD_RADIUS}
+              radius="lg"
               mah="75vh"
               w="100%"
             />
@@ -447,10 +447,13 @@ const Page = () => {
       </Drawer>
 
       <Stack gap="sm" p="md">
-        <Card radius={HERO_RADIUS} withBorder p={HERO_PADDING}>
+        <Card radius="lg" withBorder p={HERO_PADDING} className="staff-app-surface staff-app-surface--hero">
           <Group justify="space-between" align="start" mb="sm">
             <Box>
-              <Text fw={700} size="lg">
+              <Text size="xs" fw={800} tt="uppercase" c="#64748b" style={{ letterSpacing: "0.08em" }}>
+                Today&apos;s Appointment
+              </Text>
+              <Text fw={800} size="xl" mt={4}>
                 {appointment.job.title}
               </Text>
               <Text size="sm" c="dimmed">
@@ -460,9 +463,9 @@ const Page = () => {
 
             <Badge
               size="lg"
-              radius="md"
+              radius="lg"
               color={appointment.job.type === "ONE_OFF" ? "lime" : "blue"}
-              variant="filled"
+              variant="light"
             >
               {appointment.job.type === "ONE_OFF" ? "ONE OFF" : "RECURRING"}
             </Badge>
@@ -500,7 +503,7 @@ const Page = () => {
             value={progressPct}
             animated={isRunning}
             color="lime"
-            radius="xl"
+            radius="lg"
           />
 
           <Text mt={6} fw={600} size="xs" c={isOvertime ? "red" : "dimmed"}>
@@ -518,10 +521,7 @@ const Page = () => {
             align="center"
             mt="md"
             p="sm"
-            style={{
-              borderRadius: 10,
-              background: "#f8f9fa",
-            }}
+            className="staff-task-detail__timeband"
           >
             <Group gap="xs" align="center">
               <ThemeIcon variant="light" radius="md" color="lime">
@@ -556,7 +556,7 @@ const Page = () => {
         <SimpleGrid cols={2} spacing="sm">
           <Button
             leftSection={<IoPlayOutline />}
-            radius="md"
+            radius="lg"
             color="lime"
             fullWidth
             disabled={!canAct || isRunning}
@@ -568,7 +568,7 @@ const Page = () => {
 
           <Button
             leftSection={<IoPauseOutline />}
-            radius="md"
+            radius="xl"
             color="lime"
             fullWidth
             disabled={!canAct || !isRunning}
@@ -580,7 +580,7 @@ const Page = () => {
         </SimpleGrid>
 
         <Button
-          radius="md"
+          radius="lg"
           color="blue"
           fullWidth
           disabled={!canAct}
@@ -603,7 +603,7 @@ const Page = () => {
           <AiTaskAssistantCard data={aiTaskAssistant} />
         ) : null}
 
-        <Card radius="md" withBorder p="md">
+        <Card radius="lg" withBorder p="md" className="staff-app-surface">
           <Group mb="sm" gap="xs">
             <ThemeIcon radius="md" variant="light" color="teal">
               <IoPersonOutline size={16} />
@@ -624,7 +624,7 @@ const Page = () => {
               const memberState = getMemberState(member.id);
 
               return (
-                <Group key={member.id} justify="space-between">
+                <Group key={member.id} justify="space-between" className="staff-task-detail__row">
                   <Text size="sm" fw={isMe ? 700 : 500}>
                     {member.name} {isMe ? "(You)" : ""}
                   </Text>
@@ -649,7 +649,7 @@ const Page = () => {
           </Stack>
         </Card>
 
-        <Card radius={CARD_RADIUS} withBorder p={CARD_PADDING}>
+        <Card radius="lg" withBorder p={CARD_PADDING} className="staff-app-surface">
           <Group mb="sm" gap="xs">
             <ThemeIcon radius="md" variant="light" color="teal">
               <IoLocationOutline size={16} />
@@ -659,7 +659,7 @@ const Page = () => {
             </Text>
           </Group>
 
-          <Flex justify="space-between" align="center" gap="md">
+          <Flex justify="space-between" align="center" gap="md" className="staff-task-detail__split">
             <Box style={{ flex: 1 }}>
               <Text size="sm" fw={600}>
                 {appointment.job.address.street1}
@@ -681,7 +681,7 @@ const Page = () => {
               component="a"
               href={buildDirectionsUrl(appointment.job.address)}
               leftSection={<IoMapOutline />}
-              radius="md"
+              radius="lg"
               color="lime"
             >
               Directions
@@ -693,7 +693,7 @@ const Page = () => {
           </Text>
         </Card>
 
-        <Card radius={CARD_RADIUS} withBorder p={CARD_PADDING}>
+        <Card radius="lg" withBorder p={CARD_PADDING} className="staff-app-surface">
           <Group mb="sm" gap="xs">
             <ThemeIcon radius="md" variant="light" color="blue">
               <IoPersonOutline size={16} />
@@ -722,7 +722,7 @@ const Page = () => {
           <Group mt="md" grow>
             <Button
               component="a"
-              radius="md"
+              radius="lg"
               color="lime"
               leftSection={<IoCallOutline />}
               href={phone ? `tel:${phone}` : undefined}
@@ -733,7 +733,7 @@ const Page = () => {
 
             <Button
               component="a"
-              radius="md"
+              radius="lg"
               color="blue"
               leftSection={<IoChatbubbleEllipsesOutline />}
               href={phone ? `sms:${phone}` : undefined}
@@ -744,7 +744,7 @@ const Page = () => {
           </Group>
         </Card>
 
-        <Card radius={CARD_RADIUS} withBorder p={CARD_PADDING}>
+        <Card radius="lg" withBorder p={CARD_PADDING} className="staff-app-surface">
           <Group mb="sm" gap="xs">
             <ThemeIcon radius="md" variant="light" color="grape">
               <IoDocumentTextOutline size={16} />
@@ -757,7 +757,7 @@ const Page = () => {
           <Stack gap="xs">
             {notes?.length ? (
               notes.map((note: Note) => (
-                <Paper key={note.id} radius="md" p="sm" withBorder>
+                <Paper key={note.id} radius="lg" p="sm" withBorder className="staff-task-detail__note">
                   <Group justify="space-between" align="flex-start" mb={6}>
                     <Box style={{ flex: 1 }}>
                       <Text fw={600} size="sm">
@@ -820,7 +820,7 @@ const Page = () => {
           </Stack>
         </Card>
 
-        <Card radius={CARD_RADIUS} withBorder p={CARD_PADDING}>
+        <Card radius="lg" withBorder p={CARD_PADDING} className="staff-app-surface">
           <Group mb="sm" gap="xs">
             <ThemeIcon radius="md" variant="light" color="orange">
               <IoDocumentTextOutline size={16} />
@@ -833,7 +833,7 @@ const Page = () => {
           <Stack gap="xs">
             {appointment.notes?.length ? (
               appointment.notes.map((note: Note) => (
-                <Paper key={note.id} radius="md" p="sm" withBorder>
+                <Paper key={note.id} radius="lg" p="sm" withBorder className="staff-task-detail__note">
                   <Group justify="space-between" mb={6}>
                     <Text fw={600} size="sm">
                       Visit note
@@ -873,7 +873,7 @@ const Page = () => {
           </Stack>
         </Card>
 
-        <Card radius={CARD_RADIUS} withBorder p={CARD_PADDING}>
+        <Card radius="lg" withBorder p={CARD_PADDING} className="staff-app-surface">
           <Group mb="sm" gap="xs">
             <ThemeIcon radius="md" variant="light" color="orange">
               <IoDocumentTextOutline size={16} />
@@ -890,6 +890,7 @@ const Page = () => {
               minRows={4}
               value={visitNote}
               onChange={(e) => setVisitNote(e.currentTarget.value)}
+              radius="lg"
             />
 
             {uploadedVisitImages.length ? (
@@ -911,6 +912,7 @@ const Page = () => {
             <Dropzone
               accept={["image/png", "image/jpeg", "image/webp"]}
               maxFiles={10}
+              className="staff-task-detail__dropzone"
               onDrop={async (files) => {
                 const uploaded = await startUpload(files);
 
@@ -939,7 +941,7 @@ const Page = () => {
             </Dropzone>
 
             <Button
-              radius="md"
+              radius="xl"
               color="orange"
               loading={saveVisitNoteMutation.isPending}
               disabled={

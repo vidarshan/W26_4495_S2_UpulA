@@ -29,6 +29,7 @@ type TaskAssistantContext = {
   staffCount: number;
   staffNoteDraft: string | null;
   timeSpent: number | null;
+  mode?: "plan" | "complete";
 };
 
 export function buildTaskAssistantPrompt(
@@ -52,7 +53,7 @@ Property address: ${ctx.propertyAddress}
 Staff count: ${ctx.staffCount}
 
 Line items:
-${ctx.lineItems.map((item) => `- ${item}`).join("\n") || "- None"}
+${ctx.lineItems.map((item) => `- ${item.quantity}x ${item.name}${item.description ? `: ${item.description}` : ""}`).join("\n") || "- None"}
 
 Admin notes:
 ${ctx.adminNotes.map((note) => `- ${note}`).join("\n") || "- None"}
