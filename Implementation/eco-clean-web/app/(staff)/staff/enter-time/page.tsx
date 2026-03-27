@@ -15,6 +15,9 @@ import {
   Title,
   Loader,
   Center,
+  TextInput,
+  Divider,
+  Alert,
 } from '@mantine/core';
 import { useMemo, useState, useEffect } from 'react';
 import { IoClipboardOutline, IoChevronDown } from 'react-icons/io5';
@@ -35,6 +38,16 @@ type DayCell = {
   hours: string;
 };
 
+type DaySession = {
+  id: string;
+  appointmentId: string;
+  startedAt: string;
+  endedAt: string | null;
+  jobTitle: string;
+  clientName: string;
+  minutesForDay: number;
+};
+
 function toDateKey(date: Date) {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -48,6 +61,19 @@ function formatMinutesToHHMM(totalMinutes: number) {
   return `${hours}:${String(minutes).padStart(2, '0')}`;
 }
 
+function toLocalDateTimeInputValue(dateString: string | null) {
+  if (!dateString) return '';
+  const d = new Date(dateString);
+
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
 export default function EnterTimePage() {
   const [allPeriods, setAllPeriods] = useState<PayPeriod[]>([]);
   const [payPeriodOptions, setPayPeriodOptions] = useState<
@@ -57,12 +83,23 @@ export default function EnterTimePage() {
   const [loadingPeriods, setLoadingPeriods] = useState(true);
 
   const [dayMinutes, setDayMinutes] = useState<Record<string, number>>({});
+  const [daySessions, setDaySessions] = useState<Record<string, DaySession[]>>(
+    {},
+  );
   const [loadingEntries, setLoadingEntries] = useState(false);
 
   const [week, setWeek] = useState<Week>(1);
   const [openDay, setOpenDay] = useState<{ week: Week; idx: number } | null>(
     null,
   );
+
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+  const [editStartedAt, setEditStartedAt] = useState('');
+  const [editEndedAt, setEditEndedAt] = useState('');
+  const [savingSession, setSavingSession] = useState(false);
+  const [modalError, setModalError] = useState<string | null>(null);
+
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     async function fetchRelevantPeriods() {
@@ -85,13 +122,24 @@ export default function EnterTimePage() {
 
           const options = filtered.map((p) => ({
             value: p.id,
-            label: `${new Date(p.startDate).toLocaleDateString('en-GB')} to ${new Date(p.endDate).toLocaleDateString('en-GB')}`,
+            label: `${new Date(p.startDate).toLocaleDateString('en-GB')} to ${new Date(
+              p.endDate,
+            ).toLocaleDateString('en-GB')}`,
           }));
 
           setPayPeriodOptions(options);
 
           const defaultIdx = currentIndex === 0 ? 0 : 1;
           setPayPeriodId(options[defaultIdx]?.value ?? null);
+        } else {
+          const options = fetched.map((p) => ({
+            value: p.id,
+            label: `${new Date(p.startDate).toLocaleDateString('en-GB')} to ${new Date(
+              p.endDate,
+            ).toLocaleDateString('en-GB')}`,
+          }));
+          setPayPeriodOptions(options);
+          setPayPeriodId(options[0]?.value ?? null);
         }
       } catch (error) {
         console.error('Failed to load periods:', error);
@@ -103,41 +151,80 @@ export default function EnterTimePage() {
     fetchRelevantPeriods();
   }, []);
 
-  useEffect(() => {
-    async function fetchTimesheetEntries() {
-      const selected = allPeriods.find((p) => p.id === payPeriodId);
+  async function handleSubmitTimesheet() {
+    if (!payPeriodId) return;
 
-      if (!selected) {
-        setDayMinutes({});
+    try {
+      setSubmitting(true);
+
+      const res = await fetch('/api/staff/time-sheet/submit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          periodId: payPeriodId,
+        }),
+      });
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        console.error(result.error);
+        alert(result.error ?? 'Failed to submit timesheet');
         return;
       }
 
-      try {
-        setLoadingEntries(true);
+      alert('Timesheet submitted successfully');
+    } catch (error) {
+      console.error(error);
+      alert('Failed to submit timesheet');
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
-        const res = await fetch(
-          `/api/staff/time-sheet?startDate=${encodeURIComponent(selected.startDate)}&endDate=${encodeURIComponent(selected.endDate)}`,
-        );
+  async function fetchTimesheetEntries(selectedPeriodId: string | null) {
+    const selected = allPeriods.find((p) => p.id === selectedPeriodId);
 
-        const result = await res.json();
-
-        if (!res.ok) {
-          console.error('Failed to load timesheet entries:', result.error);
-          setDayMinutes({});
-          return;
-        }
-
-        setDayMinutes(result.dailyTotals ?? {});
-      } catch (error) {
-        console.error('Failed to load timesheet entries:', error);
-        setDayMinutes({});
-      } finally {
-        setLoadingEntries(false);
-      }
+    if (!selected) {
+      setDayMinutes({});
+      setDaySessions({});
+      return;
     }
 
+    try {
+      setLoadingEntries(true);
+
+      const res = await fetch(
+        `/api/staff/time-sheet?startDate=${encodeURIComponent(
+          selected.startDate,
+        )}&endDate=${encodeURIComponent(selected.endDate)}`,
+      );
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        console.error('Failed to load timesheet entries:', result.error);
+        setDayMinutes({});
+        setDaySessions({});
+        return;
+      }
+
+      setDayMinutes(result.dailyTotals ?? {});
+      setDaySessions(result.dailySessions ?? {});
+    } catch (error) {
+      console.error('Failed to load timesheet entries:', error);
+      setDayMinutes({});
+      setDaySessions({});
+    } finally {
+      setLoadingEntries(false);
+    }
+  }
+
+  useEffect(() => {
     if (payPeriodId && allPeriods.length > 0) {
-      fetchTimesheetEntries();
+      fetchTimesheetEntries(payPeriodId);
     }
   }, [payPeriodId, allPeriods]);
 
@@ -183,6 +270,61 @@ export default function EnterTimePage() {
   }, [payPeriodId, allPeriods, dayMinutes]);
 
   const activeDays = days[week];
+  const selectedDay = openDay ? activeDays[openDay.idx] : null;
+  const selectedDayKey = selectedDay ? toDateKey(selectedDay.fullDate) : null;
+  const selectedDaySessions = selectedDayKey
+    ? (daySessions[selectedDayKey] ?? [])
+    : [];
+
+  function beginEdit(session: DaySession) {
+    setModalError(null);
+    setEditingSessionId(session.id);
+    setEditStartedAt(toLocalDateTimeInputValue(session.startedAt));
+    setEditEndedAt(toLocalDateTimeInputValue(session.endedAt));
+  }
+
+  function cancelEdit() {
+    setEditingSessionId(null);
+    setEditStartedAt('');
+    setEditEndedAt('');
+    setModalError(null);
+  }
+
+  async function saveSession() {
+    if (!editingSessionId) return;
+
+    try {
+      setSavingSession(true);
+      setModalError(null);
+
+      const res = await fetch('/api/staff/time-sheet', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sessionId: editingSessionId,
+          startedAt: new Date(editStartedAt).toISOString(),
+          endedAt: editEndedAt ? new Date(editEndedAt).toISOString() : null,
+        }),
+      });
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        setModalError(result.error ?? 'Failed to save changes');
+        return;
+      }
+
+      await fetchTimesheetEntries(payPeriodId);
+      cancelEdit();
+    } catch (error) {
+      console.error('Failed to update session:', error);
+      setModalError('Failed to save changes');
+    } finally {
+      setSavingSession(false);
+    }
+  }
 
   if (loadingPeriods) {
     return (
@@ -302,7 +444,11 @@ export default function EnterTimePage() {
                 <ActionIcon
                   variant="subtle"
                   size={56}
-                  onClick={() => setOpenDay({ week, idx: i })}
+                  onClick={() => {
+                    setModalError(null);
+                    setOpenDay({ week, idx: i });
+                    cancelEdit();
+                  }}
                 >
                   <IoClipboardOutline size={40} />
                 </ActionIcon>
@@ -338,7 +484,8 @@ export default function EnterTimePage() {
                 size="xl"
                 radius="md"
                 color="dark"
-                onClick={() => console.log('Submit timesheet')}
+                onClick={handleSubmitTimesheet}
+                loading={submitting}
                 styles={{ root: { width: 260, height: 64, fontWeight: 800 } }}
               >
                 Submit
@@ -350,26 +497,130 @@ export default function EnterTimePage() {
 
       <Modal
         opened={openDay !== null}
-        onClose={() => setOpenDay(null)}
+        onClose={() => {
+          setOpenDay(null);
+          cancelEdit();
+        }}
         title="Day details"
         centered
+        size="lg"
       >
-        {openDay && (
-          <Stack gap="sm">
+        {selectedDay && (
+          <Stack gap="md">
             <Text>
-              <b>Date:</b>{' '}
-              {activeDays[openDay.idx]?.fullDate.toLocaleDateString()}
+              <b>Date:</b> {selectedDay.fullDate.toLocaleDateString()}
             </Text>
             <Text>
-              <b>Day:</b> {activeDays[openDay.idx]?.dow}
+              <b>Day:</b> {selectedDay.dow}
             </Text>
             <Text>
-              <b>Hours:</b> {activeDays[openDay.idx]?.hours}
+              <b>Total Hours:</b> {selectedDay.hours}
             </Text>
+
+            <Divider />
+
+            {modalError && (
+              <Alert color="red" title="Error">
+                {modalError}
+              </Alert>
+            )}
+
+            {selectedDaySessions.length === 0 ? (
+              <Text c="dimmed" size="sm">
+                No work sessions found for this day.
+              </Text>
+            ) : (
+              <Stack gap="md">
+                {selectedDaySessions.map((session) => {
+                  const isEditing = editingSessionId === session.id;
+
+                  return (
+                    <Paper key={session.id} withBorder p="md" radius="md">
+                      <Stack gap="xs">
+                        <Text fw={700}>{session.jobTitle}</Text>
+                        <Text size="sm" c="dimmed">
+                          Client: {session.clientName}
+                        </Text>
+                        <Text size="sm">
+                          Hours counted for this day:{' '}
+                          <b>{formatMinutesToHHMM(session.minutesForDay)}</b>
+                        </Text>
+
+                        {!isEditing ? (
+                          <>
+                            <Text size="sm">
+                              Start:{' '}
+                              {new Date(session.startedAt).toLocaleString()}
+                            </Text>
+                            <Text size="sm">
+                              End:{' '}
+                              {session.endedAt
+                                ? new Date(session.endedAt).toLocaleString()
+                                : 'Still running'}
+                            </Text>
+
+                            <Group mt="xs">
+                              <Button
+                                size="xs"
+                                variant="light"
+                                onClick={() => beginEdit(session)}
+                              >
+                                Edit
+                              </Button>
+                            </Group>
+                          </>
+                        ) : (
+                          <>
+                            <TextInput
+                              label="Started At"
+                              type="datetime-local"
+                              value={editStartedAt}
+                              onChange={(e) =>
+                                setEditStartedAt(e.currentTarget.value)
+                              }
+                            />
+
+                            <TextInput
+                              label="Ended At"
+                              type="datetime-local"
+                              value={editEndedAt}
+                              onChange={(e) =>
+                                setEditEndedAt(e.currentTarget.value)
+                              }
+                              placeholder="Leave blank if still running"
+                            />
+
+                            <Group mt="xs">
+                              <Button
+                                size="xs"
+                                color="green"
+                                loading={savingSession}
+                                onClick={saveSession}
+                              >
+                                Save
+                              </Button>
+                              <Button
+                                size="xs"
+                                variant="default"
+                                onClick={cancelEdit}
+                                disabled={savingSession}
+                              >
+                                Cancel
+                              </Button>
+                            </Group>
+                          </>
+                        )}
+                      </Stack>
+                    </Paper>
+                  );
+                })}
+              </Stack>
+            )}
+
             <Text c="dimmed" size="sm">
-              Loaded from assignment planned time for the selected pay period.
+              These values are loaded from AppointmentWorkSession records for
+              the selected pay period.
             </Text>
-            <Button onClick={() => setOpenDay(null)}>Close</Button>
           </Stack>
         )}
       </Modal>

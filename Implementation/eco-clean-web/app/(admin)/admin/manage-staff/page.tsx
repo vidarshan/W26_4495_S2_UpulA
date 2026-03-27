@@ -1,38 +1,39 @@
-"use client";
+'use client';
 
-import { useState } from "react";
 import {
+  Accordion,
   Burger,
+  Button,
+  Divider,
   Drawer,
   Group,
   NavLink,
+  Paper,
   Stack,
   Text,
   Title,
-  Box,
-  Paper,
-  Accordion,
-  Divider,
-} from "@mantine/core";
-import { useDisclosure } from "@mantine/hooks";
+} from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useState } from 'react';
 import {
-  IoPeopleOutline,
-  IoCashOutline,
-  IoTimeOutline,
+  IoArrowForwardOutline,
   IoCalendarClearOutline,
-} from "react-icons/io5";
-import DashboardShell from "../DashboardShell";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+  IoCashOutline,
+  IoPeopleOutline,
+  IoTimeOutline,
+} from 'react-icons/io5';
+import DashboardShell from '../DashboardShell';
 
 export default function ManageStaffPage() {
   const [opened, { toggle, close }] = useDisclosure(false);
-  const [activeSection, setActiveSection] = useState("leave");
+  const [activeSection, setActiveSection] = useState('leave');
   const pathname = usePathname();
 
   const renderSectionContent = () => {
     switch (activeSection) {
-      case "leave":
+      case 'leave':
         return (
           <Accordion defaultValue="leave-overview" variant="separated">
             <Accordion.Item value="leave-overview">
@@ -61,7 +62,7 @@ export default function ManageStaffPage() {
           </Accordion>
         );
 
-      case "payroll":
+      case 'payroll':
         return (
           <Accordion defaultValue="payroll-overview" variant="separated">
             <Accordion.Item value="payroll-overview">
@@ -82,15 +83,15 @@ export default function ManageStaffPage() {
               </Accordion.Control>
               <Accordion.Panel>
                 <Text size="sm">
-                  Edit pay periods, review statements, and manage payroll-related
-                  records.
+                  Edit pay periods, review statements, and manage
+                  payroll-related records.
                 </Text>
               </Accordion.Panel>
             </Accordion.Item>
           </Accordion>
         );
 
-      case "time":
+      case 'time':
         return (
           <Accordion defaultValue="time-overview" variant="separated">
             <Accordion.Item value="time-overview">
@@ -98,10 +99,18 @@ export default function ManageStaffPage() {
                 <Text fw={600}>Time & Time-Off</Text>
               </Accordion.Control>
               <Accordion.Panel>
-                <Text size="sm">
+                <Text size="sm" mb="md">
                   Track work hours, monitor submitted timesheets, and manage
                   time-off related staff activities.
                 </Text>
+
+                <Button
+                  component={Link}
+                  href="/admin/timesheets"
+                  rightSection={<IoArrowForwardOutline size={16} />}
+                >
+                  Open Timesheet Overview
+                </Button>
               </Accordion.Panel>
             </Accordion.Item>
 
@@ -110,10 +119,19 @@ export default function ManageStaffPage() {
                 <Text fw={600}>Available Actions</Text>
               </Accordion.Control>
               <Accordion.Panel>
-                <Text size="sm">
+                <Text size="sm" mb="md">
                   Review timesheets, update attendance-related data, and manage
                   time-off entries.
                 </Text>
+
+                <Button
+                  component={Link}
+                  href="/admin/timesheets"
+                  variant="light"
+                  rightSection={<IoArrowForwardOutline size={16} />}
+                >
+                  Go to Timesheet Admin Panel
+                </Button>
               </Accordion.Panel>
             </Accordion.Item>
           </Accordion>
@@ -129,28 +147,28 @@ export default function ManageStaffPage() {
       <NavLink
         label="Leave Management"
         leftSection={<IoCalendarClearOutline size={18} />}
-        active={activeSection === "leave"}
+        active={activeSection === 'leave'}
         onClick={() => {
-          setActiveSection("leave");
+          setActiveSection('leave');
           close();
         }}
       />
 
       <NavLink
-  label="Payroll Management"
-  component={Link}
-  href="/admin/manage-staff/payroll"
-  leftSection={<IoCashOutline size={18} />}
-  active={pathname.startsWith("/admin/manage-staff/payroll")}
-  onClick={close}
-/>
+        label="Payroll Management"
+        component={Link}
+        href="/admin/manage-staff/payroll"
+        leftSection={<IoCashOutline size={18} />}
+        active={pathname.startsWith('/admin/manage-staff/payroll')}
+        onClick={close}
+      />
 
       <NavLink
         label="Time & Time-Off"
         leftSection={<IoTimeOutline size={18} />}
-        active={activeSection === "time"}
+        active={activeSection === 'time'}
         onClick={() => {
-          setActiveSection("time");
+          setActiveSection('time');
           close();
         }}
       />
@@ -191,13 +209,7 @@ export default function ManageStaffPage() {
         <Divider />
 
         <Group align="flex-start" wrap="nowrap">
-          <Paper
-            withBorder
-            radius="md"
-            p="md"
-            visibleFrom="sm"
-            miw={260}
-          >
+          <Paper withBorder radius="md" p="md" visibleFrom="sm" miw={260}>
             <Text fw={700} mb="md">
               Staff Functions
             </Text>
