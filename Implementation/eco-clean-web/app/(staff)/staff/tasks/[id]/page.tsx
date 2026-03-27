@@ -13,7 +13,7 @@ import { useUploadThing } from "@/lib/uploadthing";
 import formatPrettyDate from "@/lib/utils/formatPrettyDate";
 import { TaskAssistantResponse } from "@/lib/ai/schemas";
 import { APP_TZ } from "@/lib/dateTime";
-import { WorkSession } from "@/types";
+import { JobNote, WorkSession } from "@/types";
 import {
   Badge,
   Box,
@@ -199,8 +199,10 @@ const Page = () => {
   }, []);
 
   const refreshAppointment = (updated: unknown) => {
-    qc.setQueryData(["appointment-details", appointmentId], updated);
-    qc.invalidateQueries({ queryKey: ["appointment-details", appointmentId] });
+    qc.setQueryData(["appointments", "detail", appointmentId ?? null], updated);
+    qc.invalidateQueries({
+      queryKey: ["appointments", "detail", appointmentId ?? null],
+    });
     qc.invalidateQueries({ queryKey: ["staff-tasks"] });
   };
 
@@ -352,18 +354,31 @@ const Page = () => {
 
   const start = DateTime.fromISO(appointment.startTime).setZone(APP_TZ);
   const end = DateTime.fromISO(appointment.endTime).setZone(APP_TZ);
+  const job = appointment.job;
+  const client = job?.client ?? null;
+  const address = job?.address ?? undefined;
 
   const clientName = [
-    appointment.job.client.title,
-    appointment.job.client.firstName,
-    appointment.job.client.lastName,
+    client?.title,
+    client?.firstName,
+    client?.lastName,
   ]
     .filter(Boolean)
-    .join(" ");
+    .join(" ")
+    .trim();
 
-  const phone = appointment.job.client.phone;
-  const notes = appointment.job.notes;
-  const fullAddress = formatAddress(appointment.job.address);
+  const phone = client?.phone ?? null;
+  const notes: Note[] = (job?.notes ?? []).map((note: JobNote) => ({
+    id: note.id,
+    title: note.title,
+    content: note.content ?? "",
+    category: note.category,
+    isPinned: note.isPinned,
+    isClientVisible: note.isClientVisible,
+    createdAt: note.createdAt,
+    images: note.images,
+  }));
+  const fullAddress = formatAddress(address);
 
   const allSessions = appointment.workSessions ?? [];
 
@@ -454,7 +469,7 @@ const Page = () => {
                 Today&apos;s Appointment
               </Text>
               <Text fw={800} size="xl" mt={4}>
-                {appointment.job.title}
+                {job?.title ?? "Appointment"}
               </Text>
               <Text size="sm" c="dimmed">
                 {start.toFormat("cccc, LLL d")}
@@ -464,10 +479,10 @@ const Page = () => {
             <Badge
               size="lg"
               radius="lg"
-              color={appointment.job.type === "ONE_OFF" ? "lime" : "blue"}
+              color={job?.type === "ONE_OFF" ? "lime" : "blue"}
               variant="light"
             >
-              {appointment.job.type === "ONE_OFF" ? "ONE OFF" : "RECURRING"}
+              {job?.type === "ONE_OFF" ? "ONE OFF" : "RECURRING"}
             </Badge>
           </Group>
 
@@ -662,27 +677,28 @@ const Page = () => {
           <Flex justify="space-between" align="center" gap="md" className="staff-task-detail__split">
             <Box style={{ flex: 1 }}>
               <Text size="sm" fw={600}>
-                {appointment.job.address.street1}
+                {address?.street1 ?? "Address unavailable"}
               </Text>
 
-              {appointment.job.address.street2 ? (
-                <Text size="sm">{appointment.job.address.street2}</Text>
+              {address?.street2 ? (
+                <Text size="sm">{address.street2}</Text>
               ) : null}
 
               <Text size="sm">
-                {appointment.job.address.city},{" "}
-                {appointment.job.address.province}
+                {address?.city ?? ""}{address?.city && address?.province ? ", " : ""}
+                {address?.province ?? ""}
               </Text>
 
-              <Text size="sm">{appointment.job.address.postalCode}</Text>
+              <Text size="sm">{address?.postalCode ?? ""}</Text>
             </Box>
 
             <Button
               component="a"
-              href={buildDirectionsUrl(appointment.job.address)}
+              href={buildDirectionsUrl(address)}
               leftSection={<IoMapOutline />}
               radius="lg"
               color="lime"
+              disabled={!address}
             >
               Directions
             </Button>
@@ -706,15 +722,15 @@ const Page = () => {
           <Stack gap={4}>
             <Text fw={600}>{clientName}</Text>
 
-            {appointment.job.client.companyName ? (
+            {client?.companyName ? (
               <Text size="sm" c="dimmed">
-                {appointment.job.client.companyName}
+                {client.companyName}
               </Text>
             ) : null}
 
-            {appointment.job.client.email ? (
+            {client?.email ? (
               <Text size="sm" c="dimmed">
-                {appointment.job.client.email}
+                {client.email}
               </Text>
             ) : null}
           </Stack>
@@ -756,7 +772,7 @@ const Page = () => {
 
           <Stack gap="xs">
             {notes?.length ? (
-              notes.map((note: Note) => (
+              notes.map((note) => (
                 <Paper key={note.id} radius="lg" p="sm" withBorder className="staff-task-detail__note">
                   <Group justify="space-between" align="flex-start" mb={6}>
                     <Box style={{ flex: 1 }}>
@@ -832,7 +848,7 @@ const Page = () => {
 
           <Stack gap="xs">
             {appointment.notes?.length ? (
-              appointment.notes.map((note: Note) => (
+              appointment.notes.map((note) => (
                 <Paper key={note.id} radius="lg" p="sm" withBorder className="staff-task-detail__note">
                   <Group justify="space-between" mb={6}>
                     <Text fw={600} size="sm">

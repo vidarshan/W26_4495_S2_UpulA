@@ -247,6 +247,7 @@ export type AppointmentWithRelations = {
   staff: StaffUser[];
   notes: VisitNote[];
   images: AppointmentImage[];
+  workSessions?: WorkSession[];
 };
 
 export type CandidateStaff = Staff & {
