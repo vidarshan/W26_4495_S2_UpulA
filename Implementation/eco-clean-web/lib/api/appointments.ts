@@ -1,3 +1,8 @@
+import {
+  StaffRecommendationResponse,
+  TaskAssistantResponse,
+} from "@/lib/ai/schemas";
+import { CandidateResponse } from "@/types";
 import { apiClient } from "./client";
 
 export type UpdateAppointmentPayload = Partial<{
@@ -150,4 +155,55 @@ export async function saveVisitNote(
   }
 
   return data;
+}
+
+export async function runTaskAssistantPreview(body: {
+  addressId: string;
+  appointmentStart: string;
+  appointmentEnd: string;
+  mode?: "plan" | "complete";
+  includePreviousVisit?: boolean;
+  staffNoteDraft?: string | null;
+  jobTitle?: string;
+  clientName?: string;
+  requiredStaffCount?: number;
+}): Promise<TaskAssistantResponse> {
+  const res = await fetch("/api/ai/task-assistant", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  const data = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    throw new Error(data?.error || "Failed to generate task assistant");
+  }
+
+  return data as TaskAssistantResponse;
+}
+
+export async function runStaffRecommendationPreview(body: {
+  appointmentStart: string;
+  appointmentEnd: string;
+  jobTitle?: string;
+  candidateData: CandidateResponse["data"];
+}): Promise<StaffRecommendationResponse> {
+  const res = await fetch("/api/ai/staff-recommendation", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  const data = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    throw new Error(data?.error || "Failed to generate staff recommendation");
+  }
+
+  return data as StaffRecommendationResponse;
 }

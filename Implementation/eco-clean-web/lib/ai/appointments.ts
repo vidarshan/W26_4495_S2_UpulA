@@ -58,36 +58,49 @@ export async function saveAppointmentInsight({
 }
 
 export async function runTaskAssistantFeature(
-  appointmentId: string,
-  input: TaskAssistantFeatureInput,
+  input: TaskAssistantFeatureInput & {
+    appointmentId?: string;
+    addressId: string;
+    appointmentStart: string;
+    appointmentEnd: string;
+    jobTitle?: string | null;
+    clientName?: string | null;
+    requiredStaffCount?: number | null;
+  },
 ) {
   const feature: AppointmentAiFeature = taskAssistantFeature;
-  const context = await feature.getContext(appointmentId, input);
+  const context = await feature.getContext(
+    input.addressId,
+    input.appointmentStart,
+    input.appointmentEnd,
+    {
+      jobTitle: input.jobTitle,
+      clientName: input.clientName,
+      requiredStaffCount: input.requiredStaffCount,
+    },
+  );
 
   if (!context) {
     return null;
   }
 
-  const promptContext = {
-    ...context,
-    mode: input.mode,
-  };
-
   const result = await generateStructuredJson({
     system: feature.system,
-    user: feature.buildUserPrompt(promptContext),
+    user: feature.buildUserPrompt(context),
     schemaName: feature.schemaName,
     schema: feature.schema,
     model: feature.model,
   });
 
-  await saveAppointmentInsight({
-    appointmentId,
-    type: getTaskAssistantInsightType(input),
-    payload: result,
-    model: feature.model,
-    promptVersion: feature.promptVersion,
-  });
+  if (input.appointmentId) {
+    await saveAppointmentInsight({
+      appointmentId: input.appointmentId,
+      type: getTaskAssistantInsightType(input),
+      payload: result as Prisma.InputJsonValue,
+      model: feature.model,
+      promptVersion: feature.promptVersion,
+    });
+  }
 
   return result;
 }

@@ -551,12 +551,13 @@ export default function DashboardClient() {
               nowIndicator
               weekends={weekends}
               allDaySlot={false}
-              eventDisplay="block"
+              eventDisplay={view === "month" ? "list-item" : "block"}
               stickyHeaderDates
               expandRows
-              slotMinTime="06:00:00"
-              slotMaxTime="22:00:00"
-              scrollTime="08:00:00"
+              displayEventTime={view === "month"}
+              slotMinTime="00:00:00"
+              slotMaxTime="24:00:00"
+              scrollTime="00:00:00"
               slotDuration="00:30:00"
               dayMaxEvents={3}
               businessHours={{
@@ -619,6 +620,21 @@ export default function DashboardClient() {
                   | "LATE"
                   | undefined;
                 const timeLabel = eventInfo.timeText;
+                const isMonthView =
+                  eventInfo.view.type === "dayGridMonth";
+
+                if (isMonthView) {
+                  return (
+                    <div
+                      className="calendar-event-card calendar-event-card--month"
+                      style={{ fontSize: 12 }}
+                    >
+                      <div className="calendar-event-card__title">
+                        {timeLabel ? `${timeLabel} ${title}` : title}
+                      </div>
+                    </div>
+                  );
+                }
 
                 return (
                   <div className="calendar-event-card" style={{ fontSize: 12 }}>

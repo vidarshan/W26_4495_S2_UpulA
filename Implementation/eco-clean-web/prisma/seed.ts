@@ -13,6 +13,7 @@ import {
   TimesheetPeriodStatus,
   TimesheetStatus,
 } from "@prisma/client";
+import { normalizeAddressLocation } from "../lib/staffLocation";
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is missing");
@@ -55,6 +56,10 @@ const CONFIG: Record<
 };
 
 const cfg = CONFIG[mode];
+const STAFFING_SCENARIO_START = new Date("2026-03-27T13:00:00.000Z");
+const STAFFING_SCENARIO_END = new Date("2026-03-28T03:00:00.000Z");
+const STAFFING_SCENARIO_SECOND_START = new Date("2026-03-27T16:00:00.000Z");
+const STAFFING_SCENARIO_SECOND_END = new Date("2026-03-27T19:00:00.000Z");
 
 function addDays(date: Date, days: number) {
   return new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
@@ -314,6 +319,14 @@ async function createStaffProfiles(staff: SeedUser[]) {
       data: {
         staffProfileId: created.id,
         ...profile.address,
+      },
+    });
+
+    await prisma.user.update({
+      where: { id: profile.userId },
+      data: {
+        lastKnownJobLocation:
+          normalizeAddressLocation(profile.address) ?? Prisma.DbNull,
       },
     });
 
@@ -735,6 +748,57 @@ async function createJobsAndAppointments(
         },
       ],
     },
+    {
+      clientId: clients[0]?.id,
+      title: "Availability Test Window",
+      type: JobType.ONE_OFF,
+      isAnytime: false,
+      visitInstructions:
+        "Seeded specifically for staff assignment and leave checks on March 27, 2026.",
+      lineItems: [
+        {
+          name: "Availability test visit",
+          quantity: 1,
+          unitCost: 40,
+          unitPrice: 95,
+          description:
+            "Deterministic appointment for assignment and leave overlap testing.",
+        },
+      ],
+      notes: [
+        {
+          title: "Seed scenario",
+          content:
+            "This visit is intentionally scheduled for 2026-03-27T10:00:00.000Z to 2026-03-27T12:00:00.000Z.",
+          category: JobNoteCategory.GENERAL,
+          isClientVisible: false,
+          isPinned: true,
+        },
+      ],
+      recurrence: null,
+      appointments: [
+        {
+          startTime: STAFFING_SCENARIO_START,
+          durationHours:
+            (STAFFING_SCENARIO_END.getTime() -
+              STAFFING_SCENARIO_START.getTime()) /
+            (60 * 60 * 1000),
+          status: AppointmentStatus.SCHEDULED,
+          staffIndexes: [0, 2],
+          createAiInsight: false,
+        },
+        {
+          startTime: STAFFING_SCENARIO_SECOND_START,
+          durationHours:
+            (STAFFING_SCENARIO_SECOND_END.getTime() -
+              STAFFING_SCENARIO_SECOND_START.getTime()) /
+            (60 * 60 * 1000),
+          status: AppointmentStatus.SCHEDULED,
+          staffIndexes: [1],
+          createAiInsight: false,
+        },
+      ],
+    },
   ];
 
   const extraTemplates: JobTemplate[] = Array.from({
@@ -790,6 +854,17 @@ async function createJobsAndAppointments(
   for (const [jobIndex, template] of allTemplates.entries()) {
     const addressIds = addressMap.get(template.clientId);
     if (!addressIds?.length) continue;
+    const jobAddress = await prisma.address.findUnique({
+      where: { id: addressIds[0] },
+      select: {
+        street1: true,
+        street2: true,
+        city: true,
+        province: true,
+        postalCode: true,
+        country: true,
+      },
+    });
 
     const job = await prisma.job.create({
       data: {
@@ -963,6 +1038,17 @@ async function createJobsAndAppointments(
         });
       }
 
+      if (appt.status === AppointmentStatus.LATE && staffIds.length) {
+        const jobLocation = normalizeAddressLocation(jobAddress);
+
+        if (jobLocation) {
+          await prisma.user.updateMany({
+            where: { id: { in: staffIds } },
+            data: { lastKnownJobLocation: jobLocation },
+          });
+        }
+      }
+
       if (appt.createAiInsight) {
         await prisma.appointmentAiInsight.create({
           data: {
@@ -1010,23 +1096,29 @@ async function createJobsAndAppointments(
 }
 
 async function createLeaves(staff: SeedUser[]) {
-  const now = startOfDay(new Date());
-
   await prisma.leave.createMany({
     data: [
       {
+        staffId: staff[1]?.id ?? staff[0]?.id ?? "",
+        type: LeaveType.PAID_SICK,
+        startAt: STAFFING_SCENARIO_START,
+        endAt: STAFFING_SCENARIO_END,
+        reason:
+          "Seeded leave overlapping the March 27, 2026 assignment window.",
+      },
+      {
         staffId: staff[0]?.id ?? "",
         type: LeaveType.VACATION,
-        startAt: addDays(now, 14),
-        endAt: endOfDay(addDays(now, 16)),
+        startAt: addDays(startOfDay(new Date()), 14),
+        endAt: endOfDay(addDays(startOfDay(new Date()), 16)),
         reason: "Planned vacation",
       },
       {
-        staffId: staff[1]?.id ?? staff[0]?.id ?? "",
-        type: LeaveType.PAID_SICK,
-        startAt: addDays(now, -9),
-        endAt: endOfDay(addDays(now, -8)),
-        reason: "Recovered from flu",
+        staffId: staff[2]?.id ?? staff[0]?.id ?? "",
+        type: LeaveType.PERSONAL,
+        startAt: addHours(STAFFING_SCENARIO_END, 1),
+        endAt: addHours(STAFFING_SCENARIO_END, 3),
+        reason: "Seeded same-day leave after the March 27, 2026 test window.",
       },
     ].filter((row) => row.staffId),
   });

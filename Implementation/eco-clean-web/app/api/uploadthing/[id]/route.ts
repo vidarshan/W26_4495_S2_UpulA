@@ -11,8 +11,6 @@ export async function DELETE(
 ) {
   const { id } = await params; // ✅ unwrap once, then use
 
-  console.log("✅ DELETE route hit:", req.nextUrl.pathname, "id:", id);
-
   if (!id) {
     return NextResponse.json({ error: "Missing id" }, { status: 400 });
   }

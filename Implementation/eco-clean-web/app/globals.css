@@ -691,6 +691,19 @@ body {
   line-height: 1.4;
 }
 
+.calendar-event-card--month {
+  padding: 0.2rem 0.45rem 0.2rem 0.65rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.calendar-event-card--month::before {
+  left: 0.2rem;
+  top: 0.2rem;
+  bottom: 0.2rem;
+}
+
 .calendar-event-card::before {
   content: "";
   position: absolute;

@@ -1,4 +1,7 @@
+export const runtime = "nodejs";
+
 import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 import {
   getCachedAppointmentInsight,
   getTaskAssistantInsightType,
@@ -27,10 +30,50 @@ export async function POST(
       return NextResponse.json(existing.payload);
     }
 
-    const result = await runTaskAssistantFeature(id, {
+    const appointment = await prisma.appointment.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        startTime: true,
+        endTime: true,
+        assignments: {
+          select: {
+            id: true,
+          },
+        },
+        job: {
+          select: {
+            title: true,
+            addressId: true,
+            client: {
+              select: {
+                firstName: true,
+                lastName: true,
+                companyName: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!appointment) {
+      return NextResponse.json({ error: "Appointment not found" }, { status: 404 });
+    }
+
+    const result = await runTaskAssistantFeature({
+      appointmentId: id,
+      addressId: appointment.job.addressId,
+      appointmentStart: appointment.startTime.toISOString(),
+      appointmentEnd: appointment.endTime.toISOString(),
       mode,
       includePreviousVisit,
       staffNoteDraft,
+      jobTitle: appointment.job.title,
+      clientName:
+        appointment.job.client.companyName ||
+        `${appointment.job.client.firstName ?? ""} ${appointment.job.client.lastName ?? ""}`.trim(),
+      requiredStaffCount: appointment.assignments.length || 1,
     });
 
     if (!result) {

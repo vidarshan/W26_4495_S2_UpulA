@@ -7,12 +7,13 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  name      String
-  email     String   @unique
-  role      Role
-  createdAt DateTime @default(now())
-  password  String
+  id                   String   @id @default(uuid())
+  name                 String
+  email                String   @unique
+  role                 Role
+  createdAt            DateTime @default(now())
+  password             String
+  lastKnownJobLocation Json?
 
   // Operational authorship / work tracking
   workSessions       AppointmentWorkSession[]
@@ -112,11 +113,11 @@ model Appointment {
   timeSpent      Int?
   completedAt    DateTime?         @db.Timestamptz(6)
 
-  job                  Job                      @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  images               AppointmentImage[]
-  notes                VisitNote[]
-  workSessions         AppointmentWorkSession[]
-  assignments          Assignment[]
+  job                   Job                      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  images                AppointmentImage[]
+  notes                 VisitNote[]
+  workSessions          AppointmentWorkSession[]
+  assignments           Assignment[]
   appointmentAiInsights AppointmentAiInsight[]
 
   @@index([jobId])

@@ -199,7 +199,7 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
         (a, b) =>
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       ) ?? [];
-  console.log(appointment);
+
   const sortedJobNotes =
     appointment?.job?.notes?.slice().sort((a, b) => {
       if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;

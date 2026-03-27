@@ -61,12 +61,22 @@ export interface Client {
   updatedAt?: string;
 }
 
+export type StaffLocationAddress = {
+  street1: string | null;
+  street2: string | null;
+  city: string | null;
+  province: string | null;
+  postalCode: string | null;
+  country: string | null;
+};
+
 export interface User {
   id: string;
   name: string;
   email: string;
   role: StaffRole;
   createdAt: string;
+  lastKnownJobLocation?: StaffLocationAddress | null;
 }
 
 export interface Staff {
@@ -75,6 +85,12 @@ export interface Staff {
   email: string;
   role: UserRole;
   createdAt: string;
+  lastKnownJobLocation?: StaffLocationAddress | null;
+}
+
+export interface StaffSuggestion {
+  staff: Staff;
+  reason: string;
 }
 
 export type StaffUser = {
@@ -83,6 +99,7 @@ export type StaffUser = {
   email?: string | null;
   role?: UserRole | string | null;
   createdAt?: string;
+  lastKnownJobLocation?: StaffLocationAddress | null;
 };
 
 export type AppointmentImage = {
@@ -230,6 +247,127 @@ export type AppointmentWithRelations = {
   staff: StaffUser[];
   notes: VisitNote[];
   images: AppointmentImage[];
+};
+
+export type CandidateStaff = Staff & {
+  leaves?: Array<{
+    id: string;
+    type: string;
+    startAt: string;
+    endAt: string;
+  }>;
+  assignments?: Array<{
+    id: string;
+    status: string;
+    appointment: {
+      id: string;
+      startTime: string;
+      endTime: string;
+    };
+  }>;
+};
+
+export type CandidateRecommendation = {
+  staff: Staff;
+  reason: string;
+};
+
+export type CandidateResponse = {
+  data: {
+    jobLocation: {
+      id: string;
+      street1?: string | null;
+      city?: string | null;
+      province?: string | null;
+    } | null;
+    recommendedMembers: CandidateRecommendation[];
+    staffMembers: CandidateStaff[];
+  };
+  meta: { total: number };
+};
+
+export type AssignmentInsightContext = {
+  appointmentDate: Date;
+  appointmentStart: string;
+  appointmentEnd: string;
+};
+
+export type AssignmentInsightFields = {
+  appointmentDate: Date;
+  startTime: string;
+  endTime: string;
+  durationMinutes: number;
+
+  jobTitle: string;
+  clientName: string;
+
+  propertyAddress: {
+    street1: string;
+    city: string;
+    province: string;
+    postalCode: string;
+  } | null;
+
+  requiredStaffCount: number;
+
+  staff: {
+    id: string;
+    name: string;
+
+    lastKnownJobLocation: {
+      city: string;
+      province: string;
+      postalCode: string;
+      street1: string;
+    } | null;
+
+    staffProfile: {
+      position: string;
+      hourlyRate: number;
+      staffAddress: {
+        city: string;
+        province: string;
+        postalCode: string;
+        street1: string;
+      };
+    };
+
+    leaves: {
+      startAt: Date;
+      endAt: Date;
+      type: string;
+    }[];
+
+    assignments: {
+      status: string;
+      plannedStart: Date;
+      plannedEnd: Date;
+      appointment: {
+        startTime: Date;
+        endTime: Date;
+      };
+    }[];
+  }[];
+};
+
+export type AssignmentCandidate = {
+  staffId: string;
+  name: string;
+
+  position: string | null;
+  hourlyRate: number | null;
+
+  proximityScore: number;
+  proximityOrigin: "home" | "last_job";
+
+  hasScheduleConflict: boolean;
+  hasLeaveConflict: boolean;
+
+  assignmentsToday: number;
+  totalScheduledMinutesToday: number;
+
+  hasWorkedAtPropertyBefore: boolean;
+  hasWorkedForClientBefore: boolean;
 };
 
 export interface UserForm {

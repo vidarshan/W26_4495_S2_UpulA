@@ -1,12 +1,7 @@
 import { buildTaskAssistantPrompt } from "@/lib/ai/prompts";
 import { TaskAssistantResponseSchema } from "@/lib/ai/schemas";
 import { getTaskAssistantContext } from "@/lib/ai/context";
-
-type TaskAssistantPromptContext = NonNullable<
-  Awaited<ReturnType<typeof getTaskAssistantContext>>
-> & {
-  mode: "plan" | "complete";
-};
+import { AssignmentInsightFields } from "@/types";
 
 export const taskAssistantFeature = {
   type: "task_assistant.plan",
@@ -16,14 +11,25 @@ export const taskAssistantFeature = {
   system:
     "You are an AI task assistant for a professional residential cleaning company. Return valid JSON only.",
   schema: TaskAssistantResponseSchema,
-  async getContext(appointmentId: string, input: TaskAssistantFeatureInput) {
-    return getTaskAssistantContext(appointmentId, {
-      includePreviousVisit: input.includePreviousVisit,
-      staffNoteDraft: input.staffNoteDraft,
-    });
+  async getContext(
+    addressId: string,
+    appointmentStart: string,
+    appointmentEnd: string,
+    overrides?: {
+      jobTitle?: string | null;
+      clientName?: string | null;
+      requiredStaffCount?: number | null;
+    },
+  ) {
+    return getTaskAssistantContext(
+      addressId,
+      appointmentStart,
+      appointmentEnd,
+      overrides,
+    );
   },
-  buildUserPrompt(context: TaskAssistantPromptContext) {
-    return buildTaskAssistantPrompt(context, context.mode ?? "plan");
+  buildUserPrompt(context: AssignmentInsightFields) {
+    return buildTaskAssistantPrompt(context);
   },
 };
 
