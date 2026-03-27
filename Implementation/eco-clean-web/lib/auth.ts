@@ -16,14 +16,12 @@ export async function verifyUser(email: string, password: string) {
   });
 
   if (!user) {
-    console.log("Login failed: user not found", normalizedEmail);
     return null;
   }
 
   const ok = await bcrypt.compare(password, user.password);
 
   if (!ok) {
-    console.log("Login failed: wrong password", normalizedEmail);
     return null;
   }
 

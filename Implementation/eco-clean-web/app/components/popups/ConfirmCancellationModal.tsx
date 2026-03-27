@@ -40,6 +40,12 @@ const ConfirmCancellationModal = ({ onSuccess }: Props) => {
       onClose={closeConfirmCancel}
       title="Confirm Deletion"
       centered
+      classNames={{
+        content: "app-modal__content",
+        header: "app-modal__header",
+        title: "app-modal__title",
+        body: "app-modal__body",
+      }}
     >
       <Text>
         Are you sure that you want to proceed? This action is irreversible.

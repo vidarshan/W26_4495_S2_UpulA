@@ -123,21 +123,6 @@ export async function GET(req: NextRequest) {
       })),
     });
 
-    console.log("Reminder window debug", {
-      daysBefore: reminder.daysBefore,
-      flag: reminder.flag,
-      now: now.toISOString(),
-      start: start.toISOString(),
-      end: end.toISOString(),
-      matchedCount: appointments.length,
-      matchedAppointments: appointments.map((appt) => ({
-        id: appt.id,
-        email: appt.job.client?.email ?? null,
-        startTime: appt.startTime.toISOString(),
-        status: appt.status,
-      })),
-    });
-
     for (const appt of appointments) {
       const client = appt.job.client;
       const address = appt.job.address;
@@ -167,13 +152,6 @@ export async function GET(req: NextRequest) {
         .join(", ");
 
       try {
-        console.log("Sending reminder", {
-          appointmentId: appt.id,
-          daysBefore: reminder.daysBefore,
-          to: client.email,
-          startTime: appt.startTime.toISOString(),
-        });
-
         const info = await sendAppointmentReminderEmail({
           to: client.email,
           clientName,
@@ -183,25 +161,11 @@ export async function GET(req: NextRequest) {
           daysBefore: reminder.daysBefore,
         });
 
-        console.log("Reminder email sent", {
-          appointmentId: appt.id,
-          daysBefore: reminder.daysBefore,
-          to: client.email,
-          messageId: info.messageId,
-          accepted: info.accepted,
-          rejected: info.rejected,
-        });
-
         await prisma.appointment.update({
           where: { id: appt.id },
           data: {
             [reminder.flag]: true,
           },
-        });
-
-        console.log("Reminder flag updated", {
-          appointmentId: appt.id,
-          flag: reminder.flag,
         });
 
         allResults.push({

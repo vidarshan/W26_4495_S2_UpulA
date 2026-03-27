@@ -280,6 +280,12 @@ export default function ClientPropertyModal({
       closeOnClickOutside={!isBusy}
       closeOnEscape={!isBusy}
       withCloseButton={!isBusy}
+      classNames={{
+        content: "app-modal__content",
+        header: "app-modal__header",
+        title: "app-modal__title",
+        body: "app-modal__body",
+      }}
     >
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Stack gap="xl">

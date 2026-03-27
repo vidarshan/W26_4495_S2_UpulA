@@ -1,11 +1,12 @@
-'use client';
+"use client";
 
-import { Box, Button, Container, Group, Text, Title } from '@mantine/core';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
-import { useRef } from 'react';
-import { IoDownloadOutline } from 'react-icons/io5';
-import Image from 'next/image';
+import { Box, Button, Container, Group, Text, Title } from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
+import { useRef } from "react";
+import { IoDownloadOutline } from "react-icons/io5";
+import Image from "next/image";
 
 const earnings = [
   { label: 'Regular', rate: 18, units: 80, amount: 1540, yearToDate: 1540 },
@@ -27,6 +28,7 @@ const deductions = [
 ];
 
 export default function PayStubPage() {
+  const isNarrow = useMediaQuery("(max-width: 62em)");
   const pdfRef = useRef<HTMLDivElement>(null);
 
   const grossEarnings = earnings.reduce((sum, row) => sum + row.amount, 0);
@@ -55,26 +57,29 @@ export default function PayStubPage() {
 
   return (
     <Container size="lg" py="xl">
-      <Group justify="flex-end" mb="md">
+      <Group justify={isNarrow ? "stretch" : "flex-end"} mb="md">
         <Button
           leftSection={<IoDownloadOutline size={18} />}
           onClick={handleDownloadPdf}
+          fullWidth={isNarrow}
         >
           Download PDF
         </Button>
       </Group>
 
-      <Box
-        ref={pdfRef}
-        bg="white"
-        p="xl"
-        style={{
-          border: '1px solid #ddd',
-          maxWidth: 900,
-          margin: '0 auto',
-        }}
-      >
-        <Group justify="space-between" align="flex-start" mb="lg">
+      <Box style={{ overflowX: "auto" }}>
+        <Box
+          ref={pdfRef}
+          bg="white"
+          p={isNarrow ? "md" : "xl"}
+          style={{
+            border: "1px solid #ddd",
+            maxWidth: 900,
+            minWidth: isNarrow ? 680 : undefined,
+            margin: "0 auto",
+          }}
+        >
+        <Group justify="space-between" align="flex-start" mb="lg" wrap="nowrap">
           <Box>
             <Box
               style={{
@@ -170,6 +175,7 @@ export default function PayStubPage() {
               {netEarnings}
             </Text>
           </Group>
+        </Box>
         </Box>
       </Box>
     </Container>

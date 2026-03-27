@@ -1,23 +1,18 @@
+import { getJobs } from "@/lib/api/jobs";
+import { queryKeys } from "@/lib/queryKeys";
 import { Job } from "@/types";
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 export function useJobs() {
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [loading, setLoading] = useState(false);
+  const query = useQuery({
+    queryKey: queryKeys.jobs.all,
+    queryFn: getJobs,
+    select: (response): Job[] => response.data,
+  });
 
-  useEffect(() => {
-    const fetchJobs = async () => {
-      setLoading(true);
-
-      const res = await fetch(`/api/jobs`);
-      const data = await res.json();
-
-      setJobs(data.data);
-      setLoading(false);
-    };
-
-    fetchJobs();
-  }, []);
-
-  return { jobs, loading };
+  return {
+    ...query,
+    jobs: query.data ?? [],
+    loading: query.isLoading,
+  };
 }

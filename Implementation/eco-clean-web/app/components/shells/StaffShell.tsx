@@ -38,26 +38,21 @@ function MenuItem({ href, label, icon, active, onClick }: MenuItemProps) {
       component={Link}
       href={href}
       onClick={onClick}
-      style={{
-        width: "100%",
-        padding: "10px 4px",
-        borderRadius: 12,
-      }}
+      className={`staff-shell-nav-item${active ? " staff-shell-nav-item--active" : ""}`}
     >
       <Group gap="sm">
-        <Box
-          style={{
-            display: "flex",
-            alignItems: "center",
-            color: "var(--mantine-color-dark-8)",
-          }}
-        >
+        <Box >
           {icon}
         </Box>
 
-        <Text fw={active ? 700 : 500} size="lg">
-          {label}
-        </Text>
+        <Box className="staff-shell-nav-item__content">
+          <Text fw={active ? 700 : 600} size="sm" className="staff-shell-nav-item__label">
+            {label}
+          </Text>
+          <Text size="xs" className="staff-shell-nav-item__meta">
+            {active ? "Open now" : "Go to section"}
+          </Text>
+        </Box>
       </Group>
     </UnstyledButton>
   );
@@ -81,102 +76,94 @@ export default function StaffShell({
 
   const pathname = usePathname();
 
+  const menuItems = [
+    {
+      href: "/staff/tasks",
+      label: "My Tasks",
+      icon: <IoCheckboxOutline size={18} />,
+      active: pathname.startsWith("/staff/tasks"),
+    },
+    {
+      href: "/staff/profile",
+      label: "Profile",
+      icon: <IoPersonOutline size={18} />,
+      active: pathname.startsWith("/staff/profile"),
+    },
+    {
+      href: "/staff/apply-leave",
+      label: "Time-off",
+      icon: <IoCalendarClearOutline size={18} />,
+      active: pathname.startsWith("/staff/apply-leave"),
+    },
+    {
+      href: "/staff/enter-availability",
+      label: "Availability",
+      icon: <IoTimeOutline size={18} />,
+      active: pathname.startsWith("/staff/enter-availability"),
+    },
+  ];
+
   return (
-    <Container p={0} mih="100vh">
+    <Container p={0} mih="100vh" className="staff-shell">
       <Drawer
         opened={drawerOpened}
         onClose={closeDrawer}
         withCloseButton={false}
         position="left"
         size="78%"
-        overlayProps={{ backgroundOpacity: 0.45, blur: 0 }}
-        styles={{
-          body: {
-            padding: 0,
-            height: "100%",
-          },
-          content: {
-            backgroundColor: "white",
-          },
+        zIndex={500}
+        overlayProps={{ backgroundOpacity: 0.45, blur: 4 }}
+        classNames={{
+          content: "staff-shell-drawer__content",
+          body: "staff-shell-drawer__body",
         }}
       >
         <Box pt="lg" px="sm">
-          <Group justify="space-between" align="center" mb="xl">
-            <Text size="xl" fw={500}>
-              Eco Clean
-            </Text>
+          <Group
+            justify="space-between"
+            align="center"
+            mb="md"
+            className="staff-drawer-brand"
+          >
+            <Box>
+              <Text size="xs" fw={800} tt="uppercase" className="brand-kicker">
+                Eco Clean
+              </Text>
+              <Text size="lg" fw={800} c="#0f172a">
+                Staff Menu
+              </Text>
+            </Box>
 
             <ActionIcon
-              variant="subtle"
-              color="dark"
-              radius="xl"
+              variant="light"
+              color="gray"
+              radius="lg"
               onClick={closeDrawer}
             >
-              <IoCloseOutline size={28} />
+              <IoCloseOutline size={24} />
             </ActionIcon>
           </Group>
         </Box>
-        <Stack px="sm" gap="xs">
-          <Button
-            component={Link}
-            href="/staff/tasks"
-            variant="subtle"
-            radius="md"
-            fullWidth
-            justify="flex-start"
-            onClick={closeDrawer}
-            color="dark"
-            leftSection={<IoCheckboxOutline />}
-          >
-            My Tasks
-          </Button>
+        <Stack px="sm" py="md" gap="xs">
+          {menuItems.map((item) => (
+            <MenuItem
+              key={item.href}
+              href={item.href}
+              label={item.label}
+              icon={item.icon}
+              active={item.active}
+              onClick={closeDrawer}
+            />
+          ))}
 
           <Button
-            component={Link}
-            href="/staff/profile"
-            variant="subtle"
-            radius="md"
-            fullWidth
-            color="dark"
-            justify="flex-start"
-            onClick={closeDrawer}
-            leftSection={<IoPersonOutline />}
-          >
-            Profile
-          </Button>
-          <Button
-            component={Link}
-            variant="subtle"
-            href="/staff/apply-leave"
-            radius="md"
-            fullWidth
-            justify="flex-start"
-            onClick={closeDrawer}
-            color="dark"
-            leftSection={<IoCalendarClearOutline />}
-          >
-            Time-off
-          </Button>
-          <Button
-            component={Link}
-            variant="subtle"
-            href="/staff/enter-availability"
-            radius="md"
-            fullWidth
-            justify="flex-start"
-            onClick={closeDrawer}
-            color="dark"
-            leftSection={<IoTimeOutline />}
-          >
-            Availability
-          </Button>
-
-          <Button
-            radius="md"
+            radius="xl"
             onClick={() => signOut({ callbackUrl: "/login" })}
             fullWidth
+            mt="md"
+            className="staff-shell-signout"
           >
-            Logout
+            Sign out
           </Button>
         </Stack>
       </Drawer>
@@ -189,7 +176,7 @@ export default function StaffShell({
         refreshing={refreshing}
       />
 
-      {children}
+      <Box className="staff-shell__content">{children}</Box>
     </Container>
   );
 }

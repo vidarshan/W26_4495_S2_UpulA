@@ -1,7 +1,9 @@
 export const runtime = "nodejs";
 import { prisma } from "@/lib/prisma";
+import { normalizeAddressLocation } from "@/lib/staffLocation";
 import { getAuthSession } from "@/lib/session";
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 
@@ -65,6 +67,14 @@ export async function POST(req: Request) {
         },
       });
 
+      await tx.user.update({
+        where: { id: user.id },
+        data: {
+          lastKnownJobLocation:
+            normalizeAddressLocation(address) ?? Prisma.DbNull,
+        },
+      });
+
       return {
         user,
         profile: {
@@ -124,7 +134,7 @@ export async function GET(req: Request) {
     };
 
     // Include the StaffProfile so we get the Postal Code and Hourly Rate
-    const baseInclude = {
+    const baseSelect = {
       staffProfile: {
         include: {
           staffAddress: true,
@@ -136,7 +146,7 @@ export async function GET(req: Request) {
     if (!paginate) {
       const staffMembers = await prisma.user.findMany({
         where,
-        include: baseInclude,
+        select: baseSelect,
         orderBy: { name: "asc" },
       });
 
@@ -149,7 +159,7 @@ export async function GET(req: Request) {
     const [staffMembers, total] = await Promise.all([
       prisma.user.findMany({
         where,
-        include: baseInclude,
+        include: baseSelect,
         skip,
         take: limit,
         orderBy: { name: "asc" },

@@ -1,7 +1,9 @@
 export const runtime = "nodejs";
 import { prisma } from "@/lib/prisma";
+import { normalizeAddressLocation } from "@/lib/staffLocation";
 import { getAuthSession } from "@/lib/session";
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 
 /**
  * GET: Fetch a single staff member's full profile
@@ -30,6 +32,7 @@ export async function GET(
         email: true,
         role: true,
         createdAt: true,
+        lastKnownJobLocation: true,
         staffProfile: {
           select: {
             id: true,
@@ -84,6 +87,27 @@ export async function PATCH(
     const { name, email, postalCode, hourlyRate } = body;
 
     const updatedStaff = await prisma.$transaction(async (tx) => {
+      const existingStaff = await tx.user.findUnique({
+        where: { id },
+        select: {
+          lastKnownJobLocation: true,
+          staffProfile: {
+            select: {
+              staffAddress: {
+                select: {
+                  street1: true,
+                  street2: true,
+                  city: true,
+                  province: true,
+                  postalCode: true,
+                  country: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
       await tx.user.update({
         where: { id },
         data: {
@@ -103,8 +127,11 @@ export async function PATCH(
         },
       });
 
+      let nextAddress =
+        existingStaff?.staffProfile?.staffAddress ?? null;
+
       if (postalCode !== undefined) {
-        await tx.staffAddress.upsert({
+        nextAddress = await tx.staffAddress.upsert({
           where: { staffProfileId: profile.id },
           update: {
             postalCode,
@@ -120,6 +147,25 @@ export async function PATCH(
         });
       }
 
+      const nextHomeLocation = normalizeAddressLocation(nextAddress);
+      const previousHomeLocationJson = normalizeAddressLocation(
+        existingStaff?.staffProfile?.staffAddress,
+      );
+
+      if (
+        nextHomeLocation &&
+        (!existingStaff?.lastKnownJobLocation ||
+          JSON.stringify(existingStaff.lastKnownJobLocation) ===
+            JSON.stringify(previousHomeLocationJson))
+      ) {
+        await tx.user.update({
+          where: { id },
+          data: {
+            lastKnownJobLocation: nextHomeLocation ?? Prisma.DbNull,
+          },
+        });
+      }
+
       return tx.user.findUnique({
         where: { id },
         select: {
@@ -128,6 +174,7 @@ export async function PATCH(
           email: true,
           role: true,
           createdAt: true,
+          lastKnownJobLocation: true,
           staffProfile: {
             select: {
               id: true,

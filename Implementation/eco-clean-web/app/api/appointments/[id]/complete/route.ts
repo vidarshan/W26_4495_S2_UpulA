@@ -1,7 +1,8 @@
 export const runtime = "nodejs";
 
 import { prisma } from "@/lib/prisma";
-import { AppointmentStatus } from "@prisma/client";
+import { normalizeAddressLocation } from "@/lib/staffLocation";
+import { AppointmentStatus, Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(
@@ -21,7 +22,33 @@ export async function POST(
     const result = await prisma.$transaction(async (tx) => {
       const appointment = await tx.appointment.findUnique({
         where: { id: appointmentId },
-        select: { id: true, status: true },
+        select: {
+          id: true,
+          status: true,
+          assignments: {
+            select: {
+              staffId: true,
+              staff: {
+                select: {
+                  staffProfile: {
+                    select: {
+                      staffAddress: {
+                        select: {
+                          street1: true,
+                          street2: true,
+                          city: true,
+                          province: true,
+                          postalCode: true,
+                          country: true,
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
       });
 
       if (!appointment) {
@@ -76,6 +103,19 @@ export async function POST(
           timeSpent: Math.floor(totalSeconds / 60),
         },
       });
+
+      for (const assignment of appointment.assignments) {
+        const homeLocation = normalizeAddressLocation(
+          assignment.staff.staffProfile?.staffAddress,
+        );
+
+        await tx.user.update({
+          where: { id: assignment.staffId },
+          data: {
+            lastKnownJobLocation: homeLocation ?? Prisma.DbNull,
+          },
+        });
+      }
 
       const fullAppointment = await tx.appointment.findUnique({
         where: { id: appointmentId },

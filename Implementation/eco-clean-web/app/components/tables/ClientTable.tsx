@@ -12,6 +12,7 @@ import {
   Flex,
   Select,
 } from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
 
 import { useRouter } from "next/navigation";
 
@@ -21,51 +22,12 @@ import { useClients } from "@/hooks/useClient";
 import { useState } from "react";
 import ClientPropertyModal from "../popups/ClientModal";
 import { useQueryClient } from "@tanstack/react-query";
-
-export type Client = {
-  id: string;
-  firstName: string;
-  lastName: string;
-  companyName?: string;
-  email: string;
-  phone: string;
-  preferredContact?: "call" | "sms" | "email";
-  leadSource?: string;
-  createdAt: string;
-};
-
-export type Address = {
-  id: string;
-  clientId: string;
-  street1: string;
-  street2: string;
-  city: string;
-  province: string;
-  postalCode: string;
-  country: string;
-  isPrimary: boolean;
-  isBilling: boolean;
-  createdAt: string;
-};
-
-export type Staff = {
-  id: string;
-  name: string;
-  role: string;
-  email: string;
-  createdAt: string;
-};
-
-export type MetaData = {
-  limit: number;
-  page: number;
-  total: number;
-  totalPages: number;
-};
+import { Client } from "@/types";
 
 export const getClientName = (c: Client) => `${c.firstName} ${c.lastName}`;
 
 export default function ClientsTable() {
+  const isNarrow = useMediaQuery("(max-width: 62em)");
   const router = useRouter();
   const [opened, setOpened] = useState(false);
   const queryClient = useQueryClient();
@@ -92,12 +54,12 @@ export default function ClientsTable() {
     totalPages: 1,
   };
 
-  const renderPreferredContact = (method?: "call" | "sms" | "email") => {
+  const renderPreferredContact = (method?: string | null) => {
     if (!method) return "—";
     return method.toUpperCase();
   };
 
-  const renderValue = (value?: string) => (value?.length ? value : "—");
+  const renderValue = (value?: string | null) => (value?.length ? value : "—");
 
   const handleSearch = (value: string) => {
     setQuery(value);
@@ -120,14 +82,15 @@ export default function ClientsTable() {
           queryClient.invalidateQueries({ queryKey: ["clients"] });
         }}
       />
-      <Group justify="space-between" mb="md">
+      <Group justify="space-between" mb="md" align="end">
         <Box></Box>
-        <Group gap="sm">
+        <Group gap="sm" wrap="wrap" style={{ width: isNarrow ? "100%" : "auto" }}>
           <TextInput
             placeholder="Search clients"
             radius="xl"
             leftSection={<IoSearchOutline size={16} />}
             onChange={(e) => handleSearch(e.target.value)}
+            style={{ flex: isNarrow ? 1 : undefined, minWidth: isNarrow ? 220 : undefined }}
           />
 
           <Select
@@ -140,6 +103,7 @@ export default function ClientsTable() {
             ]}
             onChange={(value) => setSort(value as "newest" | "oldest")}
             radius="xl"
+            style={{ minWidth: isNarrow ? 180 : undefined }}
           />
         </Group>
       </Group>
@@ -152,8 +116,8 @@ export default function ClientsTable() {
         </Center>
       ) : (
         <>
-          <ScrollArea mih="60vh">
-            <Table striped highlightOnHover withRowBorders>
+          <ScrollArea mih="60vh" offsetScrollbars>
+            <Table striped highlightOnHover withRowBorders miw={760}>
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th>Client</Table.Th>
@@ -197,7 +161,7 @@ export default function ClientsTable() {
               </Table.Tbody>
             </Table>
           </ScrollArea>
-          <Flex mt="sm" w="100%" justify="flex-end">
+          <Flex mt="sm" w="100%" justify={isNarrow ? "center" : "flex-end"}>
             <Pagination
               value={meta.page}
               total={meta.totalPages}

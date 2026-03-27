@@ -19,20 +19,7 @@ import {
   IoCheckmarkCircleOutline,
   IoSparklesOutline,
 } from "react-icons/io5";
-
-type TaskAssistantResponse = {
-  brief: string;
-  priorityOrder: string[];
-  timePlan: {
-    label: string;
-    minutes: number;
-  }[];
-  alerts: string[];
-  checklist: string[];
-  riskLevel: "low" | "medium" | "high";
-  riskReason: string | null;
-  completionDraft: string | null;
-};
+import { TaskAssistantResponse } from "@/lib/ai/schemas";
 
 type Props = {
   data: TaskAssistantResponse;

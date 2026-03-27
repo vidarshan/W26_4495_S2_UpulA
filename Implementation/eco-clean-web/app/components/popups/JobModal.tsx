@@ -28,19 +28,35 @@ import { DatePickerInput, TimeInput } from "@mantine/dates";
 import { Dropzone } from "@mantine/dropzone";
 import { useDebouncedValue } from "@mantine/hooks";
 import { useForm } from "@mantine/form";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { IoAddOutline, IoCloseOutline, IoImageOutline } from "react-icons/io5";
+import {
+  IoAddOutline,
+  IoCloseOutline,
+  IoImageOutline,
+} from "react-icons/io5";
 import { createJob, CreateJobPayload, JobFormValues } from "@/lib/api/jobs";
 import { getClientAddresses, getClients } from "@/lib/api/client";
 import { getStaff } from "@/lib/api/users";
-import { Staff } from "@/app/types/staff";
-import { Client } from "../tables/ClientTable";
-import { CalendarSelection } from "@/types";
+import { runStaffRecommendationPreview } from "@/lib/api/appointments";
+import {
+  CalendarSelection,
+  CandidateResponse,
+  CandidateRecommendation,
+  CandidateStaff,
+  Client,
+  Staff,
+} from "@/types";
 import { DateTime } from "luxon";
 import { APP_TZ } from "@/lib/dateTime";
 import { useUploadThing } from "@/lib/uploadthing";
 import { notifications } from "@mantine/notifications";
+import AIStaffSuggestionCard from "../cards/AIStaffSuggestionCard";
 
 interface Props {
   opened: boolean;
@@ -129,6 +145,59 @@ function jsDateToHHmm(d: Date) {
   if (!(d instanceof Date) || Number.isNaN(d.getTime())) return "";
   const dt = DateTime.fromJSDate(d, { zone: APP_TZ });
   return dt.isValid ? dt.toFormat("HH:mm") : "";
+}
+
+function buildAppointmentWindow(
+  appointment: AppointmentForm,
+  isAnytime: boolean,
+) {
+  if (!appointment.startDate || isAnytime) return null;
+  if (!appointment.startTime.trim() || !appointment.endTime.trim()) return null;
+
+  const start = DateTime.fromFormat(
+    `${appointment.startDate} ${appointment.startTime.trim()}`,
+    "yyyy-LL-dd HH:mm",
+    { zone: APP_TZ },
+  );
+  const end = DateTime.fromFormat(
+    `${appointment.startDate} ${appointment.endTime.trim()}`,
+    "yyyy-LL-dd HH:mm",
+    { zone: APP_TZ },
+  );
+
+  if (!start.isValid || !end.isValid || end <= start) return null;
+
+  return {
+    appointmentStart: start.toUTC().toISO(),
+    appointmentEnd: end.toUTC().toISO(),
+  };
+}
+
+async function getAssignmentCandidates(
+  addressId: string,
+  appointmentStart: string,
+  appointmentEnd: string,
+): Promise<CandidateResponse> {
+  const params = new URLSearchParams({
+    appointmentStart,
+    appointmentEnd,
+  });
+
+  const res = await fetch(
+    `/api/assignment/candidate/${addressId}?${params.toString()}`,
+    {
+      method: "GET",
+      cache: "no-store",
+    },
+  );
+
+  const data = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    throw new Error(data?.error || "Failed to fetch assignment candidates");
+  }
+
+  return data as CandidateResponse;
 }
 
 export function toYMD(d: string | null) {
@@ -353,6 +422,72 @@ export default function NewJobModal({
     queryFn: () => getStaff(),
     staleTime: 60_000,
     enabled: opened,
+  });
+
+  const appointmentCandidateQueries = useQueries({
+    queries: form.values.appointments.map((appointment) => {
+      const window = buildAppointmentWindow(appointment, form.values.isAnytime);
+      const enabled =
+        opened &&
+        !!form.values.addressId &&
+        !!window?.appointmentStart &&
+        !!window?.appointmentEnd;
+
+      return {
+        queryKey: [
+          "assignment-candidates",
+          form.values.addressId,
+          appointment.id,
+          window?.appointmentStart ?? null,
+          window?.appointmentEnd ?? null,
+        ],
+        queryFn: () =>
+          getAssignmentCandidates(
+            form.values.addressId,
+            window!.appointmentStart!,
+            window!.appointmentEnd!,
+          ),
+        enabled,
+        staleTime: 60_000,
+      };
+    }),
+  });
+
+  const appointmentStaffRecommendationQueries = useQueries({
+    queries: form.values.appointments.map((appointment) => {
+      const window = buildAppointmentWindow(appointment, form.values.isAnytime);
+      const candidateQuery = appointmentCandidateQueries.find(
+        (query, index) => form.values.appointments[index]?.id === appointment.id,
+      );
+      const candidateData = candidateQuery?.data?.data;
+      const enabled =
+        opened &&
+        !!candidateData &&
+        !!window?.appointmentStart &&
+        !!window?.appointmentEnd;
+
+      return {
+        queryKey: [
+          "staff-recommendation-preview",
+          appointment.id,
+          window?.appointmentStart ?? null,
+          window?.appointmentEnd ?? null,
+          form.values.title,
+          candidateData?.recommendedMembers?.length ?? 0,
+          candidateData?.staffMembers?.length ?? 0,
+        ],
+        queryFn: () =>
+          runStaffRecommendationPreview({
+            appointmentStart: window!.appointmentStart!,
+            appointmentEnd: window!.appointmentEnd!,
+            jobTitle: form.values.title.trim() || "Draft job",
+            candidateData: candidateData!,
+          }),
+        enabled,
+        staleTime: 60_000,
+        retry: 1,
+      };
+    }),
   });
 
   const {
@@ -773,79 +908,160 @@ export default function NewJobModal({
   const renderAppointments = () =>
     form.values.appointments.map((appt, index) => (
       <Card withBorder mt="sm" key={appt.id}>
-        <Grid>
-          <Grid.Col span={4}>
-            <DatePickerInput
-              label="Date"
-              placeholder="Date"
-              key={form.key(`appointments.${index}.startDate`)}
-              {...form.getInputProps(`appointments.${index}.startDate`)}
-              minDate={form.values.appointments?.[0]?.startDate ?? undefined}
-            />
-          </Grid.Col>
+        {(() => {
+          const candidateQuery = appointmentCandidateQueries[index];
+          const staffRecommendationQuery =
+            appointmentStaffRecommendationQueries[index];
+          const candidateData = candidateQuery?.data?.data;
 
-          <Grid.Col span={4}>
-            <TimeInput
-              key={form.key(`appointments.${index}.startTime`)}
-              label="Start"
-              disabled={form.values.isAnytime || isBusy}
-              {...form.getInputProps(`appointments.${index}.startTime`)}
-            />
-          </Grid.Col>
+          const recommendedMembers = candidateData?.recommendedMembers ?? [];
 
-          <Grid.Col span={4}>
-            <TimeInput
-              key={form.key(`appointments.${index}.endTime`)}
-              label="End"
-              disabled={form.values.isAnytime || isBusy}
-              {...form.getInputProps(`appointments.${index}.endTime`)}
-            />
-          </Grid.Col>
+          const staffMembers = candidateData?.staffMembers?.length
+            ? candidateData.staffMembers
+            : ((staffData?.data as Staff[] | undefined) ?? []);
 
-          <Grid.Col span={12}>
-            <MultiSelect
-              label="Staff"
-              searchable
-              placeholder={
-                staffLoading
-                  ? "Loading staff..."
-                  : staffError
-                    ? "Failed to load staff"
-                    : "Assign staff"
-              }
-              disabled={staffLoading || isBusy}
-              rightSection={staffFetching ? <Loader size="xs" /> : undefined}
-              data={
-                staffData?.data?.map((s: Staff) => ({
-                  value: s.id,
-                  label: s.name,
-                })) || []
-              }
-              onSearchChange={setSearchAssignees}
-              {...form.getInputProps(`appointments.${index}.staffId`)}
-            />
-          </Grid.Col>
+          const search = debouncedSearchAssignees.trim().toLowerCase();
 
-          {appt.uploadedImages?.length ? (
-            <Grid.Col span={12}>
-              <Group mt="xs">
-                {appt.uploadedImages.map((img) => (
-                  <Image
-                    key={img.fileKey}
-                    src={img.url}
-                    alt="attached_img"
-                    style={{
-                      width: 64,
-                      height: 64,
-                      objectFit: "cover",
-                      borderRadius: 8,
-                    }}
-                  />
-                ))}
-              </Group>
-            </Grid.Col>
-          ) : null}
-        </Grid>
+          const visibleStaff = staffMembers.filter((member: CandidateStaff) => {
+            if (!search) return true;
+            return member.name.toLowerCase().includes(search);
+          });
+
+          const multiSelectData = visibleStaff.map((member: CandidateStaff) => {
+            const candidateMember = member as CandidateStaff;
+
+            const isRecommended = recommendedMembers.some(
+              (candidate: CandidateRecommendation) =>
+                candidate.staff.id === member.id,
+            );
+
+            const hasLeaveConflict = (candidateMember.leaves?.length ?? 0) > 0;
+
+            const hasAssignmentConflict =
+              (candidateMember.assignments?.length ?? 0) > 0;
+
+            let suffix = "";
+            if (isRecommended) suffix = "Recommended";
+            else if (hasLeaveConflict) suffix = "On leave";
+            else if (hasAssignmentConflict) suffix = "Busy";
+
+            return {
+              value: member.id,
+              label: suffix ? `${member.name} (${suffix})` : member.name,
+            };
+          });
+
+          const unavailableMembers =
+            candidateData?.staffMembers?.filter((member: CandidateStaff) => {
+              const m = member;
+              return (
+                (m.leaves?.length ?? 0) > 0 || (m.assignments?.length ?? 0) > 0
+              );
+            }) ?? [];
+
+          const candidateWindow = buildAppointmentWindow(
+            appt,
+            form.values.isAnytime,
+          );
+
+          const candidatesDisabled =
+            !form.values.addressId || !candidateWindow?.appointmentStart;
+
+          return (
+            <Grid>
+              <Grid.Col span={4}>
+                <DatePickerInput
+                  label="Date"
+                  placeholder="Date"
+                  key={form.key(`appointments.${index}.startDate`)}
+                  {...form.getInputProps(`appointments.${index}.startDate`)}
+                  minDate={
+                    form.values.appointments?.[0]?.startDate ?? undefined
+                  }
+                />
+              </Grid.Col>
+
+              <Grid.Col span={4}>
+                <TimeInput
+                  key={form.key(`appointments.${index}.startTime`)}
+                  label="Start"
+                  disabled={form.values.isAnytime || isBusy}
+                  {...form.getInputProps(`appointments.${index}.startTime`)}
+                />
+              </Grid.Col>
+
+              <Grid.Col span={4}>
+                <TimeInput
+                  key={form.key(`appointments.${index}.endTime`)}
+                  label="End"
+                  disabled={form.values.isAnytime || isBusy}
+                  {...form.getInputProps(`appointments.${index}.endTime`)}
+                />
+              </Grid.Col>
+
+              <Grid.Col span={12}>
+                <MultiSelect
+                  label="Staff"
+                  searchable
+                  placeholder={
+                    candidateQuery?.isLoading || staffLoading
+                      ? "Loading staff..."
+                      : candidateQuery?.isError || staffError
+                        ? "Failed to load staff"
+                        : candidatesDisabled
+                          ? "Select address, date, and time first"
+                          : "Assign available staff"
+                  }
+                  disabled={
+                    (candidateQuery?.isLoading ?? false) ||
+                    staffLoading ||
+                    isBusy
+                  }
+                  rightSection={
+                    candidateQuery?.isFetching || staffFetching ? (
+                      <Loader size="xs" />
+                    ) : undefined
+                  }
+                  data={multiSelectData}
+                  onSearchChange={setSearchAssignees}
+                  {...form.getInputProps(`appointments.${index}.staffId`)}
+                />
+              </Grid.Col>
+
+              <Grid.Col span={12}>
+                <AIStaffSuggestionCard
+                  recommendedMembers={recommendedMembers}
+                  unavailableMembers={unavailableMembers}
+                  isLoading={candidateQuery?.isLoading}
+                  isDisabled={candidatesDisabled}
+                  aiSuggestion={staffRecommendationQuery?.data ?? null}
+                  isAiLoading={staffRecommendationQuery?.isLoading}
+                  aiError={staffRecommendationQuery?.isError ?? false}
+                />
+              </Grid.Col>
+
+              {appt.uploadedImages?.length ? (
+                <Grid.Col span={12}>
+                  <Group mt="xs">
+                    {appt.uploadedImages.map((img) => (
+                      <Image
+                        key={img.fileKey}
+                        src={img.url}
+                        alt="attached_img"
+                        style={{
+                          width: 64,
+                          height: 64,
+                          objectFit: "cover",
+                          borderRadius: 8,
+                        }}
+                      />
+                    ))}
+                  </Group>
+                </Grid.Col>
+              ) : null}
+            </Grid>
+          );
+        })()}
       </Card>
     ));
 
@@ -859,6 +1075,12 @@ export default function NewJobModal({
       closeOnClickOutside={!isBusy}
       closeOnEscape={!isBusy}
       withCloseButton={!isBusy}
+      classNames={{
+        content: "app-modal__content",
+        header: "app-modal__header",
+        title: "app-modal__title",
+        body: "app-modal__body",
+      }}
     >
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Stack gap="sm">

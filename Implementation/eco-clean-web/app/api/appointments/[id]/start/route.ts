@@ -1,6 +1,7 @@
 export const runtime = "nodejs";
 
 import { prisma } from "@/lib/prisma";
+import { normalizeAddressLocation } from "@/lib/staffLocation";
 import { Role } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -60,6 +61,20 @@ export async function POST(
           workSessions: {
             where: { endedAt: null },
           },
+          job: {
+            select: {
+              address: {
+                select: {
+                  street1: true,
+                  street2: true,
+                  city: true,
+                  province: true,
+                  postalCode: true,
+                  country: true,
+                },
+              },
+            },
+          },
           assignments: {
             select: {
               staffId: true,
@@ -115,6 +130,17 @@ export async function POST(
           startedAt: new Date(),
         },
       });
+
+      const jobLocation = normalizeAddressLocation(appointment.job.address);
+
+      if (jobLocation) {
+        await tx.user.update({
+          where: { id: staffId },
+          data: {
+            lastKnownJobLocation: jobLocation,
+          },
+        });
+      }
 
       const fullAppointment = await tx.appointment.findUnique({
         where: { id: appointmentId },
