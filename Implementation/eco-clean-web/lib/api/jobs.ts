@@ -1,4 +1,4 @@
-import { Job, JobType, LineItem as SharedLineItem } from "@/types";
+import { Job, JobType, LineItem as SharedLineItem, ListResponse } from "@/types";
 import { apiClient } from "./client";
 
 export type CreateJobPayload = {
@@ -88,22 +88,16 @@ export function createJob(data: CreateJobPayload) {
 }
 
 export function getJobs() {
-  return apiClient("/api/jobs");
+  return apiClient<ListResponse<Job>>("/api/jobs");
 }
 
-export async function getJobDetails(id: string): Promise<Job> {
-  const res = await fetch(`/api/jobs/${id}`);
-
-  if (!res.ok) {
-    throw new Error("Failed to fetch job");
-  }
-
-  return res.json() as Promise<Job>;
+export function getJobDetails(id: string) {
+  return apiClient<Job>(`/api/jobs/${id}`);
 }
 
 export function cancelJob(id: string) {
   return apiClient(`/api/jobs/${id}`, {
     method: "PATCH",
-    body: JSON.stringify("CANCEL_JOBS"),
+    body: "CANCEL_JOBS",
   });
 }

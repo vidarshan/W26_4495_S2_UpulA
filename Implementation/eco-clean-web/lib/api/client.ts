@@ -51,6 +51,7 @@ export type GetClientsParams = {
   q?: string;
   page?: number;
   limit?: number;
+  sort?: "newest" | "oldest";
 };
 
 export type ClientsResponse = PaginatedResponse<Client>;
@@ -94,10 +95,21 @@ export async function apiClient<TResponse, TBody = unknown>(
 
   return data as TResponse;
 }
-export function getClients(query: string) {
-  return apiClient<ClientsResponse>(
-    `/api/clients?q=${encodeURIComponent(query)}`,
-  );
+export function getClients(params: string | GetClientsParams = "") {
+  const sp = new URLSearchParams();
+
+  if (typeof params === "string") {
+    if (params) sp.set("q", params);
+  } else {
+    if (params.q) sp.set("q", params.q);
+    if (params.page) sp.set("page", String(params.page));
+    if (params.limit) sp.set("limit", String(params.limit));
+    if (params.sort) sp.set("sort", params.sort);
+  }
+
+  const query = sp.toString();
+
+  return apiClient<ClientsResponse>(`/api/clients${query ? `?${query}` : ""}`);
 }
 
 export function getClientAddresses(clientId: string) {

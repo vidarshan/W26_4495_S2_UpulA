@@ -1,5 +1,6 @@
 import { PaginatedResponse, SortOrder, Staff } from "@/types";
 import { getStaff } from "@/lib/api/users";
+import { queryKeys } from "@/lib/queryKeys";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 type StaffParams = {
@@ -9,17 +10,6 @@ type StaffParams = {
   sort?: SortOrder;
   paginate?: boolean;
 };
-
-type StaffQueryKey = readonly [
-  "staff",
-  {
-    q: string;
-    sort: SortOrder;
-    paginate: boolean;
-    page?: number;
-    limit?: number;
-  },
-];
 
 export function useStaff(params: StaffParams) {
   const paginate = params.paginate ?? true;
@@ -33,15 +23,10 @@ export function useStaff(params: StaffParams) {
 
   return useQuery<
     PaginatedResponse<Staff>,
-    Error,
-    PaginatedResponse<Staff>,
-    StaffQueryKey
+    Error
   >({
-    queryKey: ["staff", keyParams],
-    queryFn: ({ queryKey }) => {
-      const [, p] = queryKey;
-      return getStaff(p);
-    },
+    queryKey: queryKeys.staff.list(keyParams),
+    queryFn: () => getStaff(keyParams),
     placeholderData: keepPreviousData,
     staleTime: 60_000,
   });
