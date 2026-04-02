@@ -27,7 +27,7 @@ const prisma = new PrismaClient({ adapter });
 
 type SeedMode = "small" | "medium" | "large";
 
-const mode = (process.argv[2] as SeedMode) || "small";
+const mode = (process.argv[2] as SeedMode) || "large";
 const DEFAULT_PASSWORD = "Password123!";
 const SEED_TEST_EMAIL = process.env.SEED_TEST_EMAIL?.toLowerCase().trim();
 
@@ -309,8 +309,7 @@ async function resetDatabase() {
   await prisma.payStatement.deleteMany();
   await prisma.timesheetDay.deleteMany();
   await prisma.timesheet.deleteMany();
-  // Keep manually created timesheet periods
-  // await prisma.timesheetPeriod.deleteMany();
+  await prisma.timesheetPeriod.deleteMany();
   await prisma.leave.deleteMany();
   await prisma.staffAvailability.deleteMany();
   await prisma.assignment.deleteMany();
@@ -393,7 +392,7 @@ async function createClients() {
 
     const clientEmail =
       SEED_TEST_EMAIL && i < 3
-        ? SEED_TEST_EMAIL.replace("@", `+client${i + 1}@`)
+        ? SEED_TEST_EMAIL
         : faker.internet.email({ firstName, lastName }).toLowerCase();
 
     const client = await prisma.client.create({
@@ -662,7 +661,7 @@ async function createJobsForClients(
             from: addDays(startTime, -2),
             to: addDays(startTime, 2),
           }),
-          createdById:
+          reatedById:
             maybe(0.85) && appointment.assignments.length
               ? pick(appointment.assignments).staffId
               : maybe(0.4)
@@ -769,7 +768,7 @@ async function createTimesheetsAndPayroll(
   staff: { id: string }[],
   admins: { id: string }[],
 ) {
-  let existingPeriodsUsed = 0;
+  let periodsCreated = 0;
   let timesheetsCreated = 0;
   let timesheetDaysCreated = 0;
   let payStatementsCreated = 0;
@@ -782,32 +781,42 @@ async function createTimesheetsAndPayroll(
   const hourlyRateMap = new Map(profiles.map((p) => [p.userId, p.hourlyRate]));
   const approverId = admins[0]?.id ?? null;
 
-  const periods = await prisma.timesheetPeriod.findMany({
-    orderBy: { startDate: "asc" },
-  });
+  const baseStart = startOfDay(addDays(new Date(), -42));
 
-  if (!periods.length) {
-    console.log(
-      "ℹ️ No manually created timesheet periods found. Skipping timesheets/payroll seed.",
-    );
+  const periodDefs = [
+    {
+      startDate: baseStart,
+      endDate: endOfDay(addDays(baseStart, 13)),
+      status: TimesheetPeriodStatus.LOCKED,
+      lockedAt: addDays(baseStart, 15),
+    },
+    {
+      startDate: startOfDay(addDays(baseStart, 14)),
+      endDate: endOfDay(addDays(baseStart, 27)),
+      status: TimesheetPeriodStatus.LOCKED,
+      lockedAt: addDays(baseStart, 29),
+    },
+    {
+      startDate: startOfDay(addDays(baseStart, 28)),
+      endDate: endOfDay(addDays(baseStart, 41)),
+      status: TimesheetPeriodStatus.OPEN,
+      lockedAt: null,
+    },
+  ];
 
-    return {
-      existingPeriodsUsed: 0,
-      timesheetsCreated: 0,
-      timesheetDaysCreated: 0,
-      payStatementsCreated: 0,
-    };
-  }
+  for (const periodDef of periodDefs) {
+    const period = await prisma.timesheetPeriod.create({
+      data: periodDef,
+    });
 
-  existingPeriodsUsed = periods.length;
+    periodsCreated++;
 
-  for (const period of periods) {
     for (const member of staff) {
       const hourlyRate = hourlyRateMap.get(member.id) ?? 0;
       const isLocked = period.status === TimesheetPeriodStatus.LOCKED;
 
       const days: Prisma.TimesheetDayCreateWithoutTimesheetInput[] = [];
-      let cursor = startOfDay(period.startDate);
+      let cursor = new Date(period.startDate);
 
       while (cursor <= period.endDate) {
         const dayOfWeek = cursor.getDay();
@@ -826,31 +835,19 @@ async function createTimesheetsAndPayroll(
         cursor = addDays(cursor, 1);
       }
 
-      const existingTimesheet = await prisma.timesheet.findFirst({
-        where: {
-          periodId: period.id,
-          staffId: member.id,
-        },
-        select: { id: true },
-      });
-
-      if (existingTimesheet) continue;
-
-      const status = isLocked
-        ? TimesheetStatus.APPROVED
-        : maybe(0.45)
-          ? TimesheetStatus.SUBMITTED
-          : TimesheetStatus.OPEN;
-
       const timesheet = await prisma.timesheet.create({
         data: {
           periodId: period.id,
           staffId: member.id,
-          status,
-          submittedAt:
-            status === TimesheetStatus.SUBMITTED ||
-            status === TimesheetStatus.APPROVED
-              ? addDays(period.endDate, 1)
+          status: isLocked
+            ? TimesheetStatus.APPROVED
+            : maybe(0.45)
+              ? TimesheetStatus.SUBMITTED
+              : TimesheetStatus.OPEN,
+          submittedAt: isLocked
+            ? addDays(period.endDate, 1)
+            : maybe(0.45)
+              ? new Date()
               : null,
           approvedAt: isLocked ? addDays(period.endDate, 2) : null,
           approvedById: isLocked ? approverId : null,
@@ -868,16 +865,6 @@ async function createTimesheetsAndPayroll(
       timesheetDaysCreated += timesheet.days.length;
 
       if (isLocked) {
-        const existingPayStatement = await prisma.payStatement.findFirst({
-          where: {
-            userId: member.id,
-            timesheetPeriodId: period.id,
-          },
-          select: { id: true },
-        });
-
-        if (existingPayStatement) continue;
-
         const gross = fmtMoney(
           timesheet.days.reduce((sum, day) => {
             const rate = day.hourlyRate ?? hourlyRate;
@@ -918,7 +905,7 @@ async function createTimesheetsAndPayroll(
   }
 
   return {
-    existingPeriodsUsed,
+    periodsCreated,
     timesheetsCreated,
     timesheetDaysCreated,
     payStatementsCreated,
@@ -1119,7 +1106,7 @@ async function main() {
     recurrences: counts.recurrencesCreated,
     lineItems: counts.lineItemsCreated,
     leaves: leaveCount,
-    timesheetPeriodsUsed: payrollCounts.existingPeriodsUsed,
+    timesheetPeriods: payrollCounts.periodsCreated,
     timesheets: payrollCounts.timesheetsCreated,
     timesheetDays: payrollCounts.timesheetDaysCreated,
     payStatements: payrollCounts.payStatementsCreated,
