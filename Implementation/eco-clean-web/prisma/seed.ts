@@ -1,279 +1,1156 @@
 import "dotenv/config";
-import { PrismaClient, Role, JobType, AppointmentStatus, AssignmentStatus, TimesheetStatus, TimesheetPeriodStatus, LeaveType } from "@prisma/client";
+import {
+  PrismaClient,
+  Prisma,
+  Role,
+  JobType,
+  AppointmentStatus,
+  JobNoteCategory,
+  AssignmentStatus,
+  LeaveType,
+  TimesheetStatus,
+  TimesheetPeriodStatus,
+} from "@prisma/client";
+import { faker } from "@faker-js/faker";
 import { PrismaPg } from "@prisma/adapter-pg";
-import bcrypt from "bcryptjs";
+import bcrypt from "bcrypt";
+
+if (!process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL is missing");
+}
 
 const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL!,
+  connectionString: process.env.DATABASE_URL,
 });
 
 const prisma = new PrismaClient({ adapter });
 
-async function main() {
-  console.log("🌱 Seeding database...");
+type SeedMode = "small" | "medium" | "large";
 
-  const hashedPassword = await bcrypt.hash("Password123!", 10);
+const mode = (process.argv[2] as SeedMode) || "small";
+const DEFAULT_PASSWORD = "Password123!";
+const SEED_TEST_EMAIL = process.env.SEED_TEST_EMAIL?.toLowerCase().trim();
 
-  // -----------------------------
-  // USERS
-  // -----------------------------
-  const admin = await prisma.user.create({
-    data: {
-      name: "Admin User",
-      email: "admin@eco-clean.com",
-      password: hashedPassword,
+const CONFIG: Record<
+  SeedMode,
+  {
+    adminCount: number;
+    staffCount: number;
+    clientUserCount: number;
+    clientCount: number;
+    jobsPerClientMin: number;
+    jobsPerClientMax: number;
+    appointmentsPerJobMin: number;
+    appointmentsPerJobMax: number;
+  }
+> = {
+  small: {
+    adminCount: 1,
+    staffCount: 4,
+    clientUserCount: 10,
+    clientCount: 30,
+    jobsPerClientMin: 1,
+    jobsPerClientMax: 2,
+    appointmentsPerJobMin: 2,
+    appointmentsPerJobMax: 4,
+  },
+  medium: {
+    adminCount: 1,
+    staffCount: 8,
+    clientUserCount: 25,
+    clientCount: 120,
+    jobsPerClientMin: 1,
+    jobsPerClientMax: 3,
+    appointmentsPerJobMin: 3,
+    appointmentsPerJobMax: 6,
+  },
+  large: {
+    adminCount: 1,
+    staffCount: 14,
+    clientUserCount: 50,
+    clientCount: 320,
+    jobsPerClientMin: 2,
+    jobsPerClientMax: 4,
+    appointmentsPerJobMin: 4,
+    appointmentsPerJobMax: 8,
+  },
+};
+
+const cfg = CONFIG[mode];
+
+function randInt(min: number, max: number) {
+  return faker.number.int({ min, max });
+}
+
+function pick<T>(arr: T[]): T {
+  return faker.helpers.arrayElement(arr);
+}
+
+function maybe(probability = 0.5) {
+  return Math.random() < probability;
+}
+
+function addMinutes(date: Date, minutes: number) {
+  return new Date(date.getTime() + minutes * 60 * 1000);
+}
+
+function addHours(date: Date, hours: number) {
+  return new Date(date.getTime() + hours * 60 * 60 * 1000);
+}
+
+function addDays(date: Date, days: number) {
+  return new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
+}
+
+function randomDateBetween(from: Date, to: Date) {
+  return faker.date.between({ from, to });
+}
+
+function fullName(firstName: string, lastName: string) {
+  return `${firstName} ${lastName}`;
+}
+
+function uniqueSeedEmail(prefix: string, i: number) {
+  return `${prefix}${i + 1}@ecoclean.local`;
+}
+
+function fakePhone() {
+  const area = faker.helpers.arrayElement(["604", "778", "236", "672"]);
+  const part1 = faker.number.int({ min: 100, max: 999 });
+  const part2 = faker.number.int({ min: 1000, max: 9999 });
+
+  return `(${area}) ${part1}-${part2}`;
+}
+
+function fakePostalCode() {
+  return faker.location.zipCode("A#A #A#").toUpperCase();
+}
+
+function fakePreferredContact() {
+  return pick(["EMAIL", "PHONE", "TEXT"]);
+}
+
+function fakeLeadSource() {
+  return pick([
+    "Google",
+    "Referral",
+    "Instagram",
+    "Facebook",
+    "Walk-in",
+    "Returning Customer",
+    "Website",
+    "Flyer",
+  ]);
+}
+
+function fakeJobTitle(type: JobType) {
+  const recurring = [
+    "Weekly Home Cleaning",
+    "Biweekly Maintenance Cleaning",
+    "Recurring Condo Cleaning",
+    "Office Maintenance Service",
+    "Routine Deep Refresh",
+  ];
+
+  const oneOff = [
+    "Move-Out Cleaning",
+    "Move-In Cleaning",
+    "Deep Cleaning",
+    "Post-Renovation Cleaning",
+    "Kitchen & Bath Intensive",
+    "One-Time Office Cleaning",
+  ];
+
+  return type === JobType.RECURRING ? pick(recurring) : pick(oneOff);
+}
+
+function fakeVisitInstructions() {
+  return pick([
+    "Use side entrance and ring the bell once.",
+    "Customer prefers eco-friendly unscented products only.",
+    "Please focus on kitchen counters and bathrooms.",
+    "Parking available in visitor parking stall 12.",
+    "Call 10 minutes before arrival.",
+    "Be aware of a friendly dog inside.",
+    "Please avoid using bleach on marble surfaces.",
+    "Do not start before the scheduled time.",
+  ]);
+}
+
+function fakeJobNoteTitle() {
+  return pick([
+    "Access details",
+    "Client preference",
+    "Supplies needed",
+    "Safety note",
+    "Cleaning focus",
+    "General reminder",
+  ]);
+}
+
+function fakeJobNoteCategory(): JobNoteCategory {
+  return pick([
+    JobNoteCategory.GENERAL,
+    JobNoteCategory.ACCESS,
+    JobNoteCategory.CLEANING,
+    JobNoteCategory.SAFETY,
+    JobNoteCategory.SUPPLIES,
+    JobNoteCategory.CLIENT_PREFERENCE,
+  ]);
+}
+
+function fakeLineItemName() {
+  return pick([
+    "Base cleaning service",
+    "Bathroom cleaning",
+    "Kitchen deep clean",
+    "Floor vacuum & mop",
+    "Inside oven cleaning",
+    "Inside fridge cleaning",
+    "Window interior cleaning",
+    "Post-renovation cleanup",
+    "Office workspace cleaning",
+    "Supplies surcharge",
+  ]);
+}
+
+function fakeImageUrl(seed: string) {
+  return `https://picsum.photos/seed/${seed}/1200/900`;
+}
+
+/**
+ * Status logic for realism:
+ * - Future: mostly SCHEDULED, some CANCELLED
+ * - Past: mostly COMPLETED, some CANCELLED, some LATE, small number SCHEDULED
+ */
+function deriveAppointmentStatus(startTime: Date): AppointmentStatus {
+  const now = new Date();
+
+  if (startTime > now) {
+    return Math.random() < 0.9
+      ? AppointmentStatus.SCHEDULED
+      : AppointmentStatus.CANCELLED;
+  }
+
+  const r = Math.random();
+  if (r < 0.72) return AppointmentStatus.COMPLETED;
+  if (r < 0.84) return AppointmentStatus.CANCELLED;
+  if (r < 0.94) return AppointmentStatus.LATE;
+  return AppointmentStatus.SCHEDULED;
+}
+
+function shouldCreateWorkSession(status: AppointmentStatus) {
+  return (
+    status === AppointmentStatus.COMPLETED || status === AppointmentStatus.LATE
+  );
+}
+
+function computeReminderFlags(startTime: Date, status: AppointmentStatus) {
+  const now = new Date();
+
+  if (startTime > now) {
+    const daysUntil =
+      (startTime.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+
+    return {
+      reminder5dSent: daysUntil < 5 ? maybe(0.25) : false,
+      reminder1dSent: daysUntil < 1 ? maybe(0.25) : false,
+      completionSent: false,
+    };
+  }
+
+  return {
+    reminder5dSent: maybe(0.85),
+    reminder1dSent: maybe(0.9),
+    completionSent: status === AppointmentStatus.COMPLETED ? maybe(0.8) : false,
+  };
+}
+
+function fakeAssignmentStatus(
+  appointmentStatus: AppointmentStatus,
+): AssignmentStatus {
+  if (appointmentStatus === AppointmentStatus.CANCELLED) {
+    return AssignmentStatus.PENDING;
+  }
+  if (appointmentStatus === AppointmentStatus.COMPLETED) {
+    return AssignmentStatus.COMPLETED;
+  }
+  if (appointmentStatus === AppointmentStatus.LATE) {
+    return pick([
+      AssignmentStatus.EN_ROUTE,
+      AssignmentStatus.ON_SITE,
+      AssignmentStatus.COMPLETED,
+    ]);
+  }
+  return pick([
+    AssignmentStatus.PENDING,
+    AssignmentStatus.EN_ROUTE,
+    AssignmentStatus.ON_SITE,
+  ]);
+}
+
+function startOfDay(date: Date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function endOfDay(date: Date) {
+  const d = new Date(date);
+  d.setHours(23, 59, 59, 999);
+  return d;
+}
+
+function fmtMoney(n: number) {
+  return Number(n.toFixed(2));
+}
+
+async function resetDatabase() {
+  await prisma.payStatement.deleteMany();
+  await prisma.timesheetDay.deleteMany();
+  await prisma.timesheet.deleteMany();
+  // Keep manually created timesheet periods
+  // await prisma.timesheetPeriod.deleteMany();
+  await prisma.leave.deleteMany();
+  await prisma.staffAvailability.deleteMany();
+  await prisma.assignment.deleteMany();
+  await prisma.emergencyContact.deleteMany();
+  await prisma.staffAddress.deleteMany();
+  await prisma.staffProfile.deleteMany();
+  await prisma.appointmentAiInsight.deleteMany();
+  await prisma.appointmentWorkSession.deleteMany();
+  await prisma.appointmentImage.deleteMany();
+  await prisma.visitNote.deleteMany();
+  await prisma.appointment.deleteMany();
+  await prisma.jobNoteImage.deleteMany();
+  await prisma.jobNote.deleteMany();
+  await prisma.jobLineItem.deleteMany();
+  await prisma.recurrence.deleteMany();
+  await prisma.job.deleteMany();
+  await prisma.clientNote.deleteMany();
+  await prisma.address.deleteMany();
+  await prisma.client.deleteMany();
+  await prisma.user.deleteMany();
+}
+
+async function createUsers() {
+  const users: Prisma.UserCreateManyInput[] = [];
+  const PASSWORD = await bcrypt.hash(DEFAULT_PASSWORD, 10);
+
+  for (let i = 0; i < cfg.adminCount; i++) {
+    users.push({
+      name: `Admin ${i + 1}`,
+      email: uniqueSeedEmail("admin", i),
       role: Role.ADMIN,
-    },
-  });
+      password: PASSWORD,
+    });
+  }
 
-  const staff = await prisma.user.create({
-    data: {
-      name: "Staff User",
-      email: "staff@eco-clean.com",
-      password: hashedPassword,
+  for (let i = 0; i < cfg.staffCount; i++) {
+    const firstName = faker.person.firstName();
+    const lastName = faker.person.lastName();
+
+    users.push({
+      name: fullName(firstName, lastName),
+      email: uniqueSeedEmail("staff", i),
       role: Role.STAFF,
-    },
-  });
+      password: PASSWORD,
+    });
+  }
 
-  const clientUser = await prisma.user.create({
-    data: {
-      name: "Client User",
-      email: "client@eco-clean.com",
-      password: hashedPassword,
+  for (let i = 0; i < cfg.clientUserCount; i++) {
+    const firstName = faker.person.firstName();
+    const lastName = faker.person.lastName();
+
+    users.push({
+      name: fullName(firstName, lastName),
+      email: uniqueSeedEmail("client", i),
       role: Role.CLIENT,
-    },
+      password: PASSWORD,
+    });
+  }
+
+  await prisma.user.createMany({ data: users });
+
+  const allUsers = await prisma.user.findMany({
+    orderBy: { createdAt: "asc" },
   });
 
-  // -----------------------------
-  // STAFF PROFILE + RELATED
-  // -----------------------------
-  const staffProfile = await prisma.staffProfile.create({
-    data: {
-      userId: staff.id,
-      position: "Cleaner",
-      hourlyRate: 25,
-      staffAddress: {
-        create: {
-          street1: "123 Main St",
-          city: "Surrey",
-          province: "BC",
-          country: "Canada",
+  return {
+    admins: allUsers.filter((u) => u.role === Role.ADMIN),
+    staff: allUsers.filter((u) => u.role === Role.STAFF),
+    clientUsers: allUsers.filter((u) => u.role === Role.CLIENT),
+  };
+}
+
+async function createClients() {
+  const createdClients: { id: string; email: string }[] = [];
+
+  for (let i = 0; i < cfg.clientCount; i++) {
+    const firstName = faker.person.firstName();
+    const lastName = faker.person.lastName();
+    const hasCompany = maybe(0.3);
+
+    const clientEmail =
+      SEED_TEST_EMAIL && i < 3
+        ? SEED_TEST_EMAIL.replace("@", `+client${i + 1}@`)
+        : faker.internet.email({ firstName, lastName }).toLowerCase();
+
+    const client = await prisma.client.create({
+      data: {
+        title: maybe(0.35) ? pick(["Mr.", "Ms.", "Mrs.", "Dr."]) : null,
+        firstName,
+        lastName,
+        companyName: hasCompany ? faker.company.name() : null,
+        email: clientEmail,
+        phone: fakePhone(),
+        preferredContact: fakePreferredContact(),
+        leadSource: maybe(0.75) ? fakeLeadSource() : null,
+        notes: {
+          create: Array.from({ length: randInt(0, 3) }).map(() => ({
+            content: faker.lorem.sentences({ min: 1, max: 3 }),
+          })),
+        },
+        addresses: {
+          create: [
+            {
+              street1: faker.location.streetAddress(),
+              street2: maybe(0.25) ? faker.location.secondaryAddress() : null,
+              city: pick([
+                "Vancouver",
+                "Burnaby",
+                "Surrey",
+                "Richmond",
+                "Coquitlam",
+                "New Westminster",
+              ]),
+              province: "BC",
+              postalCode: fakePostalCode(),
+              country: "Canada",
+              isPrimary: true,
+              isBilling: true,
+            },
+            ...(maybe(0.22)
+              ? [
+                  {
+                    street1: faker.location.streetAddress(),
+                    street2: maybe(0.2)
+                      ? faker.location.secondaryAddress()
+                      : null,
+                    city: pick([
+                      "Vancouver",
+                      "Burnaby",
+                      "Surrey",
+                      "Richmond",
+                      "Coquitlam",
+                      "New Westminster",
+                    ]),
+                    province: "BC",
+                    postalCode: fakePostalCode(),
+                    country: "Canada",
+                    isPrimary: false,
+                    isBilling: false,
+                  },
+                ]
+              : []),
+          ],
         },
       },
-      emergencyContact: {
-        create: {
-          name: "Jane Doe",
-          phoneNumber: "1234567890",
-          relationship: "Sister",
+      select: { id: true, email: true },
+    });
+
+    createdClients.push(client);
+  }
+
+  return createdClients;
+}
+
+async function createJobsForClients(
+  clients: { id: string; email: string }[],
+  staff: { id: string }[],
+) {
+  let jobsCreated = 0;
+  let appointmentsCreated = 0;
+  let visitNotesCreated = 0;
+  let appointmentImagesCreated = 0;
+  let workSessionsCreated = 0;
+  let jobNotesCreated = 0;
+  let jobNoteImagesCreated = 0;
+  let recurrencesCreated = 0;
+  let lineItemsCreated = 0;
+
+  const now = new Date();
+  const eightMonthsAgo = addDays(now, -240);
+  const fourMonthsAhead = addDays(now, 120);
+
+  for (const client of clients) {
+    const addresses = await prisma.address.findMany({
+      where: { clientId: client.id },
+      select: { id: true },
+    });
+
+    const staffProfiles = await prisma.staffProfile.findMany({
+      where: { userId: { in: staff.map((s) => s.id) } },
+      select: { userId: true, hourlyRate: true },
+    });
+
+    const hourlyRateMap = new Map(
+      staffProfiles.map((p) => [p.userId, p.hourlyRate]),
+    );
+
+    const jobsCount = randInt(cfg.jobsPerClientMin, cfg.jobsPerClientMax);
+
+    for (let j = 0; j < jobsCount; j++) {
+      const jobType = maybe(0.45) ? JobType.RECURRING : JobType.ONE_OFF;
+
+      const job = await prisma.job.create({
+        data: {
+          title: fakeJobTitle(jobType),
+          type: jobType,
+          clientId: client.id,
+          addressId: pick(addresses).id,
+          isAnytime: maybe(0.18),
+          visitInstructions: maybe(0.7) ? fakeVisitInstructions() : null,
         },
-      },
-      availabilities: {
-        create: {
-          effectiveFrom: new Date(),
-          monActive: true,
-          monS1: true,
-        },
-      },
-    },
+        select: { id: true, type: true },
+      });
+
+      jobsCreated++;
+
+      const lineItems = Array.from({ length: randInt(1, 5) }).map(() => {
+        const quantity = randInt(1, 3);
+        const unitPrice = Number(
+          faker.finance.amount({ min: 35, max: 180, dec: 2 }),
+        );
+        const unitCost = Number(
+          (
+            unitPrice *
+            faker.number.float({ min: 0.35, max: 0.7, fractionDigits: 2 })
+          ).toFixed(2),
+        );
+        const total = Number((quantity * unitPrice).toFixed(2));
+
+        return {
+          jobId: job.id,
+          name: fakeLineItemName(),
+          quantity,
+          unitCost,
+          unitPrice,
+          total,
+          description: maybe(0.4) ? faker.lorem.sentence() : null,
+        };
+      });
+
+      await prisma.jobLineItem.createMany({ data: lineItems });
+      lineItemsCreated += lineItems.length;
+
+      const createdByCandidates = staff.map((s) => s.id);
+
+      const jobNotes = Array.from({ length: randInt(0, 4) }).map(() => ({
+        jobId: job.id,
+        title: maybe(0.75) ? fakeJobNoteTitle() : null,
+        content: maybe(0.9) ? faker.lorem.sentences({ min: 1, max: 4 }) : null,
+        category: maybe(0.85) ? fakeJobNoteCategory() : null,
+        isClientVisible: maybe(0.28),
+        isPinned: maybe(0.12),
+        createdAt: faker.date.recent({ days: 160 }),
+        createdById: maybe(0.82) ? pick(createdByCandidates) : null,
+      }));
+
+      for (const note of jobNotes) {
+        const created = await prisma.jobNote.create({ data: note });
+        jobNotesCreated++;
+
+        const images = Array.from({ length: randInt(0, 3) }).map((_, idx) => ({
+          noteId: created.id,
+          url: fakeImageUrl(`job-note-${created.id}-${idx}`),
+          fileKey: maybe(0.5) ? `job-notes/${created.id}/${idx}.jpg` : null,
+        }));
+
+        if (images.length) {
+          await prisma.jobNoteImage.createMany({ data: images });
+          jobNoteImagesCreated += images.length;
+        }
+      }
+
+      if (job.type === JobType.RECURRING && maybe(0.9)) {
+        await prisma.recurrence.create({
+          data: {
+            jobId: job.id,
+            frequency: pick(["WEEKLY", "BIWEEKLY", "MONTHLY"]),
+            interval: pick([1, 1, 2, 4]),
+            endType: pick(["NEVER", "ON_DATE", "AFTER_OCCURRENCES"]),
+            endsOn: maybe(0.35) ? addDays(now, randInt(30, 240)) : null,
+            endsAfter: maybe(0.25) ? randInt(8, 30) : null,
+          },
+        });
+        recurrencesCreated++;
+      }
+
+      const appointmentsCount = randInt(
+        cfg.appointmentsPerJobMin,
+        cfg.appointmentsPerJobMax,
+      );
+
+      for (let a = 0; a < appointmentsCount; a++) {
+        const startTime = randomDateBetween(eightMonthsAgo, fourMonthsAhead);
+        const durationHours = pick([2, 2, 3, 3, 4, 5]);
+        const endTime = addHours(startTime, durationHours);
+        const status = deriveAppointmentStatus(startTime);
+
+        const reminderFlags = computeReminderFlags(startTime, status);
+
+        const assignedStaff = faker.helpers.arrayElements(
+          staff.map((s) => s.id),
+          { min: 1, max: Math.min(3, staff.length) },
+        );
+
+        const completedAt =
+          status === AppointmentStatus.COMPLETED
+            ? addMinutes(endTime, randInt(5, 75))
+            : null;
+
+        const timeSpent =
+          status === AppointmentStatus.COMPLETED ||
+          status === AppointmentStatus.LATE
+            ? randInt(durationHours * 50, durationHours * 75)
+            : null;
+
+        const appointment = await prisma.appointment.create({
+          data: {
+            startTime,
+            endTime,
+            status,
+            jobId: job.id,
+            timeSpent,
+            completedAt,
+            completionSent: reminderFlags.completionSent,
+            reminder1dSent: reminderFlags.reminder1dSent,
+            reminder5dSent: reminderFlags.reminder5dSent,
+            assignments: {
+              create: assignedStaff.map((staffId) => ({
+                staffId,
+                status: fakeAssignmentStatus(status),
+                plannedStart: maybe(0.7)
+                  ? addMinutes(startTime, randInt(-15, 15))
+                  : null,
+                plannedEnd: maybe(0.7)
+                  ? addMinutes(endTime, randInt(-15, 20))
+                  : null,
+                hourlyRateAtTime: hourlyRateMap.get(staffId) ?? 0,
+                breakMinutes: maybe(0.5) ? pick([0, 15, 30]) : 0,
+                notes: maybe(0.25) ? faker.lorem.sentence() : null,
+              })),
+            },
+          },
+          include: {
+            assignments: {
+              select: {
+                staffId: true,
+              },
+            },
+          },
+        });
+
+        appointmentsCreated++;
+
+        const visitNotes = Array.from({ length: randInt(0, 3) }).map(() => ({
+          appointmentId: appointment.id,
+          content: faker.lorem.sentences({ min: 1, max: 3 }),
+          isClientVisible: maybe(0.35),
+          createdAt: faker.date.between({
+            from: addDays(startTime, -2),
+            to: addDays(startTime, 2),
+          }),
+          createdById:
+            maybe(0.85) && appointment.assignments.length
+              ? pick(appointment.assignments).staffId
+              : maybe(0.4)
+                ? pick(createdByCandidates)
+                : null,
+        }));
+
+        if (visitNotes.length) {
+          await prisma.visitNote.createMany({ data: visitNotes });
+          visitNotesCreated += visitNotes.length;
+        }
+
+        const appointmentImages = Array.from({ length: randInt(0, 4) }).map(
+          (_, idx) => ({
+            appointmentId: appointment.id,
+            url: fakeImageUrl(`appointment-${appointment.id}-${idx}`),
+            fileKey: maybe(0.55)
+              ? `appointments/${appointment.id}/${idx}.jpg`
+              : null,
+          }),
+        );
+
+        if (appointmentImages.length) {
+          await prisma.appointmentImage.createMany({ data: appointmentImages });
+          appointmentImagesCreated += appointmentImages.length;
+        }
+
+        if (shouldCreateWorkSession(status) && appointment.assignments.length) {
+          const sessions = appointment.assignments.map((member) => {
+            const startedAt = addMinutes(startTime, randInt(-10, 25));
+            const endedAt =
+              status === AppointmentStatus.COMPLETED
+                ? addMinutes(endTime, randInt(-15, 40))
+                : maybe(0.5)
+                  ? null
+                  : addMinutes(endTime, randInt(-30, 20));
+
+            return {
+              appointmentId: appointment.id,
+              staffId: member.staffId,
+              startedAt,
+              endedAt,
+            };
+          });
+
+          await prisma.appointmentWorkSession.createMany({ data: sessions });
+          workSessionsCreated += sessions.length;
+        }
+      }
+    }
+  }
+
+  return {
+    jobsCreated,
+    appointmentsCreated,
+    visitNotesCreated,
+    appointmentImagesCreated,
+    workSessionsCreated,
+    jobNotesCreated,
+    jobNoteImagesCreated,
+    recurrencesCreated,
+    lineItemsCreated,
+  };
+}
+
+async function createLeaves(staff: { id: string }[]) {
+  const leaveRows: Prisma.LeaveCreateManyInput[] = [];
+
+  for (const member of staff) {
+    const leaveCount = randInt(0, 3);
+
+    for (let i = 0; i < leaveCount; i++) {
+      const startAt = startOfDay(addDays(new Date(), randInt(-60, 45)));
+      const durationDays = randInt(1, 4);
+      const endAt = endOfDay(addDays(startAt, durationDays - 1));
+
+      leaveRows.push({
+        staffId: member.id,
+        type: pick([
+          LeaveType.PAID_SICK,
+          LeaveType.VACATION,
+          LeaveType.PERSONAL,
+          LeaveType.UNPAID_SICK,
+        ]),
+        startAt,
+        endAt,
+        reason: maybe(0.7) ? faker.lorem.sentence() : null,
+        createdAt: faker.date.between({
+          from: addDays(startAt, -14),
+          to: startAt,
+        }),
+      });
+    }
+  }
+
+  if (leaveRows.length) {
+    await prisma.leave.createMany({ data: leaveRows });
+  }
+
+  return leaveRows.length;
+}
+
+async function createTimesheetsAndPayroll(
+  staff: { id: string }[],
+  admins: { id: string }[],
+) {
+  let existingPeriodsUsed = 0;
+  let timesheetsCreated = 0;
+  let timesheetDaysCreated = 0;
+  let payStatementsCreated = 0;
+
+  const profiles = await prisma.staffProfile.findMany({
+    where: { userId: { in: staff.map((s) => s.id) } },
+    select: { userId: true, hourlyRate: true },
   });
 
-  // -----------------------------
-  // CLIENT + NOTES + ADDRESS
-  // -----------------------------
-  const client = await prisma.client.create({
-    data: {
-      firstName: "Alice",
-      lastName: "Smith",
-      email: "alice@example.com",
-      phone: "9876543210",
-      preferredContact: "EMAIL",
-      notes: {
-        create: {
-          content: "VIP client",
-        },
-      },
-      addresses: {
-        create: {
-          street1: "456 Client Ave",
-          city: "Burnaby",
-          province: "BC",
-          postalCode: "V5C1A1",
-          country: "Canada",
-          isPrimary: true,
-        },
-      },
-    },
-    include: { addresses: true },
+  const hourlyRateMap = new Map(profiles.map((p) => [p.userId, p.hourlyRate]));
+  const approverId = admins[0]?.id ?? null;
+
+  const periods = await prisma.timesheetPeriod.findMany({
+    orderBy: { startDate: "asc" },
   });
 
-  const address = client.addresses[0];
+  if (!periods.length) {
+    console.log(
+      "ℹ️ No manually created timesheet periods found. Skipping timesheets/payroll seed.",
+    );
 
-  // -----------------------------
-  // JOB + RECURRENCE
-  // -----------------------------
-  const job = await prisma.job.create({
-    data: {
-      title: "House Cleaning",
-      type: JobType.RECURRING,
-      clientId: client.id,
-      addressId: address.id,
-      recurrence: {
-        create: {
-          frequency: "WEEKLY",
-          interval: 1,
-          endType: "AFTER",
-          endsAfter: 10,
-        },
-      },
-      lineItems: {
-        create: {
-          name: "Standard Cleaning",
-          quantity: 1,
-          unitPrice: 120,
-        },
-      },
-      notes: {
-        create: {
-          content: "Client prefers eco products",
-          createdById: admin.id,
-        },
-      },
-    },
-  });
+    return {
+      existingPeriodsUsed: 0,
+      timesheetsCreated: 0,
+      timesheetDaysCreated: 0,
+      payStatementsCreated: 0,
+    };
+  }
 
-  // -----------------------------
-  // APPOINTMENT
-  // -----------------------------
-  const appointment = await prisma.appointment.create({
-    data: {
-      jobId: job.id,
-      startTime: new Date(),
-      endTime: new Date(Date.now() + 2 * 60 * 60 * 1000),
+  existingPeriodsUsed = periods.length;
+
+  for (const period of periods) {
+    for (const member of staff) {
+      const hourlyRate = hourlyRateMap.get(member.id) ?? 0;
+      const isLocked = period.status === TimesheetPeriodStatus.LOCKED;
+
+      const days: Prisma.TimesheetDayCreateWithoutTimesheetInput[] = [];
+      let cursor = startOfDay(period.startDate);
+
+      while (cursor <= period.endDate) {
+        const dayOfWeek = cursor.getDay();
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+        if (!isWeekend && maybe(0.82)) {
+          const minutesWorked = pick([240, 300, 360, 420, 480]);
+          days.push({
+            workDate: new Date(cursor),
+            minutesWorked,
+            hourlyRate,
+            notes: maybe(0.18) ? faker.lorem.sentence() : null,
+          });
+        }
+
+        cursor = addDays(cursor, 1);
+      }
+
+      const existingTimesheet = await prisma.timesheet.findFirst({
+        where: {
+          periodId: period.id,
+          staffId: member.id,
+        },
+        select: { id: true },
+      });
+
+      if (existingTimesheet) continue;
+
+      const status = isLocked
+        ? TimesheetStatus.APPROVED
+        : maybe(0.45)
+          ? TimesheetStatus.SUBMITTED
+          : TimesheetStatus.OPEN;
+
+      const timesheet = await prisma.timesheet.create({
+        data: {
+          periodId: period.id,
+          staffId: member.id,
+          status,
+          submittedAt:
+            status === TimesheetStatus.SUBMITTED ||
+            status === TimesheetStatus.APPROVED
+              ? addDays(period.endDate, 1)
+              : null,
+          approvedAt: isLocked ? addDays(period.endDate, 2) : null,
+          approvedById: isLocked ? approverId : null,
+          notes: maybe(0.2) ? faker.lorem.sentence() : null,
+          days: {
+            create: days,
+          },
+        },
+        include: {
+          days: true,
+        },
+      });
+
+      timesheetsCreated++;
+      timesheetDaysCreated += timesheet.days.length;
+
+      if (isLocked) {
+        const existingPayStatement = await prisma.payStatement.findFirst({
+          where: {
+            userId: member.id,
+            timesheetPeriodId: period.id,
+          },
+          select: { id: true },
+        });
+
+        if (existingPayStatement) continue;
+
+        const gross = fmtMoney(
+          timesheet.days.reduce((sum, day) => {
+            const rate = day.hourlyRate ?? hourlyRate;
+            return sum + (day.minutesWorked / 60) * rate;
+          }, 0),
+        );
+
+        const deductions = fmtMoney(gross * 0.12);
+        const net = fmtMoney(gross - deductions);
+
+        await prisma.payStatement.create({
+          data: {
+            userId: member.id,
+            timesheetPeriodId: period.id,
+            payPeriodStart: period.startDate,
+            payPeriodEnd: period.endDate,
+            payDate: addDays(period.endDate, 5),
+            grossEarnings: gross,
+            totalDeductions: deductions,
+            netEarnings: net,
+            breakdown: {
+              hours: fmtMoney(
+                timesheet.days.reduce(
+                  (sum, day) => sum + day.minutesWorked / 60,
+                  0,
+                ),
+              ),
+              hourlyRate,
+              deductionRate: 0.12,
+              source: "seed",
+            },
+          },
+        });
+
+        payStatementsCreated++;
+      }
+    }
+  }
+
+  return {
+    existingPeriodsUsed,
+    timesheetsCreated,
+    timesheetDaysCreated,
+    payStatementsCreated,
+  };
+}
+
+async function createAppointmentAiInsights() {
+  const completedAppointments = await prisma.appointment.findMany({
+    where: {
       status: AppointmentStatus.COMPLETED,
-      notes: {
-        create: {
-          content: "Job completed successfully",
-          createdById: staff.id,
+    },
+    take: 25,
+    orderBy: { createdAt: "desc" },
+    select: { id: true },
+  });
+
+  let created = 0;
+
+  for (const appt of completedAppointments) {
+    if (!maybe(0.55)) continue;
+
+    await prisma.appointmentAiInsight.create({
+      data: {
+        appointmentId: appt.id,
+        type: pick(["SUMMARY", "QUALITY_CHECK", "FOLLOW_UP"]),
+        model: pick(["gpt-4.1-mini", "gpt-4.1", "gpt-4o-mini"]),
+        promptVersion: pick(["v1", "v2"]),
+        payload: {
+          summary: faker.lorem.sentences({ min: 2, max: 4 }),
+          actionItems: Array.from({ length: randInt(1, 3) }).map(() =>
+            faker.lorem.sentence(),
+          ),
+          confidence: faker.number.float({
+            min: 0.72,
+            max: 0.98,
+            fractionDigits: 2,
+          }),
+          source: "seed",
         },
       },
-      images: {
-        create: {
-          url: "https://example.com/image.jpg",
-        },
+    });
+
+    created++;
+  }
+
+  return created;
+}
+
+async function createGuaranteedReminderTestAppointments(
+  staff: { id: string }[],
+) {
+  if (!SEED_TEST_EMAIL) {
+    console.log(
+      "ℹ️ SEED_TEST_EMAIL not set. Skipping guaranteed reminder test appointments.",
+    );
+    return 0;
+  }
+
+  const staffProfiles = await prisma.staffProfile.findMany({
+    where: { userId: { in: staff.map((s) => s.id) } },
+    select: { userId: true, hourlyRate: true },
+  });
+
+  const hourlyRateMap = new Map(
+    staffProfiles.map((p) => [p.userId, p.hourlyRate]),
+  );
+
+  const clients = await prisma.client.findMany({
+    where: { email: SEED_TEST_EMAIL },
+    take: 3,
+    include: {
+      addresses: {
+        where: { isPrimary: true },
+        take: 1,
       },
     },
   });
 
-  // -----------------------------
-  // ASSIGNMENT
-  // -----------------------------
-  await prisma.assignment.create({
-    data: {
-      appointmentId: appointment.id,
-      staffId: staff.id,
-      status: AssignmentStatus.COMPLETED,
-      plannedStart: appointment.startTime,
-      plannedEnd: appointment.endTime,
-      hourlyRateAtTime: 25,
-    },
-  });
+  if (!clients.length) {
+    console.log("ℹ️ No clients found for SEED_TEST_EMAIL.");
+    return 0;
+  }
 
-  // -----------------------------
-  // WORK SESSION
-  // -----------------------------
-  await prisma.appointmentWorkSession.create({
-    data: {
-      appointmentId: appointment.id,
-      staffId: staff.id,
-      startedAt: appointment.startTime,
-      endedAt: appointment.endTime,
-    },
-  });
+  function reminderDateUtc(daysFromNow: number, hour = 16) {
+    const now = new Date();
 
-  // -----------------------------
-  // LEAVE
-  // -----------------------------
-  await prisma.leave.create({
-    data: {
-      staffId: staff.id,
-      type: LeaveType.VACATION,
-      startAt: new Date(),
-      endAt: new Date(Date.now() + 2 * 86400000),
-      reason: "Vacation",
-    },
-  });
+    return new Date(
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate() + daysFromNow,
+        hour,
+        0,
+        0,
+        0,
+      ),
+    );
+  }
 
-  // -----------------------------
-  // TIMESHEET PERIOD
-  // -----------------------------
-  const period = await prisma.timesheetPeriod.create({
-    data: {
-      startDate: new Date("2026-03-01"),
-      endDate: new Date("2026-03-14"),
-      status: TimesheetPeriodStatus.OPEN,
+  const templates = [
+    {
+      label: "5-day",
+      startTime: reminderDateUtc(5, 16),
+      endTime: reminderDateUtc(5, 19),
     },
-  });
+    {
+      label: "1-day",
+      startTime: reminderDateUtc(1, 16),
+      endTime: reminderDateUtc(1, 19),
+    },
+    {
+      label: "control",
+      startTime: reminderDateUtc(3, 16),
+      endTime: reminderDateUtc(3, 19),
+    },
+  ];
 
-  // -----------------------------
-  // TIMESHEET
-  // -----------------------------
-  const timesheet = await prisma.timesheet.create({
-    data: {
-      periodId: period.id,
-      staffId: staff.id,
-      status: TimesheetStatus.APPROVED,
-      submittedAt: new Date(),
-      approvedAt: new Date(),
-      approvedById: admin.id,
-      days: {
-        create: {
-          workDate: new Date(),
-          minutesWorked: 120,
-          hourlyRate: 25,
-        },
+  let created = 0;
+
+  for (let i = 0; i < clients.length; i++) {
+    const client = clients[i];
+    const address = client.addresses[0];
+    if (!address) continue;
+
+    const template = templates[i % templates.length];
+    const assignedStaffId = staff.length ? staff[i % staff.length].id : null;
+
+    const job = await prisma.job.create({
+      data: {
+        title: `Reminder Test Job ${i + 1} (${template.label})`,
+        type: JobType.ONE_OFF,
+        clientId: client.id,
+        addressId: address.id,
+        isAnytime: false,
+        visitInstructions: `Guaranteed seed appointment for ${template.label} reminder testing.`,
       },
-    },
-  });
+    });
 
-  // -----------------------------
-  // PAY STATEMENT
-  // -----------------------------
-  await prisma.payStatement.create({
-    data: {
-      userId: staff.id,
-      timesheetPeriodId: period.id,
-      payPeriodStart: period.startDate,
-      payPeriodEnd: period.endDate,
-      payDate: new Date(),
-      grossEarnings: 50,
-      totalDeductions: 10,
-      netEarnings: 40,
-      breakdown: {
-        cpp: 5,
-        ei: 2,
-        tax: 3,
+    await prisma.appointment.create({
+      data: {
+        jobId: job.id,
+        startTime: template.startTime,
+        endTime: template.endTime,
+        status: AppointmentStatus.SCHEDULED,
+        reminder5dSent: false,
+        reminder1dSent: false,
+        completionSent: false,
+        assignments: assignedStaffId
+          ? {
+              create: [
+                {
+                  staffId: assignedStaffId,
+                  hourlyRateAtTime: hourlyRateMap.get(assignedStaffId) ?? 0,
+                  breakMinutes: 0,
+                },
+              ],
+            }
+          : undefined,
       },
-    },
-  });
+    });
 
-  // -----------------------------
-  // AI INSIGHT
-  // -----------------------------
-  await prisma.appointmentAiInsight.create({
-    data: {
-      appointmentId: appointment.id,
-      type: "SUMMARY",
-      payload: {
-        note: "Cleaning completed efficiently",
-      },
-    },
-  });
+    created++;
+  }
 
-  console.log("✅ FULL seed completed");
+  return created;
+}
+
+async function main() {
+  console.log(`\n🌱 Eco Clean seed started in "${mode}" mode...\n`);
+
+  await resetDatabase();
+
+  const users = await createUsers();
+  const clients = await createClients();
+  const counts = await createJobsForClients(clients, users.staff);
+  const leaveCount = await createLeaves(users.staff);
+  const payrollCounts = await createTimesheetsAndPayroll(
+    users.staff,
+    users.admins,
+  );
+  const aiInsightCount = await createAppointmentAiInsights();
+  const guaranteedReminderAppointments =
+    await createGuaranteedReminderTestAppointments(users.staff);
+
+  const summary = {
+    mode,
+    admins: users.admins.length,
+    staff: users.staff.length,
+    clientUsers: users.clientUsers.length,
+    clients: clients.length,
+    jobs: counts.jobsCreated + guaranteedReminderAppointments,
+    appointments: counts.appointmentsCreated + guaranteedReminderAppointments,
+    visitNotes: counts.visitNotesCreated,
+    appointmentImages: counts.appointmentImagesCreated,
+    workSessions: counts.workSessionsCreated,
+    jobNotes: counts.jobNotesCreated,
+    jobNoteImages: counts.jobNoteImagesCreated,
+    recurrences: counts.recurrencesCreated,
+    lineItems: counts.lineItemsCreated,
+    leaves: leaveCount,
+    timesheetPeriodsUsed: payrollCounts.existingPeriodsUsed,
+    timesheets: payrollCounts.timesheetsCreated,
+    timesheetDays: payrollCounts.timesheetDaysCreated,
+    payStatements: payrollCounts.payStatementsCreated,
+    appointmentAiInsights: aiInsightCount,
+    guaranteedReminderAppointments,
+    loginPassword: DEFAULT_PASSWORD,
+    seedTestEmail: SEED_TEST_EMAIL || "(not set)",
+  };
+
+  console.log("✅ Seed completed successfully\n");
+  console.table(summary);
+
+  console.log("\nSeed accounts:");
+  console.log("Admin:  admin1@ecoclean.local");
+  console.log("Staff:  staff1@ecoclean.local");
+  console.log("Client: client1@ecoclean.local");
+  console.log(`Password: ${DEFAULT_PASSWORD}\n`);
+
+  if (SEED_TEST_EMAIL) {
+    console.log(
+      `Guaranteed 5-day reminder test emails will go to: ${SEED_TEST_EMAIL}\n`,
+    );
+  }
 }
 
 main()
-  .catch(console.error)
+  .catch((error) => {
+    console.error("❌ Seed failed");
+    console.error(error);
+    process.exit(1);
+  })
   .finally(async () => {
     await prisma.$disconnect();
   });

@@ -5,23 +5,13 @@ import { getAuthSession } from "@/lib/session";
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 
-/**
- * GET: Fetch a single staff member's full profile
- * Includes core User data and linked StaffProfile details.
- */
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await getAuthSession();
 
-  //   // Security check: Only Admins can view full staff details
-  //   if (!session || session.user.role !== "ADMIN") {
-  //     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  //   }
-
   try {
-    // UNWRAP the dynamic route params
     const { id } = await params;
 
     const staffMember = await prisma.user.findUnique({
@@ -37,6 +27,7 @@ export async function GET(
           select: {
             id: true,
             userId: true,
+            staffId: true,
             position: true,
             hourlyRate: true,
             staffAddress: {
@@ -49,7 +40,6 @@ export async function GET(
       },
     });
 
-    // Ensure the user exists and is actually a staff member
     if (!staffMember || staffMember.role !== "STAFF") {
       return NextResponse.json(
         { error: "Staff member not found" },
@@ -67,10 +57,6 @@ export async function GET(
   }
 }
 
-/**
- * PATCH: Update a staff member's profile
- * Handles updates to User (name, email) and StaffProfile (postalCode, hourlyRate).
- */
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -116,6 +102,10 @@ export async function PATCH(
         },
       });
 
+      const existingProfileCount = await tx.staffProfile.count();
+
+      const generatedStaffId = `STF-ECO-${String(existingProfileCount + 1).padStart(4, "0")}`;
+
       const profile = await tx.staffProfile.upsert({
         where: { userId: id },
         update: {
@@ -123,7 +113,8 @@ export async function PATCH(
         },
         create: {
           userId: id,
-          hourlyRate: Number(hourlyRate) || 0,
+          staffId: generatedStaffId,
+          ...(hourlyRate !== undefined && { hourlyRate: Number(hourlyRate) }),
         },
       });
 
@@ -178,6 +169,8 @@ export async function PATCH(
           staffProfile: {
             select: {
               id: true,
+              userId: true,
+              staffId: true,
               hourlyRate: true,
               staffAddress: {
                 select: {
