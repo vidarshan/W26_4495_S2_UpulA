@@ -103,15 +103,16 @@ export async function GET(
       orderBy: { name: "asc" },
     });
 
-    let recommendedMembers: any = [];
+    const recommendedMembers: Array<{
+      staff: (typeof staffMembers)[number];
+      reason: string;
+    }> = [];
     if (client && staffMembers) {
       staffMembers.forEach((member) => {
-        let comparison = getBestProximityScore(member, client);
+        const comparison = getBestProximityScore(member, client);
         const hasLeaveConflict = member.leaves.length > 0;
         const hasScheduleConflict = member.assignments.length > 0;
-        const position = member.staffProfile?.position ?? null;
-        const hourlyRate = member.staffProfile?.hourlyRate ?? 0;
-       
+
         if (
           comparison.score > 20 &&
           !hasLeaveConflict &&

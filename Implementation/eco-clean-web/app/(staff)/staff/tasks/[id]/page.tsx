@@ -37,7 +37,7 @@ import { Dropzone } from "@mantine/dropzone";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { DateTime } from "luxon";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import {
   IoArrowBackOutline,
@@ -53,7 +53,6 @@ import {
 } from "react-icons/io5";
 import { useStaffUiStore } from "@/stores/store";
 
-const HERO_RADIUS = "lg";
 const CARD_RADIUS = "md";
 const HERO_PADDING = "lg";
 const CARD_PADDING = "md";
@@ -132,6 +131,10 @@ function formatSeconds(total: number) {
   return `${hrs}:${mins}:${secs}`;
 }
 
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Request failed";
+}
+
 const Page = () => {
   const router = useRouter();
   const params = useParams<{ id: string }>();
@@ -143,11 +146,11 @@ const Page = () => {
   const [imgOpened, setImgOpened] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [visitNote, setVisitNote] = useState("");
-  const [visitImages, setVisitImages] = useState<File[]>([]);
+  const [, setVisitImages] = useState<File[]>([]);
   const [uploadedVisitImages, setUploadedVisitImages] = useState<
     { url: string; fileKey: string }[]
   >([]);
-  const [nowMs, setNowMs] = useState(Date.now());
+  const [nowMs, setNowMs] = useState(() => Date.now());
 
   const setTitle = useStaffUiStore((s) => s.setTitle);
   const setBack = useStaffUiStore((s) => s.setBack);
@@ -159,11 +162,8 @@ const Page = () => {
   const qc = useQueryClient();
   const { startUpload, isUploading } = useUploadThing("appointmentImages");
 
-  const {
-    data: appointment,
-    isLoading,
-    error,
-  } = useAppointmentDetails(appointmentId);
+  const { data: appointment, isLoading, error } =
+    useAppointmentDetails(appointmentId);
 
   const { data: aiTaskAssistant, isLoading: isAssistantLoading } =
     useQuery<TaskAssistantResponse>({
@@ -227,9 +227,9 @@ const Page = () => {
       setUploadedVisitImages([]);
       showLocalNotification("Visit note saved", "/staff/tasks");
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       showLocalNotification(
-        error?.message || "Failed to save note",
+        getErrorMessage(error) || "Failed to save note",
         "/staff/tasks",
       );
     },
@@ -246,9 +246,9 @@ const Page = () => {
       refreshAppointment(updated);
       showLocalNotification("Job started", `/staff/tasks/${appointment!.id}`);
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       showLocalNotification(
-        error?.message || "Failed to start job",
+        getErrorMessage(error) || "Failed to start job",
         "/staff/tasks",
       );
     },
@@ -265,9 +265,9 @@ const Page = () => {
       refreshAppointment(updated);
       showLocalNotification("Job paused", `/staff/tasks/${appointment!.id}`);
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       showLocalNotification(
-        error?.message || "Job pause failed",
+        getErrorMessage(error) || "Job pause failed",
         `/staff/tasks/${appointment!.id}`,
       );
     },
@@ -287,9 +287,9 @@ const Page = () => {
         `/staff/tasks/${appointment!.id}`,
       );
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       showLocalNotification(
-        error?.message || "Job completion failed",
+        getErrorMessage(error) || "Job completion failed",
         `/staff/tasks/${appointment!.id}`,
       );
     },
@@ -410,7 +410,7 @@ const Page = () => {
   const isOvertime = elapsedSeconds > scheduledSeconds;
 
   const activeStaffIds = new Set(
-    allSessions.filter((s: any) => !s.endedAt).map((s: any) => s.staffId),
+    allSessions.filter((s: WorkSession) => !s.endedAt).map((s) => s.staffId),
   );
 
   const assignedStaff = appointment.assignments ?? [];
@@ -423,9 +423,9 @@ const Page = () => {
 
   const getMemberState = (staffId: string) => {
     const memberSessions = allSessions.filter(
-      (s: any) => s.staffId === staffId,
+      (s: WorkSession) => s.staffId === staffId,
     );
-    const isActive = memberSessions.some((s: any) => !s.endedAt);
+    const isActive = memberSessions.some((s: WorkSession) => !s.endedAt);
 
     if (isActive) return "Running";
     if (memberSessions.length > 0) return "Paused";
@@ -633,7 +633,7 @@ const Page = () => {
               {activeStaffIds.size} of {assignedStaff.length} active
             </Text>
 
-            {assignedStaff.map((assignment: any) => {
+            {assignedStaff.map((assignment) => {
               const member = assignment.staff;
               const isMe = member.id === myStaffId;
               const memberState = getMemberState(member.id);

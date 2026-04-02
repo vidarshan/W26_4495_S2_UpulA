@@ -2,6 +2,13 @@ export const runtime = 'nodejs';
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 
+function isErrorWithCode(error: unknown): error is Error & { code: string } {
+  return (
+    error instanceof Error &&
+    typeof (error as Error & { code?: unknown }).code === 'string'
+  );
+}
+
 /**
  * GET: Retrieve availability history for a specific staff profile.
  * Path: /api/staff/[id]/availability
@@ -84,7 +91,7 @@ export async function POST(
     });
 
     return NextResponse.json(newAvailability, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('POST Availability failed:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -124,9 +131,9 @@ export async function PATCH(
     });
 
     return NextResponse.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Catch Prisma "Record not found" error
-    if (error.code === 'P2025') {
+    if (isErrorWithCode(error) && error.code === 'P2025') {
       return NextResponse.json(
         { error: 'Availability record not found' },
         { status: 404 },

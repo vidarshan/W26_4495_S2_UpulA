@@ -15,6 +15,13 @@ function generatePassword(length = 14) {
     .slice(0, length);
 }
 
+function isErrorWithCode(error: unknown): error is Error & { code: string } {
+  return (
+    error instanceof Error &&
+    typeof (error as Error & { code?: unknown }).code === "string"
+  );
+}
+
 export async function POST(req: Request) {
   const session = await getAuthSession();
 
@@ -85,8 +92,8 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ ...result, tempPassword }, { status: 201 });
-  } catch (error: any) {
-    if (error.code === "P2002") {
+  } catch (error: unknown) {
+    if (isErrorWithCode(error) && error.code === "P2002") {
       return NextResponse.json(
         { error: "Email already exists" },
         { status: 400 },

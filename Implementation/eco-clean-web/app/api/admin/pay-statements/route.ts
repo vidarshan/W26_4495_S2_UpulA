@@ -1,9 +1,32 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
+type PayStatementRow = {
+  staffId: string;
+  grossEarnings: number;
+  deductions: number;
+  netEarnings: number;
+  regularHours: number;
+  regularRate: number;
+  otHours: number;
+  otRate: number;
+  transportAllowance: number;
+  federalTax: number;
+  ei: number;
+  cpp: number;
+  health: number;
+};
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Internal server error";
+}
+
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
+    const body = (await req.json()) as {
+      periodStart?: string;
+      rows?: PayStatementRow[];
+    };
     const { periodStart, rows } = body;
 
     if (!periodStart || !rows) {
@@ -17,7 +40,7 @@ export async function POST(req: Request) {
 
     // Use a transaction to ensure all or nothing are saved
     const results = await prisma.$transaction(
-      rows.map((row: any) =>
+      rows.map((row) =>
         prisma.payStatement.create({
           data: {
             userId: row.staffId, // Ensure this matches your User model ID
@@ -47,8 +70,8 @@ export async function POST(req: Request) {
     );
 
     return NextResponse.json({ success: true, count: results.length });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

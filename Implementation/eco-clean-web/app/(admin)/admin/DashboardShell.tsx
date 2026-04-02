@@ -76,8 +76,12 @@ export default function DashboardShell({
   }, [isSigningOut]);
 
   useEffect(() => {
-    closeAllOverlays();
-    setError(null);
+    const timer = window.setTimeout(() => {
+      closeAllOverlays();
+      setError(null);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [pathname, closeAllOverlays]);
 
   const navItems = [

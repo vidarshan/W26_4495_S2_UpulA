@@ -4,6 +4,13 @@ import { NextResponse } from 'next/server';
 
 const VALID_LEAVE_TYPES = ["PAID_SICK", "VACATION", "PERSONAL", "UNPAID_SICK"];
 
+function isErrorWithCode(error: unknown): error is Error & { code: string } {
+  return (
+    error instanceof Error &&
+    typeof (error as Error & { code?: unknown }).code === 'string'
+  );
+}
+
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -58,9 +65,9 @@ export async function POST(
     });
 
     return NextResponse.json(leave, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Catch specific Prisma Foreign Key errors
-    if (error.code === 'P2003') {
+    if (isErrorWithCode(error) && error.code === 'P2003') {
       return NextResponse.json(
         {
           error:

@@ -41,6 +41,10 @@ const DAYS = [
   { label: 'Sunday', key: 'sun' },
 ];
 
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : 'Failed to save availability.';
+}
+
 export default function EnterAvailabilityPage() {
   const form = useForm<AvailabilityFormValues>({
     initialValues: {
@@ -107,8 +111,8 @@ export default function EnterAvailabilityPage() {
 
       alert('Availability updated successfully!');
       form.reset();
-    } catch (error: any) {
-      alert(error.message);
+    } catch (error: unknown) {
+      alert(getErrorMessage(error));
     }
   }
 

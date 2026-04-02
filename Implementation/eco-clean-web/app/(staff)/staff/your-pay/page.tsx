@@ -26,9 +26,38 @@ import { useSession } from "next-auth/react";
 
 const COLORS = ["#1f6b8f", "#eb7a2f", "#2e7d32"];
 
+type ChartDatum = {
+  name: string;
+  value: number;
+  color?: string;
+};
+
+type PaySummary = {
+  gross: number;
+  totalDeductions: number;
+  net: number;
+};
+
+type PayDetails = {
+  regularAmount?: number | null;
+  otAmount?: number | null;
+  transportAllowance?: number | null;
+  federalTax?: number | null;
+  ei?: number | null;
+  cpp?: number | null;
+  health?: number | null;
+  other?: number | null;
+};
+
+type PayData = {
+  chartData: ChartDatum[];
+  summary: PaySummary;
+  details?: PayDetails | null;
+};
+
 export default function YourPayPage() {
   const { data: session } = useSession();
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<PayData | null>(null);
   const [loading, setLoading] = useState(true);
 
   // 1. Fetching logic to link to your route.ts
@@ -117,7 +146,7 @@ export default function YourPayPage() {
                     }
                     labelLine={false}
                   >
-                    {data.chartData.map((entry: any, index: number) => (
+                    {data.chartData.map((entry, index: number) => (
                       <Cell
                         key={entry.name}
                         fill={COLORS[index % COLORS.length]}

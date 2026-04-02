@@ -32,7 +32,39 @@ export function getProximityScore(params: {
   return score;
 }
 
-export function getBestProximityScore(staff: any, jobLocation: any) {
+type LocationLike = {
+  city?: string | null;
+  postalCode?: string | null;
+};
+
+function toLocationLike(value: unknown): LocationLike | null {
+  if (!value || typeof value !== "object") return null;
+
+  const maybeLocation = value as {
+    city?: unknown;
+    postalCode?: unknown;
+  };
+
+  return {
+    city: typeof maybeLocation.city === "string" ? maybeLocation.city : null,
+    postalCode:
+      typeof maybeLocation.postalCode === "string"
+        ? maybeLocation.postalCode
+        : null,
+  };
+}
+
+type StaffLike = {
+  staffProfile?: {
+    staffAddress?: LocationLike | null;
+  } | null;
+  lastKnownJobLocation?: unknown;
+};
+
+export function getBestProximityScore(
+  staff: StaffLike,
+  jobLocation: LocationLike,
+) {
   const homeScore = getProximityScore({
     staffCity: staff.staffProfile?.staffAddress?.city,
     staffPostal: staff.staffProfile?.staffAddress?.postalCode,
@@ -40,10 +72,12 @@ export function getBestProximityScore(staff: any, jobLocation: any) {
     jobPostal: jobLocation.postalCode,
   });
 
-  const lastJobScore = staff.lastKnownJobLocation
+  const lastKnownJobLocation = toLocationLike(staff.lastKnownJobLocation);
+
+  const lastJobScore = lastKnownJobLocation
     ? getProximityScore({
-        staffCity: staff.lastKnownJobLocation.city,
-        staffPostal: staff.lastKnownJobLocation.postalCode,
+        staffCity: lastKnownJobLocation.city,
+        staffPostal: lastKnownJobLocation.postalCode,
         jobCity: jobLocation.city,
         jobPostal: jobLocation.postalCode,
       })

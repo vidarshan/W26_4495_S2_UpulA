@@ -1,6 +1,11 @@
 "use client";
 
-import { createClient, updateClient } from "@/lib/api/client";
+import {
+  createClient,
+  type ClientWithRelations,
+  type CreateClientPayload,
+  updateClient,
+} from "@/lib/api/client";
 import {
   Modal,
   TextInput,
@@ -52,6 +57,10 @@ type Props = {
   onClose: () => void;
   onSuccess?: () => void;
   clientId?: string;
+};
+
+type ClientAddressWithBilling = ClientWithRelations["addresses"][number] & {
+  isBilling?: boolean;
 };
 
 const DEFAULT_VALUES: ClientForm = {
@@ -156,7 +165,13 @@ export default function ClientPropertyModal({
   });
 
   const mutation = useMutation({
-    mutationFn: async ({ id, payload }: { id?: string; payload: any }) => {
+    mutationFn: async ({
+      id,
+      payload,
+    }: {
+      id?: string;
+      payload: CreateClientPayload;
+    }) => {
       return id ? updateClient(id, payload) : createClient(payload);
     },
     onSuccess: async (_data, variables) => {
@@ -251,8 +266,12 @@ export default function ClientPropertyModal({
             : "email",
       leadSource: client.leadSource ?? "",
       note: client.notes?.[0]?.content ?? "",
-      addresses: (client.addresses?.length ? client.addresses : []).map(
-        (a: any) => ({
+      addresses: (
+        ((client as ClientWithRelations).addresses as ClientAddressWithBilling[])
+          ?.length
+          ? ((client as ClientWithRelations).addresses as ClientAddressWithBilling[])
+          : []
+      ).map((a) => ({
           id: a.id,
           street1: a.street1 ?? "",
           street2: a.street2 ?? "",
@@ -261,8 +280,7 @@ export default function ClientPropertyModal({
           postalCode: a.postalCode ?? "",
           country: a.country ?? "Canada",
           billingSameAsProperty: !a.isBilling,
-        }),
-      ),
+        })),
     };
 
     form.setValues(nextValues);

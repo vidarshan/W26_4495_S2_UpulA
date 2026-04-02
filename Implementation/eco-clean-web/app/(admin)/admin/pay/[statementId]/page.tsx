@@ -9,13 +9,69 @@ import { useParams } from "next/navigation";
 import { IoDownloadOutline } from "react-icons/io5";
 import Image from "next/image";
 
+type PayStatementSummary = {
+  gross: number;
+  totalDeductions: number;
+  net: number;
+};
+
+type PayStatementDetails = {
+  regularRate?: number | null;
+  regularHours?: number | null;
+  regularAmount?: number | null;
+  otRate?: number | null;
+  otHours?: number | null;
+  otAmount?: number | null;
+  transportAllowance?: number | null;
+  federalTax?: number | null;
+  ei?: number | null;
+  cpp?: number | null;
+  health?: number | null;
+  other?: number | null;
+};
+
+type PayStatementPeriod = {
+  start: string;
+  end: string;
+  payDate: string;
+};
+
+type PayStatementUi = {
+  id: string;
+  summary: PayStatementSummary;
+  details?: PayStatementDetails | null;
+  period: PayStatementPeriod;
+};
+
+type MoneyRowProps = {
+  label: string;
+  rate: number | null | undefined;
+  units: number | null | undefined;
+  amount: number | null | undefined;
+  yearToDate: number | null | undefined;
+};
+
+type DeductionRowProps = {
+  label: string;
+  amount: number;
+};
+
+type TotalRowProps = {
+  label: string;
+  value: number | null;
+};
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Failed to load statement.";
+}
+
 export default function PayStubPage() {
   const isNarrow = useMediaQuery("(max-width: 62em)");
   const params = useParams();
   const statementId = params.statementId as string;
   const pdfRef = useRef<HTMLDivElement>(null);
 
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<PayStatementUi | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,8 +85,8 @@ export default function PayStubPage() {
         if (!response.ok) throw new Error("Statement not found.");
         const result = await response.json();
         setData(result);
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err: unknown) {
+        setError(getErrorMessage(err));
       } finally {
         setLoading(false);
       }
@@ -52,6 +108,13 @@ export default function PayStubPage() {
 
   if (loading) return <Center h="80vh"><Loader size="xl" color="#125f82" /></Center>;
   if (error) return <Container py="xl"><Alert color="red">{error}</Alert></Container>;
+  if (!data) {
+    return (
+      <Container py="xl">
+        <Alert color="yellow">No pay statement found.</Alert>
+      </Container>
+    );
+  }
 
   // 2. Map Database JSON to your UI structure
   const earnings = [
@@ -149,7 +212,7 @@ function GridHeader() {
   );
 }
 
-function Row({ label, rate, units, amount, yearToDate }: any) {
+function Row({ label, rate, units, amount, yearToDate }: MoneyRowProps) {
   return (
     <Group px="md" py={6} justify="space-between" style={{ background: '#f9f9f9' }}>
       <Text w="30%">{label}</Text>
@@ -161,7 +224,7 @@ function Row({ label, rate, units, amount, yearToDate }: any) {
   );
 }
 
-function DeductionRow({ label, amount }: any) {
+function DeductionRow({ label, amount }: DeductionRowProps) {
   return (
     <Group px="md" py={6} justify="space-between" style={{ background: '#f9f9f9', marginTop: 2 }}>
       <Text w="30%">{label}</Text>
@@ -171,7 +234,7 @@ function DeductionRow({ label, amount }: any) {
   );
 }
 
-function TotalRow({ label, value }: any) {
+function TotalRow({ label, value }: TotalRowProps) {
   return (
     <Box px="md" py="xs" style={{ borderTop: '2px solid black', borderBottom: '2px solid black', marginTop: 4 }}>
       <Group justify="space-between">

@@ -373,6 +373,10 @@ function BalancesCard({
 }
 
 function LeaveRequestCard(props: LeaveRequestCardProps) {
+  const [minRequestDate] = useState(
+    () => new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+  );
+
   return (
     <Card withBorder radius="md" p="lg">
       <Stack gap="md">
@@ -386,7 +390,7 @@ function LeaveRequestCard(props: LeaveRequestCardProps) {
             <DatePickerInput
               value={props.selectedDate}
               onChange={props.setSelectedDate}
-              minDate={new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)}
+              minDate={minRequestDate}
             />
           </Box>
 
