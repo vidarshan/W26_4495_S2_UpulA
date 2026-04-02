@@ -358,26 +358,50 @@ model TimesheetPeriod {
 
 model Timesheet {
   id           String          @id @default(uuid())
+
+  // 🔗 Relationships
   periodId     String
   staffId      String
+
+  period       TimesheetPeriod @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  staff        User            @relation("TimesheetStaff", fields: [staffId], references: [id], onDelete: Cascade)
+
+  // 📊 Status flow
   status       TimesheetStatus @default(OPEN)
+
+  // ⏱ Lifecycle timestamps
   submittedAt  DateTime?
   approvedAt   DateTime?
   approvedById String?
+
+  approvedBy   User? @relation("TimesheetApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+
+  // 🔒 Locking (CRITICAL for payroll integrity)
+  isLocked     Boolean @default(false)
+
+  // 📝 Notes
   notes        String?
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
 
-  period     TimesheetPeriod @relation(fields: [periodId], references: [id], onDelete: Cascade)
-  staff      User            @relation("TimesheetStaff", fields: [staffId], references: [id], onDelete: Cascade)
-  approvedBy User?           @relation("TimesheetApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
-  days       TimesheetDay[]
+  // 📦 Snapshot for payroll (optional but VERY powerful)
+  snapshot     Json?   // stores calculated totals / breakdown at approval time
 
+  // 📈 Totals (denormalized for performance)
+  totalMinutes Int     @default(0)
+  totalPay     Float   @default(0)
+
+  // 🧾 Children
+  days         TimesheetDay[]
+
+  // 🕒 Metadata
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // ⚡ Constraints
   @@unique([periodId, staffId])
   @@index([periodId])
   @@index([staffId])
-  @@index([approvedById])
   @@index([status])
+  @@index([approvedById])
 }
 
 model TimesheetDay {

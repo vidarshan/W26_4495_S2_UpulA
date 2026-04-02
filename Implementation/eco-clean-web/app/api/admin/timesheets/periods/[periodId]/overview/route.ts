@@ -19,10 +19,9 @@ function getPlannedMinutes(
   if (!plannedStart || !plannedEnd) return 0;
 
   const diff = Math.round(
-    DateTime.fromJSDate(plannedEnd).diff(
-      DateTime.fromJSDate(plannedStart),
-      "minutes"
-    ).minutes
+    DateTime.fromJSDate(plannedEnd)
+      .diff(DateTime.fromJSDate(plannedStart), "minutes")
+      .minutes
   );
 
   return Math.max(0, diff - (breakMinutes || 0));
@@ -42,20 +41,16 @@ export async function GET(_req: Request, context: RouteContext) {
 
     const { periodId } = await context.params;
 
+    // 🔹 Fetch period
     const period = await prisma.timesheetPeriod.findUnique({
       where: { id: periodId },
-      select: {
-        id: true,
-        startDate: true,
-        endDate: true,
-        status: true,
-        createdAt: true,
-        lockedAt: true,
-      },
     });
 
     if (!period) {
-      return NextResponse.json({ error: "Timesheet period not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Timesheet period not found" },
+        { status: 404 }
+      );
     }
 
     const periodStart = period.startDate;
@@ -64,48 +59,17 @@ export async function GET(_req: Request, context: RouteContext) {
       .startOf("day")
       .toJSDate();
 
+    // 🔹 Fetch data
     const [timesheets, assignments] = await Promise.all([
       prisma.timesheet.findMany({
-        where: {
-          periodId,
-        },
-        select: {
-          id: true,
-          status: true,
-          submittedAt: true,
-          approvedAt: true,
-          notes: true,
-          staffId: true,
+        where: { periodId },
+        include: {
           staff: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              staffProfile: {
-                select: {
-                  staffId: true,
-                  position: true,
-                  hourlyRate: true,
-                },
-              },
+            include: {
+              staffProfile: true,
             },
           },
-          days: {
-            orderBy: { workDate: "asc" },
-            select: {
-              id: true,
-              workDate: true,
-              minutesWorked: true,
-              hourlyRate: true,
-              notes: true,
-              createdAt: true,
-            },
-          },
-        },
-        orderBy: {
-          staff: {
-            name: "asc",
-          },
+          days: true,
         },
       }),
 
@@ -126,181 +90,50 @@ export async function GET(_req: Request, context: RouteContext) {
             },
           ],
         },
-        select: {
-          id: true,
-          staffId: true,
-          status: true,
-          plannedStart: true,
-          plannedEnd: true,
-          breakMinutes: true,
-          hourlyRateAtTime: true,
-          notes: true,
-          appointmentId: true,
-          appointment: {
-            select: {
-              id: true,
-              startTime: true,
-              endTime: true,
-              status: true,
-              job: {
-                select: {
-                  id: true,
-                  title: true,
-                  client: {
-                    select: {
-                      firstName: true,
-                      lastName: true,
-                      companyName: true,
-                    },
-                  },
-                  address: {
-                    select: {
-                      street1: true,
-                      city: true,
-                      province: true,
-                    },
-                  },
-                },
-              },
+        include: {
+          staff: {
+            include: {
+              staffProfile: true,
             },
           },
-          staff: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              staffProfile: {
-                select: {
-                  staffId: true,
-                  position: true,
-                  hourlyRate: true,
+          appointment: {
+            include: {
+              job: {
+                include: {
+                  client: true,
+                  address: true,
                 },
               },
             },
           },
         },
-        orderBy: [{ staff: { name: "asc" } }, { plannedStart: "asc" }],
       }),
     ]);
 
-    const employeeMap = new Map<
-      string,
-      {
-        staffId: string;
-        name: string;
-        email: string;
-        staffCode: string | null;
-        position: string | null;
-        timesheetId: string | null;
-        timesheetStatus: string | null;
-        submittedAt: Date | null;
-        approvedAt: Date | null;
-        notes: string | null;
-        totals: {
-          plannedMinutes: number;
-          actualMinutes: number;
-          varianceMinutes: number;
-        };
-        daysMap: Map<
-          string,
-          {
-            date: string;
-            actualMinutes: number;
-            plannedMinutes: number;
-            varianceMinutes: number;
-            timesheetDayId: string | null;
-            hourlyRate: number | null;
-            notes: string | null;
-            assignments: Array<{
-              id: string;
-              appointmentId: string;
-              jobTitle: string;
-              clientName: string;
-              addressLine: string;
-              status: string;
-              plannedStart: Date | null;
-              plannedEnd: Date | null;
-              breakMinutes: number;
-              plannedMinutes: number;
-              hourlyRateAtTime: number;
-              notes: string | null;
-            }>;
-          }
-        >;
-      }
-    >();
+    // ======================================================
+    // ✅ STEP 1: Build employees from TIMESHEETS ONLY
+    // ======================================================
 
-    function ensureEmployee(args: {
-      staffId: string;
-      name: string;
-      email: string;
-      staffCode: string | null;
-      position: string | null;
-      timesheetId?: string | null;
-      timesheetStatus?: string | null;
-      submittedAt?: Date | null;
-      approvedAt?: Date | null;
-      notes?: string | null;
-    }) {
-      const existing = employeeMap.get(args.staffId);
+    const employees = timesheets.map((ts) => {
+      const daysMap: Record<string, any> = {};
 
-      if (existing) {
-        if (args.timesheetId) existing.timesheetId = args.timesheetId;
-        if (args.timesheetStatus) existing.timesheetStatus = args.timesheetStatus;
-        if (args.submittedAt) existing.submittedAt = args.submittedAt;
-        if (args.approvedAt) existing.approvedAt = args.approvedAt;
-        if (args.notes) existing.notes = args.notes;
-        return existing;
-      }
+      // Add actual work
+      for (const day of ts.days) {
+        const key = toDayKey(day.workDate);
 
-      const created = {
-        staffId: args.staffId,
-        name: args.name,
-        email: args.email,
-        staffCode: args.staffCode,
-        position: args.position,
-        timesheetId: args.timesheetId ?? null,
-        timesheetStatus: args.timesheetStatus ?? null,
-        submittedAt: args.submittedAt ?? null,
-        approvedAt: args.approvedAt ?? null,
-        notes: args.notes ?? null,
-        totals: {
+        daysMap[key] = {
+          date: key,
+          actualMinutes: day.minutesWorked,
           plannedMinutes: 0,
-          actualMinutes: 0,
           varianceMinutes: 0,
-        },
-        daysMap: new Map(),
-      };
+          timesheetDayId: day.id,
+          hourlyRate: day.hourlyRate,
+          notes: day.notes,
+          assignments: [],
+        };
+      }
 
-      employeeMap.set(args.staffId, created);
-      return created;
-    }
-
-    function ensureDay(
-      employee: ReturnType<typeof ensureEmployee>,
-      dayKey: string
-    ) {
-      const existing = employee.daysMap.get(dayKey);
-
-      if (existing) return existing;
-
-      const created = {
-        date: dayKey,
-        actualMinutes: 0,
-        plannedMinutes: 0,
-        varianceMinutes: 0,
-        timesheetDayId: null,
-        hourlyRate: null,
-        notes: null,
-        assignments: [],
-      };
-
-      employee.daysMap.set(dayKey, created);
-      return created;
-    }
-
-    for (const ts of timesheets) {
-      const employee = ensureEmployee({
+      return {
         staffId: ts.staffId,
         name: ts.staff.name,
         email: ts.staff.email,
@@ -311,35 +144,40 @@ export async function GET(_req: Request, context: RouteContext) {
         submittedAt: ts.submittedAt,
         approvedAt: ts.approvedAt,
         notes: ts.notes,
-      });
+        daysMap,
+      };
+    });
 
-      for (const day of ts.days) {
-        const dayKey = toDayKey(day.workDate);
-        const row = ensureDay(employee, dayKey);
-
-        row.actualMinutes += day.minutesWorked;
-        row.timesheetDayId = day.id;
-        row.hourlyRate = day.hourlyRate ?? null;
-        row.notes = day.notes ?? null;
-      }
-    }
+    // ======================================================
+    // ✅ STEP 2: Attach assignments
+    // ======================================================
 
     for (const assignment of assignments) {
-      const employee = ensureEmployee({
-        staffId: assignment.staffId,
-        name: assignment.staff.name,
-        email: assignment.staff.email,
-        staffCode: assignment.staff.staffProfile?.staffId ?? null,
-        position: assignment.staff.staffProfile?.position ?? null,
-      });
+      const emp = employees.find(
+        (e) => e.staffId === assignment.staffId
+      );
 
-      const dayBaseDate =
-        assignment.plannedStart ??
-        assignment.plannedEnd ??
+      if (!emp) continue; // ignore if no timesheet
+
+      const baseDate =
+        assignment.plannedStart ||
+        assignment.plannedEnd ||
         assignment.appointment.startTime;
 
-      const dayKey = toDayKey(dayBaseDate);
-      const row = ensureDay(employee, dayKey);
+      const key = toDayKey(baseDate);
+
+      if (!emp.daysMap[key]) {
+        emp.daysMap[key] = {
+          date: key,
+          actualMinutes: 0,
+          plannedMinutes: 0,
+          varianceMinutes: 0,
+          timesheetDayId: null,
+          hourlyRate: null,
+          notes: null,
+          assignments: [],
+        };
+      }
 
       const plannedMinutes = getPlannedMinutes(
         assignment.plannedStart,
@@ -347,80 +185,67 @@ export async function GET(_req: Request, context: RouteContext) {
         assignment.breakMinutes
       );
 
-      const clientName =
-        assignment.appointment.job.client.companyName ||
-        `${assignment.appointment.job.client.firstName} ${assignment.appointment.job.client.lastName}`.trim();
+      emp.daysMap[key].plannedMinutes += plannedMinutes;
 
-      const addressLine = [
-        assignment.appointment.job.address.street1,
-        assignment.appointment.job.address.city,
-        assignment.appointment.job.address.province,
-      ]
-        .filter(Boolean)
-        .join(", ");
-
-      row.plannedMinutes += plannedMinutes;
-      row.assignments.push({
+      emp.daysMap[key].assignments.push({
         id: assignment.id,
-        appointmentId: assignment.appointmentId,
         jobTitle: assignment.appointment.job.title,
-        clientName,
-        addressLine,
+        clientName:
+          assignment.appointment.job.client.companyName ||
+          `${assignment.appointment.job.client.firstName} ${assignment.appointment.job.client.lastName}`,
         status: assignment.status,
-        plannedStart: assignment.plannedStart,
-        plannedEnd: assignment.plannedEnd,
-        breakMinutes: assignment.breakMinutes,
         plannedMinutes,
-        hourlyRateAtTime: assignment.hourlyRateAtTime,
-        notes: assignment.notes,
       });
     }
 
-    const employees = Array.from(employeeMap.values())
-      .map((employee) => {
-        const days = Array.from(employee.daysMap.values())
-          .sort((a, b) => a.date.localeCompare(b.date))
-          .map((day) => {
-            const varianceMinutes = day.actualMinutes - day.plannedMinutes;
-            return {
-              ...day,
-              varianceMinutes,
-            };
-          });
+    // ======================================================
+    // ✅ STEP 3: Final transformation
+    // ======================================================
 
-        const plannedMinutes = days.reduce((sum, d) => sum + d.plannedMinutes, 0);
-        const actualMinutes = days.reduce((sum, d) => sum + d.actualMinutes, 0);
-        const varianceMinutes = actualMinutes - plannedMinutes;
+    const result = employees.map((emp) => {
+      const days = Object.values(emp.daysMap)
+        .sort((a: any, b: any) => a.date.localeCompare(b.date))
+        .map((d: any) => {
+          const variance = d.actualMinutes - d.plannedMinutes;
 
-        return {
-          staffId: employee.staffId,
-          name: employee.name,
-          email: employee.email,
-          staffCode: employee.staffCode,
-          position: employee.position,
-          timesheetId: employee.timesheetId,
-          timesheetStatus: employee.timesheetStatus,
-          submittedAt: employee.submittedAt,
-          approvedAt: employee.approvedAt,
-          notes: employee.notes,
-          totals: {
-            plannedMinutes,
-            actualMinutes,
-            varianceMinutes,
-          },
-          days,
-        };
-      })
-      .sort((a, b) => a.name.localeCompare(b.name));
+          return {
+            ...d,
+            varianceMinutes: variance,
+          };
+        });
+
+      const plannedMinutes = days.reduce(
+        (sum: number, d: any) => sum + d.plannedMinutes,
+        0
+      );
+
+      const actualMinutes = days.reduce(
+        (sum: number, d: any) => sum + d.actualMinutes,
+        0
+      );
+
+      return {
+        ...emp,
+        days,
+        totals: {
+          plannedMinutes,
+          actualMinutes,
+          varianceMinutes: actualMinutes - plannedMinutes,
+        },
+      };
+    });
 
     return NextResponse.json({
       period,
-      employees,
+      employees: result.sort((a, b) =>
+        a.name.localeCompare(b.name)
+      ),
     });
   } catch (error) {
-    console.error("GET /api/admin/timesheets/periods/[periodId]/overview error:", error);
+    console.error("Admin Timesheet Error:", error);
+
     return NextResponse.json(
-      { error: "Failed to load admin timesheet overview" },
+      { error: "Failed to load timesheets" },
       { status: 500 }
     );
   }

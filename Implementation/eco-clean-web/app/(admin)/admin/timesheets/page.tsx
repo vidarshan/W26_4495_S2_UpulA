@@ -15,6 +15,7 @@ import {
   Table,
   Text,
   Title,
+  Button
 } from "@mantine/core";
 
 type TimesheetPeriod = {
@@ -125,6 +126,8 @@ function statusColor(status: string | null) {
   }
 }
 
+
+
 export default function AdminTimesheetOverviewPage() {
   const [periods, setPeriods] = useState<TimesheetPeriod[]>([]);
   const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(null);
@@ -132,6 +135,8 @@ export default function AdminTimesheetOverviewPage() {
   const [loadingPeriods, setLoadingPeriods] = useState(true);
   const [loadingOverview, setLoadingOverview] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     async function loadPeriods() {
@@ -195,6 +200,38 @@ export default function AdminTimesheetOverviewPage() {
 
     loadOverview();
   }, [selectedPeriodId]);
+
+  async function handleApprove(timesheetId: string) {
+    setApprovingId(timesheetId);
+
+    try {
+      const res = await fetch(
+        `/api/admin/timesheets/${timesheetId}/approve`,
+        { method: "POST" }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.error || "Failed to approve");
+        return;
+      }
+
+      // reload overview
+      if (selectedPeriodId) {
+        const res = await fetch(
+          `/api/admin/timesheets/periods/${selectedPeriodId}/overview`,
+          { cache: "no-store" }
+        );
+        const data = await res.json();
+        setOverview(data);
+      }
+    } catch (err) {
+      alert("Something went wrong");
+    } finally {
+      setApprovingId(null);
+    }
+  }
 
   const periodOptions = useMemo(
     () =>
@@ -320,6 +357,9 @@ export default function AdminTimesheetOverviewPage() {
               {overview.employees.map((employee) => (
                 <Card key={employee.staffId} withBorder radius="md" p="lg">
                   <Stack gap="md">
+
+                    
+                    
                     <Group justify="space-between" align="flex-start">
                       <div>
                         <Title order={4}>{employee.name}</Title>
@@ -340,6 +380,32 @@ export default function AdminTimesheetOverviewPage() {
                             Submitted: {formatDate(employee.submittedAt)}
                           </Badge>
                         )}
+                        {employee.timesheetId &&
+                          employee.timesheetStatus === "SUBMITTED" && (
+                            <Button
+                              size="xs"
+                              color="green"
+                              loading={approvingId === employee.timesheetId}
+                              onClick={() => handleApprove(employee.timesheetId!)}
+                            >
+                              Approve
+                            </Button>
+
+                          )}
+                        <Button
+                          size="xs"
+                          variant="light"
+                          onClick={() =>
+                            setCollapsed((prev) => ({
+                              ...prev,
+                              [employee.staffId]: !prev[employee.staffId],
+                            }))
+                          }
+                        >
+                          {collapsed[employee.staffId] ? "Expand" : "Collapse"}
+                        </Button>
+
+
                       </Group>
                     </Group>
 
@@ -447,7 +513,9 @@ export default function AdminTimesheetOverviewPage() {
                                             Break: {assignment.breakMinutes} min
                                           </Text>
                                           <Text size="sm">
-                                            Assignment rate: ${assignment.hourlyRateAtTime.toFixed(2)}
+                                            Assignment rate: {assignment.hourlyRateAtTime != null
+                                              ? `$${assignment.hourlyRateAtTime.toFixed(2)}`
+                                              : "—"}
                                           </Text>
 
                                           {assignment.notes && (
@@ -481,4 +549,9 @@ export default function AdminTimesheetOverviewPage() {
       </Stack>
     </Container>
   );
+
+
+
 }
+
+

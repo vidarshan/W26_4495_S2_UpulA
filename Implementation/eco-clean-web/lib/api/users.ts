@@ -13,7 +13,7 @@ export function getStaff(params?: {
   if (params?.q) sp.set("q", params.q);
   if (params?.sort) sp.set("sort", params.sort);
 
-  const paginate = params?.paginate ?? true;
+  const paginate = params?.paginate ?? false;
   sp.set("paginate", paginate ? "true" : "false");
 
   if (paginate) {
@@ -21,11 +21,25 @@ export function getStaff(params?: {
     sp.set("limit", String(params?.limit ?? 20));
   }
 
-  return apiClient<PaginatedResponse<Staff>>(`/api/users?${sp.toString()}`);
+  return apiClient<any>(`/api/users?${sp.toString()}`).then((res) => {
+    const users = res?.data ?? res;
+
+    return (users || [])
+      .filter((u: any) => u.role === "STAFF")
+      .map(
+        (u: any): Staff => ({
+          id: u.id,
+          name: u.name ?? "",
+          email: u.email ?? "",
+          role: u.role,
+          createdAt: u.createdAt ?? new Date().toISOString(),
+        })
+      );
+  });
 }
 
 export function createUser(name: string, role: string, email: string) {
-  return apiClient<{ user: User; tempPassword: string }>(`/api/users`, {
+  return apiClient<{ user: User; temporaryPassword: string }>(`/api/users`, {
     method: "POST",
     body: { name, role, email },
   });
@@ -48,6 +62,7 @@ export function editUser(
   password?: string,
 ) {
   const body: UserPayload = { name, role, email };
+
   if (password) body.password = password;
 
   return apiClient(`/api/users/${id}`, {

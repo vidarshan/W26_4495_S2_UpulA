@@ -47,6 +47,7 @@ type FormValues = {
   confirmPassword: string;
 };
 
+// ✅ FIXED TYPE (matches backend)
 type CreateUserResult = {
   user: {
     id: string;
@@ -55,7 +56,8 @@ type CreateUserResult = {
     role: string;
     createdAt?: string;
   };
-  tempPassword: string;
+  staffProfile?: any;
+  temporaryPassword: string;
 };
 
 type EditUserResult = {
@@ -66,8 +68,6 @@ type EditUserResult = {
     role?: string;
   };
 };
-
-type MutationResult = CreateUserResult | EditUserResult;
 
 export default function UserUpsertModal({
   opened,
@@ -122,46 +122,42 @@ export default function UserUpsertModal({
     form.setValues(initialValues);
     form.resetDirty();
     form.clearErrors();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opened, initialValues]);
 
-  const mutation = useMutation<MutationResult, Error, FormValues>({
-    mutationFn: async (values) => {
-      if (mode === "create") {
-        return (await createUser(
-          values.name.trim(),
-          values.role,
-          values.email.trim().toLowerCase(),
-        )) as CreateUserResult;
-      }
+  // ✅ FIXED MUTATION
+  const mutation = useMutation<CreateUserResult | EditUserResult, Error, FormValues>({
+    mutationFn: async (values): Promise<CreateUserResult | EditUserResult> => {
+  if (mode === "create") {
+    return (await createUser(
+      values.name.trim(),
+      values.role,
+      values.email.trim().toLowerCase(),
+    )) as CreateUserResult;
+  }
 
-      if (!user?.id) throw new Error("Missing user id");
+  if (!user?.id) throw new Error("Missing user id");
 
-      const passwordToSet = (values.password || "").trim();
+  const passwordToSet = (values.password || "").trim();
 
-      return (await editUser(
-        user.id,
-        values.name.trim(),
-        values.role,
-        values.email.trim().toLowerCase(),
-        passwordToSet ? passwordToSet : undefined,
-      )) as EditUserResult;
-    },
+  return (await editUser(
+    user.id,
+    values.name.trim(),
+    values.role,
+    values.email.trim().toLowerCase(),
+    passwordToSet ? passwordToSet : undefined,
+  )) as EditUserResult;
+},
 
     onSuccess: async (result) => {
       await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: ["staff"],
-          exact: false,
-        }),
-        queryClient.invalidateQueries({
-          queryKey: ["users"],
-          exact: false,
-        }),
+        queryClient.invalidateQueries({ queryKey: ["staff"], exact: false }),
+        queryClient.invalidateQueries({ queryKey: ["users"], exact: false }),
       ]);
 
-      if (mode === "create") {
-        const temp = "tempPassword" in result ? result.tempPassword : "";
+      // ✅ CLEAN TYPE-SAFE HANDLING
+      if (mode === "create" && "temporaryPassword" in result) {
+        const temp = result.temporaryPassword;
+
         setGeneratedPassword(temp);
 
         form.setFieldValue("password", "");
@@ -240,7 +236,7 @@ export default function UserUpsertModal({
     }
   };
 
-  const roleOptions: { value: Role; label: string }[] = [
+  const roleOptions = [
     { value: "ADMIN", label: "Admin" },
     { value: "STAFF", label: "Staff" },
   ];
@@ -285,8 +281,8 @@ export default function UserUpsertModal({
 
           <TextInput
             leftSection={<IoTextOutline />}
-            placeholder="Staff email"
             label="Email"
+            placeholder="Staff email"
             disabled={isBusy || isCreateComplete}
             {...form.getInputProps("email")}
           />
@@ -297,12 +293,9 @@ export default function UserUpsertModal({
             value={form.values.role}
             leftSection={<IoPeopleOutline />}
             disabled={isBusy || isCreateComplete}
-            onChange={(v) => {
-              const nextRole: Role =
-                v === "ADMIN" || v === "STAFF" ? v : "STAFF";
-              form.setFieldValue("role", nextRole);
-            }}
-            error={form.errors.role}
+            onChange={(v) =>
+              form.setFieldValue("role", (v as Role) || "STAFF")
+            }
           />
 
           {mode === "create" && generatedPassword && (
@@ -311,16 +304,10 @@ export default function UserUpsertModal({
                 Generated password
               </Text>
 
-              <Group justify="space-between" align="center" wrap="nowrap">
-                <Code style={{ userSelect: "all", flex: 1 }}>
-                  {generatedPassword}
-                </Code>
+              <Group justify="space-between">
+                <Code style={{ flex: 1 }}>{generatedPassword}</Code>
 
-                <Button
-                  type="button"
-                  variant="light"
-                  onClick={handleCopyPassword}
-                >
+                <Button onClick={handleCopyPassword}>
                   {copied ? "Copied" : "Copy"}
                 </Button>
               </Group>
@@ -336,13 +323,11 @@ export default function UserUpsertModal({
               <PasswordInput
                 label="Reset password"
                 placeholder="Leave blank to keep unchanged"
-                disabled={isBusy}
                 {...form.getInputProps("password")}
               />
               <PasswordInput
                 label="Confirm password"
                 placeholder="Re-enter password"
-                disabled={isBusy}
                 {...form.getInputProps("confirmPassword")}
               />
             </>
@@ -350,13 +335,7 @@ export default function UserUpsertModal({
         </Stack>
 
         <Flex mt="sm" gap="xs">
-          <Button
-            type="button"
-            variant="default"
-            onClick={() => handleClose()}
-            fullWidth
-            disabled={isBusy}
-          >
+          <Button variant="default" onClick={() => handleClose()} fullWidth>
             Cancel
           </Button>
 
