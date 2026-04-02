@@ -230,6 +230,7 @@ model StaffProfile {
   userId     String  @unique
   position   String?
   hourlyRate Float   @default(0)
+  staffProfileId String? @unique
 
   user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   availabilities   StaffAvailability[]
@@ -463,6 +464,7 @@ enum AppointmentStatus {
 
 enum AssignmentStatus {
   PENDING
+  CONFIRMED
   EN_ROUTE
   ON_SITE
   COMPLETED

@@ -22,6 +22,7 @@ import {
   IoCloseOutline,
   IoPersonOutline,
   IoTimeOutline,
+  IoCashOutline
 } from "react-icons/io5";
 
 type MenuItemProps = {
@@ -100,6 +101,12 @@ export default function StaffShell({
       label: "Availability",
       icon: <IoTimeOutline size={18} />,
       active: pathname.startsWith("/staff/enter-availability"),
+    },
+    {
+      href: "/staff/your-pay",
+      label: "Your Pay",
+      icon: <IoCashOutline size={18} />,
+      active: pathname.startsWith("/staff/your-pay"),
     },
   ];
 
