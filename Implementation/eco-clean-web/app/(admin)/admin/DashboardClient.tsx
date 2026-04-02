@@ -50,6 +50,7 @@ import { rescheduleAppointment } from "@/lib/api/appointments";
 import { APP_TZ } from "@/lib/dateTime";
 import { useCalendarStore, useDashboardUI } from "@/stores/store";
 
+
 export default function DashboardClient() {
   const qc = useQueryClient();
   const calendarRef = useRef<FullCalendar | null>(null);

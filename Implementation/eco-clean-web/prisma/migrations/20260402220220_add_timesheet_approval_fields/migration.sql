@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "Timesheet" ADD COLUMN     "isLocked" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "snapshot" JSONB,
+ADD COLUMN     "totalMinutes" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "totalPay" DOUBLE PRECISION NOT NULL DEFAULT 0;

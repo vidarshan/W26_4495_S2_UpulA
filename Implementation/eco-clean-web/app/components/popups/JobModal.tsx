@@ -153,9 +153,9 @@ const mapAppt = (appt: AppointmentForm): AppointmentApiPayload => {
     note: appt.notes?.trim() ? appt.notes.trim() : null,
     images: appt.uploadedImages?.length
       ? appt.uploadedImages.map((img) => ({
-          url: img.url,
-          fileKey: img.fileKey ?? null,
-        }))
+        url: img.url,
+        fileKey: img.fileKey ?? null,
+      }))
       : undefined,
   };
 };
@@ -222,8 +222,8 @@ function buildInitialValues(
         ...blankAppointment(),
         startDate: selectedInfo?.start
           ? DateTime.fromJSDate(selectedInfo.start, { zone: APP_TZ }).toFormat(
-              "yyyy-LL-dd",
-            )
+            "yyyy-LL-dd",
+          )
           : null,
         startTime: selectedInfo?.start ? jsDateToHHmm(selectedInfo.start) : "",
         endTime: selectedInfo?.end ? jsDateToHHmm(selectedInfo.end) : "",
@@ -310,14 +310,14 @@ export default function NewJobModal({
             : null,
         endsAfter: (v, values) =>
           values.jobType === "RECURRING" &&
-          values.recurrence.endType === "after" &&
-          (!v || v < 1)
+            values.recurrence.endType === "after" &&
+            (!v || v < 1)
             ? "Must be at least 1"
             : null,
         endsOn: (v, values) =>
           values.jobType === "RECURRING" &&
-          values.recurrence.endType === "on" &&
-          !v
+            values.recurrence.endType === "on" &&
+            !v
             ? "End date is required"
             : null,
       },
@@ -350,7 +350,11 @@ export default function NewJobModal({
       "staff",
       { q: debouncedSearchAssignees, paginate: false },
     ] as const,
-    queryFn: () => getStaff(),
+    queryFn: () =>
+      getStaff({
+        q: debouncedSearchAssignees,
+        paginate: false,
+      }),
     staleTime: 60_000,
     enabled: opened,
   });
@@ -584,22 +588,22 @@ export default function NewJobModal({
       })),
       ...(values.jobType === "RECURRING"
         ? {
-            recurrence: {
-              frequency: values.recurrence.frequency,
-              interval: values.recurrence.interval,
-              endType: values.recurrence.endType,
-              endsAfter:
-                values.recurrence.endType === "after"
-                  ? values.recurrence.endsAfter
-                  : null,
-              endsOn:
-                values.recurrence.endType === "on" && values.recurrence.endsOn
-                  ? DateTime.fromJSDate(values.recurrence.endsOn, {
-                      zone: APP_TZ,
-                    }).toFormat("yyyy-LL-dd")
-                  : null,
-            },
-          }
+          recurrence: {
+            frequency: values.recurrence.frequency,
+            interval: values.recurrence.interval,
+            endType: values.recurrence.endType,
+            endsAfter:
+              values.recurrence.endType === "after"
+                ? values.recurrence.endsAfter
+                : null,
+            endsOn:
+              values.recurrence.endType === "on" && values.recurrence.endsOn
+                ? DateTime.fromJSDate(values.recurrence.endsOn, {
+                  zone: APP_TZ,
+                }).toFormat("yyyy-LL-dd")
+                : null,
+          },
+        }
         : {}),
       appointments,
     };
@@ -816,9 +820,9 @@ export default function NewJobModal({
               disabled={staffLoading || isBusy}
               rightSection={staffFetching ? <Loader size="xs" /> : undefined}
               data={
-                staffData?.data?.map((s: Staff) => ({
+                staffData?.map((s: Staff) => ({
                   value: s.id,
-                  label: s.name,
+                  label: s.name || s.email || "Unnamed staff",
                 })) || []
               }
               onSearchChange={setSearchAssignees}

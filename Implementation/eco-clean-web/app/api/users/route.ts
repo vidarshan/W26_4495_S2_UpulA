@@ -1,28 +1,24 @@
-export const runtime = 'nodejs';
+export const runtime = "nodejs";
 
-import { prisma } from '@/lib/prisma';
-import { getAuthSession } from '@/lib/session';
-import { NextResponse } from 'next/server';
+import { prisma } from "@/lib/prisma";
+import { getAuthSession } from "@/lib/session";
+import { NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
+import crypto from "crypto";
 
 /**
- * GET: Fetch a single staff member's full profile
+ * GET: Fetch all users (Admin only)
  */
-export async function GET(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function GET() {
   const session = await getAuthSession();
 
-  // Optional security check
-  // if (!session || session.user.role !== 'ADMIN') {
-  //   return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  // }
+  if (!session || session.user.role !== "ADMIN") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   try {
-    const { id } = await params;
-
-    const staffMember = await prisma.user.findUnique({
-      where: { id },
+    const users = await prisma.user.findMany({
+      orderBy: { createdAt: "desc" },
       select: {
         id: true,
         name: true,
@@ -35,251 +31,115 @@ export async function GET(
             staffId: true,
             position: true,
             hourlyRate: true,
-            staffAddress: {
-              select: {
-                id: true,
-                street1: true,
-                street2: true,
-                city: true,
-                province: true,
-                postalCode: true,
-                country: true,
-              },
-            },
-            emergencyContact: {
-              select: {
-                id: true,
-                name: true,
-                phoneNumber: true,
-                relationship: true,
-              },
-            },
           },
         },
       },
     });
 
-    if (!staffMember || staffMember.role !== 'STAFF') {
-      return NextResponse.json(
-        { error: 'Staff member not found' },
-        { status: 404 },
-      );
-    }
-
-    return NextResponse.json(staffMember);
+    return NextResponse.json(users);
   } catch (error) {
-    console.error('GET staff by ID failed:', error);
+    console.error("GET users failed:", error);
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 },
+      { error: "Failed to fetch users" },
+      { status: 500 }
     );
   }
 }
 
 /**
- * PATCH: Update a staff member's profile
+ * POST: Create user + temp password + staff profile
  */
-export async function PATCH(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function POST(req: Request) {
   const session = await getAuthSession();
 
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!session || session.user.role !== "ADMIN") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   try {
-    const { id } = await params;
     const body = await req.json();
 
-    const {
-      name,
-      email,
-      position,
-      hourlyRate,
-      staffAddress,
-      emergencyContact,
-    } = body;
+    let { name, email, role, position, hourlyRate } = body;
 
-    const isAdmin = session.user.role === 'ADMIN';
-    const isStaff = session.user.role === 'STAFF';
-    const isOwnProfile = session.user.id === id;
-
-    if (isStaff && !isOwnProfile) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (!email) {
+      return NextResponse.json(
+        { error: "Email is required" },
+        { status: 400 }
+      );
     }
 
-    if (!isAdmin && !isOwnProfile) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    email = email.trim().toLowerCase();
+    name = name?.trim() || "";
+
+    // 🔍 Check duplicate
+    const existing = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (existing) {
+      return NextResponse.json(
+        { error: "Email already exists" },
+        { status: 400 }
+      );
     }
 
-    const updatedStaff = await prisma.$transaction(async (tx) => {
-      const existingUser = await tx.user.findUnique({
-        where: { id },
-        include: {
-          staffProfile: true,
+    // 🔐 Generate temp password
+    const tempPassword = crypto.randomBytes(4).toString("hex");
+
+    const hashedPassword = await bcrypt.hash(tempPassword, 10);
+
+    const result = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          name,
+          email,
+          password: hashedPassword,
+          role: role ?? "STAFF",
         },
       });
 
-      if (!existingUser || existingUser.role !== 'STAFF') {
-        throw new Error('STAFF_NOT_FOUND');
-      }
+      let staffProfile = null;
 
-      // Admin-only update to core User fields
-      const userUpdateData: Record<string, unknown> = {};
-      if (isAdmin) {
-        if (name !== undefined) userUpdateData.name = name;
-        if (email !== undefined) userUpdateData.email = email;
-      }
-
-      if (Object.keys(userUpdateData).length > 0) {
-        await tx.user.update({
-          where: { id },
-          data: userUpdateData,
-        });
-      }
-
-      let profileId: string;
-
-      if (!existingUser.staffProfile) {
+      if ((role ?? "STAFF") === "STAFF") {
         const randomSuffix = Math.random()
           .toString(36)
           .substring(2, 6)
           .toUpperCase();
 
-        const createdProfile = await tx.staffProfile.create({
+        staffProfile = await tx.staffProfile.create({
           data: {
-            userId: id,
+            userId: user.id,
             staffId: `STF-ECO-${randomSuffix}`,
-            position: isAdmin ? (position ?? null) : null,
-            
-          },
-        });
-
-        profileId = createdProfile.id;
-      } else {
-        profileId = existingUser.staffProfile.id;
-
-        const profileUpdateData: Record<string, unknown> = {};
-
-        if (isAdmin) {
-          if (position !== undefined) profileUpdateData.position = position;
-          if (hourlyRate !== undefined) {
-            profileUpdateData.hourlyRate = Number(hourlyRate);
-          }
-        }
-
-        if (Object.keys(profileUpdateData).length > 0) {
-          await tx.staffProfile.update({
-            where: { userId: id },
-            data: profileUpdateData,
-          });
-        }
-      }
-
-      if (staffAddress) {
-        const { street1, street2, city, province, postalCode, country } =
-          staffAddress;
-
-        await tx.staffAddress.upsert({
-          where: { staffProfileId: profileId },
-          update: {
-            ...(street1 !== undefined && { street1 }),
-            ...(street2 !== undefined && { street2 }),
-            ...(city !== undefined && { city }),
-            ...(province !== undefined && { province }),
-            ...(postalCode !== undefined && { postalCode }),
-            ...(country !== undefined && { country }),
-          },
-          create: {
-            staffProfileId: profileId,
-            street1: street1 ?? '',
-            street2: street2 ?? null,
-            city: city ?? '',
-            province: province ?? '',
-            postalCode: postalCode ?? null,
-            country: country ?? '',
+            position: position ?? null,
+            hourlyRate:
+              hourlyRate !== undefined ? Number(hourlyRate) : 0,
           },
         });
       }
 
-      if (emergencyContact) {
-        const {
-          name: contactName,
-          phoneNumber,
-          relationship,
-        } = emergencyContact;
-
-        await tx.emergencyContact.upsert({
-          where: { staffProfileId: profileId },
-          update: {
-            ...(contactName !== undefined && { name: contactName }),
-            ...(phoneNumber !== undefined && { phoneNumber }),
-            ...(relationship !== undefined && { relationship }),
-          },
-          create: {
-            staffProfileId: profileId,
-            name: contactName ?? '',
-            phoneNumber: phoneNumber ?? '',
-            relationship: relationship ?? '',
-          },
-        });
-      }
-
-      return tx.user.findUnique({
-        where: { id },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          role: true,
-          createdAt: true,
-          staffProfile: {
-            select: {
-              id: true,
-              staffId: true,
-              position: true,
-              hourlyRate: true,
-              staffAddress: {
-                select: {
-                  id: true,
-                  street1: true,
-                  street2: true,
-                  city: true,
-                  province: true,
-                  postalCode: true,
-                  country: true,
-                },
-              },
-              emergencyContact: {
-                select: {
-                  id: true,
-                  name: true,
-                  phoneNumber: true,
-                  relationship: true,
-                },
-              },
-            },
-          },
-        },
-      });
+      return { user, staffProfile };
     });
 
-    return NextResponse.json(updatedStaff);
-  } catch (error) {
-    console.error('PATCH staff failed:', error);
+    // ✅ CLEAN CONSISTENT RESPONSE
+    return NextResponse.json({
+      user: {
+        id: result.user.id,
+        name: result.user.name,
+        email: result.user.email,
+        role: result.user.role,
+        createdAt: result.user.createdAt,
+      },
+      staffProfile: result.staffProfile,
+      temporaryPassword: tempPassword,
+    });
 
-    if (error instanceof Error && error.message === 'STAFF_NOT_FOUND') {
-      return NextResponse.json(
-        { error: 'Staff member not found' },
-        { status: 404 },
-      );
-    }
+  } catch (error: any) {
+    console.error("POST user failed:", error);
 
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 },
+      { error: error.message || "Failed to create user" },
+      { status: 500 }
     );
   }
 }
+
