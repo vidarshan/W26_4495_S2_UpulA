@@ -228,6 +228,7 @@ model AppointmentWorkSession {
 model StaffProfile {
   id         String  @id @default(uuid())
   userId     String  @unique
+  staffId    String?  @unique
   position   String?
   hourlyRate Float   @default(0)
 
