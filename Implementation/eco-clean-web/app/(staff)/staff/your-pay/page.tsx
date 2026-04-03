@@ -23,53 +23,22 @@ import {
   Tooltip,
 } from "recharts";
 import { useSession } from "next-auth/react";
-
+import { useRouter } from 'next/navigation';
 const COLORS = ["#1f6b8f", "#eb7a2f", "#2e7d32"];
-
-type ChartDatum = {
-  name: string;
-  value: number;
-  color?: string;
-};
-
-type PaySummary = {
-  gross: number;
-  totalDeductions: number;
-  net: number;
-};
-
-type PayDetails = {
-  regularAmount?: number | null;
-  otAmount?: number | null;
-  transportAllowance?: number | null;
-  federalTax?: number | null;
-  ei?: number | null;
-  cpp?: number | null;
-  health?: number | null;
-  other?: number | null;
-};
-
-type PayData = {
-  chartData: ChartDatum[];
-  summary: PaySummary;
-  details?: PayDetails | null;
-};
 
 export default function YourPayPage() {
   const { data: session } = useSession();
-  const [data, setData] = useState<PayData | null>(null);
+  const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+const router = useRouter();
 
   // 1. Fetching logic to link to your route.ts
   useEffect(() => {
     async function fetchPayData() {
       try {
         // Use session ID or the hardcoded dev ID
-        const userId =
-          session?.user?.id || "3b32d468-9f20-4808-9f25-bffabed6a9cb";
-        const response = await fetch(
-          `/api/staff/${userId}/pay-statements/latest`,
-        );
+        const userId = session?.user?.id || "3b32d468-9f20-4808-9f25-bffabed6a9cb";
+        const response = await fetch(`/api/staff/${userId}/pay-statements/latest`);
 
         if (!response.ok) throw new Error("Failed to fetch");
 
@@ -85,29 +54,18 @@ export default function YourPayPage() {
   }, [session]);
 
   if (loading) {
-    return (
-      <Center h="100vh">
-        <Loader size="xl" color="#125f82" />
-      </Center>
-    );
+    return <Center h="100vh"><Loader size="xl" color="#125f82" /></Center>;
   }
 
   if (!data) {
-    return (
-      <Center h="100vh">
-        <Text>No pay statement found.</Text>
-      </Center>
-    );
+    return <Center h="100vh"><Text>No pay statement found.</Text></Center>;
   }
 
   // 2. Mapping dynamic data from the API response
   const earningsBreakdown = [
     { label: "Regular Amount", value: data.details?.regularAmount || 0 },
     { label: "OT Amount", value: data.details?.otAmount || 0 },
-    {
-      label: "Transport Allowance",
-      value: data.details?.transportAllowance || 0,
-    },
+    { label: "Transport Allowance", value: data.details?.transportAllowance || 0 },
   ];
 
   const deductionBreakdown = [
@@ -123,16 +81,12 @@ export default function YourPayPage() {
 
   return (
     <Container size="lg" py="xl">
-      <Title ta="center" mb="xl">
-        Your Pay
-      </Title>
+      <Title ta="center" mb="xl">Your Pay</Title>
 
       <Grid align="start" gutter="xl">
         <Grid.Col span={{ base: 12, md: 6 }}>
           <Card radius="md" p="xl" bg="transparent" withBorder={false}>
-            <Title order={2} ta="center" c="dimmed" mb="md">
-              Gross Pay
-            </Title>
+            <Title order={2} ta="center" c="dimmed" mb="md">Gross Pay</Title>
             <Box h={360}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -146,11 +100,8 @@ export default function YourPayPage() {
                     }
                     labelLine={false}
                   >
-                    {data.chartData.map((entry, index: number) => (
-                      <Cell
-                        key={entry.name}
-                        fill={COLORS[index % COLORS.length]}
-                      />
+                    {data.chartData.map((entry: any, index: number) => (
+                      <Cell key={entry.name} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
                   <Tooltip />
@@ -163,32 +114,13 @@ export default function YourPayPage() {
 
         <Grid.Col span={{ base: 12, md: 6 }}>
           <Stack gap="xl">
-            <SummaryBlock
-              title="Gross Earnings"
-              total={gross}
-              items={earningsBreakdown}
-            />
-            <SummaryBlock
-              title="Total Deductions"
-              total={totalDeductions}
-              items={deductionBreakdown}
-            />
+            <SummaryBlock title="Gross Earnings" total={gross} items={earningsBreakdown} />
+            <SummaryBlock title="Total Deductions" total={totalDeductions} items={deductionBreakdown} />
 
-            <Card
-              radius="lg"
-              p="sm"
-              style={{
-                backgroundColor: "#e9ecef",
-                border: "1px solid #dee2e6",
-              }}
-            >
+            <Card radius="sm" p="sm" style={{ backgroundColor: "#e9ecef", border: "1px solid #dee2e6" }}>
               <Group justify="space-between">
-                <Text fw={700} size="lg">
-                  Net Earnings
-                </Text>
-                <Text fw={700} size="lg">
-                  ${net.toFixed(2)}
-                </Text>
+                <Text fw={700} size="lg">Net Earnings</Text>
+                <Text fw={700} size="lg">${net.toFixed(2)}</Text>
               </Group>
             </Card>
           </Stack>
@@ -208,7 +140,7 @@ export default function YourPayPage() {
               fontWeight: 500,
             },
           }}
-          onClick={() => window.open("/pay")}
+          onClick={() => router.push('/staff/pay-stub')}
         >
           Download Current Statements
         </Button>
@@ -225,6 +157,7 @@ export default function YourPayPage() {
               fontWeight: 500,
             },
           }}
+          onClick={() => router.push('/staff/pay-history')}
         >
           Download Past Statements
         </Button>
@@ -233,29 +166,13 @@ export default function YourPayPage() {
   );
 }
 
-function SummaryBlock({
-  title,
-  total,
-  items,
-}: {
-  title: string;
-  total: number;
-  items: { label: string; value: number }[];
-}) {
+function SummaryBlock({ title, total, items }: { title: string; total: number; items: { label: string; value: number }[] }) {
   return (
     <Box>
-      <Card
-        radius="lg"
-        p="sm"
-        style={{ backgroundColor: "#e9ecef", border: "1px solid #dee2e6" }}
-      >
+      <Card radius="sm" p="sm" style={{ backgroundColor: "#e9ecef", border: "1px solid #dee2e6" }}>
         <Group justify="space-between">
-          <Text fw={700} size="lg">
-            {title}
-          </Text>
-          <Text fw={700} size="lg">
-            ${total.toFixed(2)}
-          </Text>
+          <Text fw={700} size="lg">{title}</Text>
+          <Text fw={700} size="lg">${total.toFixed(2)}</Text>
         </Group>
       </Card>
       <Stack gap={8} mt="sm" px="sm">

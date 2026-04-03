@@ -47,7 +47,7 @@ export default function PayHistoryPage() {
       if (!session?.user?.id) return;
 
       try {
-        const res = await fetch(`/api/staff/${session.user.id}/pay-statements`);
+        const res = await fetch(`/api/staff/pay-statements`);
         const data = await res.json();
         setStatements(data);
       } catch (error) {
@@ -117,8 +117,7 @@ export default function PayHistoryPage() {
                       color="blue"
                       fullWidth
                       component={Link}
-                      href={`/pay/${s.id}`}
-                    >
+                      href={`/staff/pay-stub?id=${s.id}`}                    >
                       Details
                     </Button>
                   </Stack>
@@ -180,8 +179,7 @@ export default function PayHistoryPage() {
                             color="blue"
                             size="xs"
                             component={Link}
-                            href={`/pay/${s.id}`}
-                          >
+href={`/staff/pay-stub?id=${s.id}`}                          >
                             Details
                           </Button>
                         </Group>

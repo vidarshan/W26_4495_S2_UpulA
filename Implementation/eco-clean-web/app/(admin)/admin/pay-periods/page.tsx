@@ -18,7 +18,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { calculateQuebecPayrollEstimate } from '@/lib/payroll/deductions';
 
 const PAY_PERIODS_PER_YEAR = 26;
-const DEFAULT_FEDERAL_CLAIM = 16_452;
+const DEFAULT_FEDERAL_CLAIM = 16452;
 const DEFAULT_QUEBEC_CLAIM = 0;
 
 type StaffPayRow = {
@@ -57,65 +57,6 @@ type StaffPayRow = {
   manualQpip: boolean;
 };
 
-const initialRows: StaffPayRow[] = [
-  {
-    staffId: 'STF001',
-    staffName: 'Upul Atapattu',
-    regularHours: 80,
-    regularRate: 18,
-    regularAmount: 0,
-    otHours: 10,
-    otRate: 24,
-    otAmount: 0,
-    transportAllowance: 200,
-    federalTax: 0,
-    quebecTax: 0,
-    ei: 0,
-    qpp: 0,
-    qpp2: 0,
-    qpip: 0,
-    health: 50,
-    other: 0,
-    grossEarnings: 0,
-    deductions: 0,
-    netEarnings: 0,
-    manualFederalTax: false,
-    manualQuebecTax: false,
-    manualEi: false,
-    manualQpp: false,
-    manualQpp2: false,
-    manualQpip: false,
-  },
-  {
-    staffId: 'STF002',
-    staffName: 'Vidarshan',
-    regularHours: 75,
-    regularRate: 20,
-    regularAmount: 0,
-    otHours: 5,
-    otRate: 30,
-    otAmount: 0,
-    transportAllowance: 100,
-    federalTax: 0,
-    quebecTax: 0,
-    ei: 0,
-    qpp: 0,
-    qpp2: 0,
-    qpip: 0,
-    health: 40,
-    other: 0,
-    grossEarnings: 0,
-    deductions: 0,
-    netEarnings: 0,
-    manualFederalTax: false,
-    manualQuebecTax: false,
-    manualEi: false,
-    manualQpp: false,
-    manualQpp2: false,
-    manualQpip: false,
-  },
-];
-
 type DeductionField =
   | 'federalTax'
   | 'quebecTax'
@@ -126,66 +67,137 @@ type DeductionField =
 
 export default function ManagePayPeriodsPage() {
   const [periodOptions, setPeriodOptions] = useState<
-    { value: string; label: string }[]
+    { value: string; label: string; disabled?: boolean }[]
   >([]);
+  const [periodId, setPeriodId] = useState<string | null>(null);
   const [periodStart, setPeriodStart] = useState<string | null>(null);
-  const [rows, setRows] = useState<StaffPayRow[]>(
-    initialRows.map((row) => recalculateRow(row))
-  );
+  const [rows, setRows] = useState<StaffPayRow[]>([]);
   const [loading, setLoading] = useState(false);
 
   const isMobile = useMediaQuery('(max-width: 768px)');
 
+  // ✅ Load periods
   useEffect(() => {
     async function loadPeriods() {
       try {
-        const res = await fetch('/api/timesheet-periods');
-        const allPeriods = await res.json();
-        const now = new Date();
+        const res = await fetch('/api/admin/timesheets/periods');
 
-        const currentIndex = allPeriods.findIndex((p: any) => {
-          const start = new Date(p.startDate);
-          const end = new Date(p.endDate);
-          return now >= start && now <= end;
-        });
-
-        if (currentIndex !== -1) {
-          const startIdx = Math.max(0, currentIndex - 1);
-          const endIdx = Math.min(allPeriods.length, currentIndex + 3);
-          const relevant = allPeriods.slice(startIdx, endIdx);
-
-          const options = relevant.map((p: any) => ({
-            value: p.id,
-            label: new Date(p.startDate)
-              .toLocaleDateString('en-GB')
-              .replace(/\//g, '-'),
-          }));
-
-          setPeriodOptions(options);
-          setPeriodStart(options[1]?.value || options[0]?.value || null);
+        if (!res.ok) {
+          const text = await res.text();
+          console.error('Failed to load periods:', text);
+          throw new Error('Failed to load periods');
         }
-      } catch (error) {
-        console.error('Failed to load dynamic periods', error);
+
+        const data = await res.json();
+
+        setPeriodOptions(
+          data.map((p: any) => ({
+            value: p.id,
+            label: `${new Date(p.startDate).toLocaleDateString()} - ${new Date(
+              p.endDate
+            ).toLocaleDateString()}${p.lockedAt
+              ? ' (Locked)'
+              : p.status === 'APPROVED'
+                ? ' (Approved)'
+                : ''
+              }`,
+            disabled: !!p.lockedAt
+          }))
+        );
+      } catch (err) {
+        console.error('Failed to load periods', err);
       }
     }
 
     loadPeriods();
   }, []);
 
+  // ✅ Load pay data
+  useEffect(() => {
+    async function loadPayData() {
+      if (!periodId) return;
+
+      try {
+        const res = await fetch(`/api/admin/pay-statements?periodId=${periodId}`);
+
+        if (!res.ok) {
+          const text = await res.text();
+          console.error('Failed to load pay data:', text);
+          throw new Error('Failed to load pay data');
+        }
+
+        const data = await res.json();
+
+        setRows(
+          data.map((row: any) =>
+            recalculateRow({
+              staffId: row.staffId ?? '',
+              staffName: row.staffName ?? '',
+
+              regularHours: row.regularHours ?? 0,
+              regularRate: row.regularRate ?? 0,
+              regularAmount: 0,
+
+              otHours: row.otHours ?? 0,
+              otRate: row.otRate ?? 0,
+              otAmount: 0,
+
+              transportAllowance: row.transportAllowance ?? 0,
+
+              federalTax: row.federalTax ?? 0,
+              quebecTax: row.quebecTax ?? 0,
+              ei: row.ei ?? 0,
+              qpp: row.qpp ?? 0,
+              qpp2: row.qpp2 ?? 0,
+              qpip: row.qpip ?? 0,
+
+              health: row.health ?? 0,
+              other: row.other ?? 0,
+
+              grossEarnings: 0,
+              deductions: 0,
+              netEarnings: 0,
+
+              manualFederalTax: row.manualFederalTax ?? false,
+              manualQuebecTax: row.manualQuebecTax ?? false,
+              manualEi: row.manualEi ?? false,
+              manualQpp: row.manualQpp ?? false,
+              manualQpp2: row.manualQpp2 ?? false,
+              manualQpip: row.manualQpip ?? false,
+            })
+          )
+        );
+      } catch (error) {
+        console.error('Failed to load pay data', error);
+      }
+    }
+
+    loadPayData();
+  }, [periodId]);
+
   async function handleSubmit() {
+    if (!periodId) {
+      alert('Please select a pay period first.');
+      return;
+    }
+
     setLoading(true);
+
     try {
       const response = await fetch('/api/admin/pay-statements', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ periodStart, rows }),
+        body: JSON.stringify({ periodId, rows }),
       });
 
-      if (response.ok) {
-        alert('Pay statements generated successfully!');
-      } else {
+      if (!response.ok) {
+        const text = await response.text();
+        console.error('Failed to generate pay statements:', text);
         alert('Failed to generate pay statements.');
+        return;
       }
+
+      alert('Pay statements generated successfully!');
     } catch (error) {
       console.error(error);
       alert('Something went wrong while generating pay statements.');
@@ -201,10 +213,7 @@ export default function ManagePayPeriodsPage() {
   ) {
     setRows((prev) => {
       const updated = [...prev];
-      const current = {
-        ...updated[index],
-        [field]: value,
-      };
+      const current = { ...updated[index], [field]: value };
       updated[index] = recalculateRow(current);
       return updated;
     });
@@ -215,23 +224,21 @@ export default function ManagePayPeriodsPage() {
     field: DeductionField,
     value: number
   ) {
-    const manualFlagMap: Record<DeductionField, keyof StaffPayRow> = {
+    const map = {
       federalTax: 'manualFederalTax',
       quebecTax: 'manualQuebecTax',
       ei: 'manualEi',
       qpp: 'manualQpp',
       qpp2: 'manualQpp2',
       qpip: 'manualQpip',
-    };
-
-    const manualFlag = manualFlagMap[field];
+    } as const;
 
     setRows((prev) => {
       const updated = [...prev];
       const current = {
         ...updated[index],
         [field]: value,
-        [manualFlag]: true,
+        [map[field]]: true,
       } as StaffPayRow;
 
       updated[index] = recalculateRow(current);
@@ -242,7 +249,7 @@ export default function ManagePayPeriodsPage() {
   function resetSuggestedDeductions(index: number) {
     setRows((prev) => {
       const updated = [...prev];
-      const current: StaffPayRow = {
+      const current = {
         ...updated[index],
         manualFederalTax: false,
         manualQuebecTax: false,
@@ -251,7 +258,6 @@ export default function ManagePayPeriodsPage() {
         manualQpp2: false,
         manualQpip: false,
       };
-
       updated[index] = recalculateRow(current);
       return updated;
     });
@@ -259,33 +265,13 @@ export default function ManagePayPeriodsPage() {
 
   const totals = useMemo(() => {
     return rows.reduce(
-      (acc, row) => {
-        acc.federalTax += row.federalTax;
-        acc.quebecTax += row.quebecTax;
-        acc.ei += row.ei;
-        acc.qpp += row.qpp;
-        acc.qpp2 += row.qpp2;
-        acc.qpip += row.qpip;
-        acc.health += row.health;
-        acc.other += row.other;
-        acc.gross += row.grossEarnings;
-        acc.deductions += row.deductions;
-        acc.net += row.netEarnings;
+      (acc, r) => {
+        acc.deductions += safe(r.deductions);
+        acc.gross += safe(r.grossEarnings);
+        acc.net += safe(r.netEarnings);
         return acc;
       },
-      {
-        federalTax: 0,
-        quebecTax: 0,
-        ei: 0,
-        qpp: 0,
-        qpp2: 0,
-        qpip: 0,
-        health: 0,
-        other: 0,
-        gross: 0,
-        deductions: 0,
-        net: 0,
-      }
+      { deductions: 0, gross: 0, net: 0 }
     );
   }, [rows]);
 
@@ -300,31 +286,18 @@ export default function ManagePayPeriodsPage() {
           Period Start Date
         </Text>
         <Select
-          value={periodStart}
-          onChange={setPeriodStart}
+          value={periodId}
+          onChange={setPeriodId}
           data={periodOptions}
           placeholder="Select period"
           nothingFoundMessage="No periods found"
         />
       </Box>
 
-      <Box mb="md" ta="center">
-        <Text size="sm" c="dimmed">
-          Quebec payroll fields are prefilled as suggested values and remain editable.
-        </Text>
-      </Box>
-
-      <Card withBorder radius="md" p={isMobile ? 'sm' : 'md'}>
-        <ScrollArea offsetScrollbars>
+      <Card withBorder>
+        <ScrollArea>
           <Table.ScrollContainer minWidth={2550}>
-            <Table
-              withTableBorder
-              withColumnBorders
-              striped
-              highlightOnHover
-              verticalSpacing="sm"
-              horizontalSpacing="sm"
-            >
+            <Table withTableBorder withColumnBorders striped>
               <Table.Thead>
                 <Table.Tr>
                   <HeaderCell>Staff ID</HeaderCell>
@@ -335,178 +308,80 @@ export default function ManagePayPeriodsPage() {
                   <HeaderCell>OT Hours</HeaderCell>
                   <HeaderCell>OT Rate</HeaderCell>
                   <HeaderCell>OT Amount</HeaderCell>
-                  <HeaderCell>Transport Allowance</HeaderCell>
-                  <HeaderCell>Federal Tax</HeaderCell>
-                  <HeaderCell>Quebec Tax</HeaderCell>
+                  <HeaderCell>Transport</HeaderCell>
+                  <HeaderCell>Federal</HeaderCell>
+                  <HeaderCell>Quebec</HeaderCell>
                   <HeaderCell>EI</HeaderCell>
                   <HeaderCell>QPP</HeaderCell>
                   <HeaderCell>QPP2</HeaderCell>
                   <HeaderCell>QPIP</HeaderCell>
                   <HeaderCell>Health</HeaderCell>
                   <HeaderCell>Other</HeaderCell>
-                  <HeaderCell>Reset Suggested</HeaderCell>
-                  <HeaderCell>Total Deductions</HeaderCell>
-                  <HeaderCell>Gross Earnings</HeaderCell>
-                  <HeaderCell>Net Earnings</HeaderCell>
+                  <HeaderCell>Reset</HeaderCell>
+                  <HeaderCell>Deductions</HeaderCell>
+                  <HeaderCell>Gross</HeaderCell>
+                  <HeaderCell>Net</HeaderCell>
                 </Table.Tr>
               </Table.Thead>
 
               <Table.Tbody>
-                {rows.map((row, index) => (
-                  <Table.Tr key={`${row.staffId}-${index}`}>
-                    <Table.Td style={{ minWidth: 140 }}>
+                {rows.map((row, i) => (
+                  <Table.Tr key={i}>
+                    <Table.Td>
                       <TextInput
                         value={row.staffId}
                         onChange={(e) =>
-                          updateRow(index, 'staffId', e.currentTarget.value)
+                          updateRow(i, 'staffId', e.currentTarget.value)
                         }
                       />
                     </Table.Td>
 
-                    <Table.Td style={{ minWidth: 180 }}>
+                    <Table.Td>
                       <TextInput
                         value={row.staffName}
                         onChange={(e) =>
-                          updateRow(index, 'staffName', e.currentTarget.value)
+                          updateRow(i, 'staffName', e.currentTarget.value)
                         }
                       />
                     </Table.Td>
 
-                    <InputCell
-                      value={row.regularHours}
-                      onChange={(value) =>
-                        updateRow(index, 'regularHours', toNumber(value))
-                      }
-                    />
-
-                    <InputCell
-                      value={row.regularRate}
-                      onChange={(value) =>
-                        updateRow(index, 'regularRate', toNumber(value))
-                      }
-                    />
-
+                    <InputCell value={row.regularHours} onChange={(v) => updateRow(i, 'regularHours', v)} />
+                    <InputCell value={row.regularRate} onChange={(v) => updateRow(i, 'regularRate', v)} />
                     <ReadOnlyCell value={row.regularAmount} />
 
-                    <InputCell
-                      value={row.otHours}
-                      onChange={(value) =>
-                        updateRow(index, 'otHours', toNumber(value))
-                      }
-                    />
-
-                    <InputCell
-                      value={row.otRate}
-                      onChange={(value) =>
-                        updateRow(index, 'otRate', toNumber(value))
-                      }
-                    />
-
+                    <InputCell value={row.otHours} onChange={(v) => updateRow(i, 'otHours', v)} />
+                    <InputCell value={row.otRate} onChange={(v) => updateRow(i, 'otRate', v)} />
                     <ReadOnlyCell value={row.otAmount} />
 
-                    <InputCell
-                      value={row.transportAllowance}
-                      onChange={(value) =>
-                        updateRow(index, 'transportAllowance', toNumber(value))
-                      }
-                    />
+                    <InputCell value={row.transportAllowance} onChange={(v) => updateRow(i, 'transportAllowance', v)} />
 
-                    <InputCell
-                      value={row.federalTax}
-                      onChange={(value) =>
-                        updateManualDeduction(
-                          index,
-                          'federalTax',
-                          toNumber(value)
-                        )
-                      }
-                    />
+                    <InputCell value={row.federalTax} onChange={(v) => updateManualDeduction(i, 'federalTax', v)} />
+                    <InputCell value={row.quebecTax} onChange={(v) => updateManualDeduction(i, 'quebecTax', v)} />
+                    <InputCell value={row.ei} onChange={(v) => updateManualDeduction(i, 'ei', v)} />
+                    <InputCell value={row.qpp} onChange={(v) => updateManualDeduction(i, 'qpp', v)} />
+                    <InputCell value={row.qpp2} onChange={(v) => updateManualDeduction(i, 'qpp2', v)} />
+                    <InputCell value={row.qpip} onChange={(v) => updateManualDeduction(i, 'qpip', v)} />
 
-                    <InputCell
-                      value={row.quebecTax}
-                      onChange={(value) =>
-                        updateManualDeduction(
-                          index,
-                          'quebecTax',
-                          toNumber(value)
-                        )
-                      }
-                    />
+                    <InputCell value={row.health} onChange={(v) => updateRow(i, 'health', v)} />
+                    <InputCell value={row.other} onChange={(v) => updateRow(i, 'other', v)} />
 
-                    <InputCell
-                      value={row.ei}
-                      onChange={(value) =>
-                        updateManualDeduction(index, 'ei', toNumber(value))
-                      }
-                    />
-
-                    <InputCell
-                      value={row.qpp}
-                      onChange={(value) =>
-                        updateManualDeduction(index, 'qpp', toNumber(value))
-                      }
-                    />
-
-                    <InputCell
-                      value={row.qpp2}
-                      onChange={(value) =>
-                        updateManualDeduction(index, 'qpp2', toNumber(value))
-                      }
-                    />
-
-                    <InputCell
-                      value={row.qpip}
-                      onChange={(value) =>
-                        updateManualDeduction(index, 'qpip', toNumber(value))
-                      }
-                    />
-
-                    <InputCell
-                      value={row.health}
-                      onChange={(value) =>
-                        updateRow(index, 'health', toNumber(value))
-                      }
-                    />
-
-                    <InputCell
-                      value={row.other}
-                      onChange={(value) =>
-                        updateRow(index, 'other', toNumber(value))
-                      }
-                    />
-
-                    <Table.Td style={{ minWidth: 140, textAlign: 'center' }}>
-                      <Button
-                        size="xs"
-                        variant="light"
-                        onClick={() => resetSuggestedDeductions(index)}
-                      >
+                    <Table.Td>
+                      <Button size="xs" onClick={() => resetSuggestedDeductions(i)}>
                         Reset
                       </Button>
                     </Table.Td>
 
-                    <ReadOnlyCell value={row.deductions} bg="#f5c2c7" />
-                    <ReadOnlyCell value={row.grossEarnings} bg="#b7d7f7" />
-                    <ReadOnlyCell value={row.netEarnings} bg="#b7e1a1" />
+                    <ReadOnlyCell value={row.deductions} />
+                    <ReadOnlyCell value={row.grossEarnings} />
+                    <ReadOnlyCell value={row.netEarnings} />
                   </Table.Tr>
                 ))}
 
                 <Table.Tr>
-                  <Table.Td
-                    colSpan={18}
-                    style={{
-                      textAlign: 'right',
-                      fontWeight: 800,
-                      background: '#4ea72e',
-                      color: 'white',
-                    }}
-                  >
-                    Totals
-                  </Table.Td>
-
-                  <ReadOnlyCell value={totals.deductions} bg="#f5c2c7" />
-                  <ReadOnlyCell value={totals.gross} bg="#b7d7f7" />
-                  <ReadOnlyCell value={totals.net} bg="#8fd16b" />
+                  <Table.Td colSpan={18}>Totals</Table.Td>
+                  <ReadOnlyCell value={totals.deductions} />
+                  <ReadOnlyCell value={totals.gross} />
+                  <ReadOnlyCell value={totals.net} />
                 </Table.Tr>
               </Table.Tbody>
             </Table>
@@ -514,96 +389,53 @@ export default function ManagePayPeriodsPage() {
         </ScrollArea>
       </Card>
 
-      <Box
-        mt="xl"
-        style={{
-          display: 'flex',
-          justifyContent: isMobile ? 'stretch' : 'flex-end',
-        }}
-      >
-        <Button
-          color="green.7"
-          size="lg"
-          fullWidth={isMobile}
-          loading={loading}
-          onClick={handleSubmit}
-        >
-          Generate Pay Statements
-        </Button>
-      </Box>
+      <Button mt="xl" onClick={handleSubmit} loading={loading}>
+        Generate Pay Statements
+      </Button>
     </Container>
   );
 }
 
+// ===== Helpers =====
+
 function recalculateRow(row: StaffPayRow): StaffPayRow {
   const regularAmount = round2(row.regularHours * row.regularRate);
   const otAmount = round2(row.otHours * row.otRate);
-  const grossEarnings = round2(
-    regularAmount + otAmount + row.transportAllowance
-  );
+  const gross = round2(regularAmount + otAmount + row.transportAllowance);
 
   const payroll = calculateQuebecPayrollEstimate({
-    grossPayPerPeriod: grossEarnings,
+    grossPayPerPeriod: gross,
     payPeriodsPerYear: PAY_PERIODS_PER_YEAR,
     rrspPerPeriod: 0,
     otherPreTaxPerPeriod: 0,
     federalClaimAmountAnnual: DEFAULT_FEDERAL_CLAIM,
     quebecClaimAmountAnnual: DEFAULT_QUEBEC_CLAIM,
-    ytdPensionableEarnings: 0,
-    ytdEiInsurableEarnings: 0,
-    ytdQpipInsurableEarnings: 0,
-    ytdQppBaseFirstEmployee: 0,
-    ytdQpp2Employee: 0,
-    ytdEiEmployee: 0,
-    ytdQpipEmployee: 0,
-    additionalFederalTaxPerPeriod: 0,
-    additionalQuebecTaxPerPeriod: 0,
   });
 
-  const suggestedFederalTax = round2(payroll.federalTaxPerPeriod);
-  const suggestedQuebecTax = round2(payroll.quebecTaxPerPeriod);
-  const suggestedEi = round2(payroll.eiCurrent);
-  const suggestedQpp = round2(payroll.qppBaseFirstCurrent);
-  const suggestedQpp2 = round2(payroll.qpp2Current);
-  const suggestedQpip = round2(payroll.qpipCurrent);
-
-  const federalTax = row.manualFederalTax
-    ? row.federalTax
-    : suggestedFederalTax;
-  const quebecTax = row.manualQuebecTax
-    ? row.quebecTax
-    : suggestedQuebecTax;
-  const ei = row.manualEi ? row.ei : suggestedEi;
-  const qpp = row.manualQpp ? row.qpp : suggestedQpp;
-  const qpp2 = row.manualQpp2 ? row.qpp2 : suggestedQpp2;
-  const qpip = row.manualQpip ? row.qpip : suggestedQpip;
+  const federal = row.manualFederalTax ? row.federalTax : payroll.federalTaxPerPeriod;
+  const quebec = row.manualQuebecTax ? row.quebecTax : payroll.quebecTaxPerPeriod;
+  const ei = row.manualEi ? row.ei : payroll.eiCurrent;
+  const qpp = row.manualQpp ? row.qpp : payroll.qppBaseFirstCurrent;
+  const qpp2 = row.manualQpp2 ? row.qpp2 : payroll.qpp2Current;
+  const qpip = row.manualQpip ? row.qpip : payroll.qpipCurrent;
 
   const deductions = round2(
-    federalTax +
-      quebecTax +
-      ei +
-      qpp +
-      qpp2 +
-      qpip +
-      row.health +
-      row.other
+    federal + quebec + ei + qpp + qpp2 + qpip + row.health + row.other
   );
-
-  const netEarnings = round2(grossEarnings - deductions);
 
   return {
     ...row,
     regularAmount,
     otAmount,
-    grossEarnings,
-    federalTax,
-    quebecTax,
-    ei,
-    qpp,
-    qpp2,
-    qpip,
+    grossEarnings: gross,
+    federalTax: round2(federal),
+    quebecTax: round2(quebec),
+    ei: round2(ei),
+    qpp: round2(qpp),
+    qpp2: round2(qpp2),
+    qpip: round2(qpip),
     deductions,
-    netEarnings,
+    netEarnings: round2(gross - deductions),
   };
 }
 
@@ -620,21 +452,17 @@ function toNumber(value: string | number | null | undefined): number {
   return 0;
 }
 
-function round2(value: number): number {
-  return Math.round(value * 100) / 100;
+function round2(v: number) {
+  return Math.round(v * 100) / 100;
+}
+
+function safe(v: number) {
+  return Number.isFinite(v) ? v : 0;
 }
 
 function HeaderCell({ children }: { children: React.ReactNode }) {
   return (
-    <Table.Th
-      style={{
-        color: 'white',
-        textAlign: 'center',
-        minWidth: 120,
-        background: '#4ea72e',
-        whiteSpace: 'nowrap',
-      }}
-    >
+    <Table.Th style={{ background: '#4ea72e', color: 'white', textAlign: 'center' }}>
       {children}
     </Table.Th>
   );
@@ -666,6 +494,8 @@ function InputCell({
 }
 
 function ReadOnlyCell({ value, bg }: { value: number; bg?: string }) {
+  const safeValue = Number.isFinite(value) ? value : 0;
+
   return (
     <Table.Td
       style={{
@@ -676,7 +506,8 @@ function ReadOnlyCell({ value, bg }: { value: number; bg?: string }) {
         whiteSpace: 'nowrap',
       }}
     >
-      {value.toFixed(2)}
+      {safeValue.toFixed(2)}
     </Table.Td>
   );
 }
+

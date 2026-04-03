@@ -1,15 +1,13 @@
-// app/api/admin/timesheets/[timesheetId]/approve/route.ts
-
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { getToken } from "next-auth/jwt";
+import { prisma } from "@/lib/prisma";
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { timesheetId: string } }
+  context: { params: Promise<{ timesheetId: string }> }
 ) {
   try {
-    // 🔐 1. Auth check (JWT)
+    // 🔐 1. Auth
     const token = await getToken({ req });
 
     if (!token || token.role !== "ADMIN") {
@@ -17,9 +15,20 @@ export async function POST(
     }
 
     const adminId = token.id as string;
-    const { timesheetId } = params;
 
-    // 📦 2. Fetch timesheet
+    // ✅ FIX: await params
+    const { timesheetId } = await context.params;
+
+    if (!timesheetId) {
+      return NextResponse.json(
+        { error: "Missing timesheetId" },
+        { status: 400 }
+      );
+    }
+
+    console.log("Approving timesheet:", timesheetId);
+
+    // 📦 2. Fetch
     const timesheet = await prisma.timesheet.findUnique({
       where: { id: timesheetId },
       include: {
@@ -51,7 +60,7 @@ export async function POST(
     let totalPay = 0;
 
     const snapshotDays = timesheet.days.map((day) => {
-      const minutes = day.minutesWorked;
+      const minutes = day.minutesWorked ?? 0;
 
       const rate =
         day.hourlyRate ??
@@ -68,7 +77,7 @@ export async function POST(
         minutes,
         rate,
         pay,
-        notes: day.notes,
+        notes: day.notes ?? null,
       };
     });
 
@@ -85,26 +94,31 @@ export async function POST(
       days: snapshotDays,
     };
 
-    // 🔒 4. Approve + lock
+    // 🔒 4. Update (FIXED RELATION HERE)
     const updatedTimesheet = await prisma.timesheet.update({
       where: { id: timesheetId },
       data: {
         status: "APPROVED",
         approvedAt: new Date(),
-        approvedById: adminId,
-        isLocked: true,
+
+        approvedBy: {
+          connect: { id: adminId }, // ✅ FIX HERE
+        },
+
+        // isLocked: true,
         snapshot,
         totalMinutes,
         totalPay,
       },
     });
 
-    // 📤 5. Return response (important for payroll step)
+    // 📤 5. Response
     return NextResponse.json({
       message: "Timesheet approved successfully",
       timesheet: updatedTimesheet,
       snapshot,
     });
+
   } catch (error) {
     console.error("APPROVE TIMESHEET ERROR:", error);
 
