@@ -23,7 +23,7 @@ export default function PayStubPage() {
   useEffect(() => {
     async function loadPayStub() {
       try {
-        const res = await fetch('/api/staff/me/pay-statements/latest');
+        const res = await fetch(`/api/staff/pay-statements/latest`);
 
         if (!res.ok) {
           const text = await res.text();
