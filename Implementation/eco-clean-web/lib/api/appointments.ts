@@ -77,6 +77,24 @@ export async function getStaffAppointments({
   return res.json();
 }
 
+export async function getMarkedDates({
+  staffId,
+  start,
+  end,
+}: {
+  staffId: string;
+  start: string;
+  end: string;
+}) {
+  const params = new URLSearchParams({ staffId, start, end });
+  const res = await fetch(`/api/appointments/marked-dates?${params}`, {
+    cache: "no-store",
+  });
+
+  if (!res.ok) throw new Error("Failed to fetch marked dates");
+  return res.json() as Promise<{ dates: string[] }>;
+}
+
 export function getAppointmentById(id: string) {
   return apiClient<AppointmentWithRelations>(`/api/appointments/${id}`, {
     method: "GET",
@@ -140,8 +158,11 @@ export function runStaffRecommendationPreview(body: {
   jobTitle?: string;
   candidateData: CandidateResponse["data"];
 }): Promise<StaffRecommendationResponse> {
-  return apiClient<StaffRecommendationResponse>("/api/ai/staff-recommendation", {
-    method: "POST",
-    body,
-  });
+  return apiClient<StaffRecommendationResponse>(
+    "/api/ai/staff-recommendation",
+    {
+      method: "POST",
+      body,
+    },
+  );
 }

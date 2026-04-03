@@ -3,12 +3,17 @@
 import {
   Alert,
   AppShell,
+  Badge,
   Box,
+  Burger,
   Container,
-  Divider,
-  Flex,
+  Group,
+  Paper,
   Stack,
   Text,
+  ThemeIcon,
+  UnstyledButton,
+  alpha,
 } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import Image from "next/image";
@@ -29,25 +34,34 @@ import NewJobModal from "../../components/popups/JobModal";
 import UserUpsertModal from "../../components/popups/UserModal";
 import { useDashboardUI } from "@/stores/store";
 
+const DESKTOP_COLLAPSED_WIDTH = 96;
+const DESKTOP_EXPANDED_WIDTH = 292;
+const MOBILE_NAVBAR_WIDTH = 304;
+const SHELL_RADIUS = 18;
+const ITEM_RADIUS = 16;
+const ICON_RADIUS = 14;
+
 export default function DashboardShell({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const isNarrow = useMediaQuery("(max-width: 62em)");
+  const isMobile = useMediaQuery("(max-width: 62em)");
   const pathname = usePathname();
   const { selectedInfo } = useDashboardUI();
 
-  const [opened, setOpened] = useState(false);
+  const [mobileOpened, setMobileOpened] = useState(false);
+  const [hovered, setHovered] = useState(false);
   const [clientPopoverOpened, setClientPopoverOpened] = useState(false);
   const [jobPopoverOpened, setJobPopoverOpened] = useState(false);
   const [userOpened, setUserOpened] = useState(false);
-
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const expanded = isMobile || hovered;
+
   const closeAllOverlays = useCallback(() => {
-    setOpened(false);
+    setMobileOpened(false);
     setClientPopoverOpened(false);
     setJobPopoverOpened(false);
     setUserOpened(false);
@@ -58,8 +72,10 @@ export default function DashboardShell({
   }, []);
 
   const handleMainClick = useCallback(() => {
-    if (opened) setOpened(false);
-  }, [opened]);
+    if (mobileOpened) {
+      setMobileOpened(false);
+    }
+  }, [mobileOpened]);
 
   const handleLogout = useCallback(async () => {
     if (isSigningOut) return;
@@ -110,74 +126,257 @@ export default function DashboardShell({
 
   return (
     <AppShell
-      padding={isNarrow ? "sm" : "md"}
+      padding={{ base: "sm", md: "md" }}
+      header={{ height: 72, collapsed: !isMobile }}
       navbar={{
-        width: isNarrow ? 72 : 84,
-        breakpoint: 0,
+        width: isMobile
+          ? MOBILE_NAVBAR_WIDTH
+          : expanded
+            ? DESKTOP_EXPANDED_WIDTH
+            : DESKTOP_COLLAPSED_WIDTH,
+        breakpoint: "md",
+        collapsed: { mobile: !mobileOpened, desktop: false },
       }}
       className="app-shell-chrome"
     >
-      <AppShell.Navbar p="md" className="admin-sidebar">
-        <Stack h="100%" justify="space-between">
-          <Stack gap="md">
-            <Flex justify="center">
-              <Link
-                href="/admin"
-                aria-label="Eco Clean home"
-                className="admin-sidebar__brand"
-              >
-                <Image
-                  src="/logo.png"
-                  alt="Eco Clean"
-                  width={36}
-                  height={36}
-                  className="admin-sidebar__brand-logo"
-                />
-                <Text className="admin-sidebar__brand-label">Eco Clean</Text>
-              </Link>
-            </Flex>
-
-            <Stack gap={8}>
-              {navItems.map((item) => (
-                <Box
-                  key={item.href}
-                  component={Link}
-                  className={`compact-sidebar-link${item.active ? " compact-sidebar-link--active" : ""}${isSigningOut ? " compact-sidebar-link--disabled" : ""}`}
-                  href={item.href}
-                  onClick={() => setOpened(false)}
+      <AppShell.Header withBorder={false} bg="transparent">
+        <Box px="sm" pt="sm">
+          <Paper
+            radius={SHELL_RADIUS}
+            px="sm"
+            py="xs"
+            shadow="xs"
+            style={(theme) => ({
+              background: alpha(theme.white, 0.94),
+              border: `1px solid ${alpha(theme.colors.gray[3], 0.9)}`,
+              backdropFilter: "blur(14px)",
+            })}
+          >
+            <Group justify="space-between" wrap="nowrap">
+              <Group gap="sm" wrap="nowrap">
+                <ThemeIcon
+                  size={38}
+                  radius={ICON_RADIUS}
+                  variant="light"
+                  color="lime"
                 >
-                  <Box className="compact-sidebar-link__icon">{item.icon}</Box>
-                  <Box className="compact-sidebar-link__content">
-                    <Text className="compact-sidebar-link__label">
-                      {item.label}
+                  <Image
+                    src="/logo.png"
+                    alt="Eco Clean"
+                    width={22}
+                    height={22}
+                  />
+                </ThemeIcon>
+                <Box>
+                  <Text fw={800} size="sm" c="dark.9">
+                    Eco Clean
+                  </Text>
+                  <Text size="xs" c="dimmed">
+                    Admin workspace
+                  </Text>
+                </Box>
+              </Group>
+
+              <Burger
+                opened={mobileOpened}
+                onClick={() => setMobileOpened((current) => !current)}
+                aria-label="Toggle navigation"
+                size="sm"
+              />
+            </Group>
+          </Paper>
+        </Box>
+      </AppShell.Header>
+
+      <AppShell.Navbar
+        p={{ base: "sm", md: "md" }}
+        withBorder={false}
+        onMouseEnter={() => {
+          if (!isMobile) setHovered(true);
+        }}
+        onMouseLeave={() => {
+          if (!isMobile) setHovered(false);
+        }}
+        style={(theme) => ({
+          background: alpha(theme.white, 0.95),
+          borderRight: `1px solid ${alpha(theme.colors.gray[3], 0.82)}`,
+          boxShadow: `10px 0 30px ${alpha(theme.black, 0.04)}`,
+          overflow: "hidden",
+          transition: "width 220ms ease, padding 220ms ease",
+          backdropFilter: "blur(14px)",
+        })}
+      >
+        <AppShell.Section>
+          <Paper
+            radius={SHELL_RADIUS}
+            p={expanded ? "md" : "xs"}
+            style={(theme) => ({
+              border: `1px solid ${alpha(theme.colors.gray[3], 0.9)}`,
+              transition: "padding 220ms ease",
+            })}
+          >
+            <Group
+              justify={expanded ? "space-between" : "center"}
+              wrap="nowrap"
+            >
+              <Group gap="sm" wrap="nowrap">
+                <ThemeIcon
+                  size="lg"
+                  radius={ICON_RADIUS}
+                  variant="light"
+                  color="lime"
+                >
+                  <Image
+                    src="/logo.png"
+                    alt="Eco Clean"
+                    width={26}
+                    height={26}
+                  />
+                </ThemeIcon>
+                {expanded && (
+                  <Box
+                    style={{
+                      maxWidth: 160,
+                      opacity: expanded ? 1 : 0,
+                      overflow: "hidden",
+                      transform: `translateX(${expanded ? "0" : "-8px"})`,
+                      transition:
+                        "max-width 180ms ease, opacity 140ms ease, transform 180ms ease",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    <Text fw={800} size="md" c="dark.9">
+                      Eco Clean
                     </Text>
                   </Box>
-                </Box>
-              ))}
-            </Stack>
+                )}
+              </Group>
+            </Group>
+          </Paper>
+        </AppShell.Section>
 
-            <Box>
-              <Divider mb="sm" />
+        <AppShell.Section grow mt="lg">
+          <Stack gap="xs">
+            {navItems.map((item) => (
+              <UnstyledButton
+                key={item.href}
+                component={Link}
+                href={item.href}
+                onClick={() => setMobileOpened(false)}
+                style={(theme) => ({
+                  display: "block",
+                  width: "100%",
+                  borderRadius: ITEM_RADIUS,
+                  padding: expanded ? "12px 14px" : "10px",
 
-              <Box
-                component="button"
-                type="button"
-                onClick={handleLogout}
-                disabled={isSigningOut}
-                className="compact-sidebar-link compact-sidebar-link--danger"
+                  border: `1px solid ${
+                    item.active
+                      ? alpha(theme.colors.lime[4], 0.32)
+                      : "transparent"
+                  }`,
+                  transition:
+                    "background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease, padding 220ms ease",
+                  opacity: isSigningOut ? 0.6 : 1,
+                  pointerEvents: isSigningOut ? "none" : "auto",
+                })}
               >
-                <Box className="compact-sidebar-link__icon">
+                <Group
+                  gap={expanded ? "sm" : 0}
+                  justify={expanded ? "flex-start" : "center"}
+                  wrap="nowrap"
+                >
+                  <ThemeIcon
+                    size={38}
+                    radius={ICON_RADIUS}
+                    variant={item.active ? "filled" : "light"}
+                    color={item.active ? "lime" : "gray"}
+                  >
+                    {item.icon}
+                  </ThemeIcon>
+
+                  <Box
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      maxWidth: expanded ? 180 : 0,
+                      opacity: expanded ? 1 : 0,
+                      overflow: "hidden",
+                      transform: `translateX(${expanded ? "0" : "-8px"})`,
+                      transition:
+                        "max-width 180ms ease, opacity 140ms ease, transform 180ms ease",
+                    }}
+                  >
+                    <Text fw={700} size="sm" c="dark.9" truncate>
+                      {item.label}
+                    </Text>
+                    <Text size="xs" c="dimmed" truncate>
+                      {item.description}
+                    </Text>
+                  </Box>
+                </Group>
+              </UnstyledButton>
+            ))}
+          </Stack>
+        </AppShell.Section>
+
+        <AppShell.Section>
+          <Paper
+            radius={SHELL_RADIUS}
+            p={expanded ? "xs" : 0}
+            bg="transparent"
+            style={{ transition: "padding 220ms ease" }}
+          >
+            <UnstyledButton
+              type="button"
+              onClick={handleLogout}
+              disabled={isSigningOut}
+              style={(theme) => ({
+                display: "block",
+                width: "100%",
+                borderRadius: ITEM_RADIUS,
+                padding: expanded ? "12px 14px" : "10px",
+                background: alpha(theme.colors.red[0], 0.75),
+                border: `1px solid ${alpha(theme.colors.red[2], 0.55)}`,
+                transition:
+                  "background-color 150ms ease, border-color 150ms ease, padding 220ms ease",
+                opacity: isSigningOut ? 0.7 : 1,
+                pointerEvents: isSigningOut ? "none" : "auto",
+              })}
+            >
+              <Group
+                gap={expanded ? "sm" : 0}
+                justify={expanded ? "flex-start" : "center"}
+                wrap="nowrap"
+              >
+                <ThemeIcon
+                  size={38}
+                  radius={ICON_RADIUS}
+                  variant="light"
+                  color="red"
+                >
                   <IoLogOutOutline size={18} />
-                </Box>
-                <Box className="compact-sidebar-link__content">
-                  <Text className="compact-sidebar-link__label">
+                </ThemeIcon>
+
+                <Box
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    maxWidth: expanded ? 180 : 0,
+                    opacity: expanded ? 1 : 0,
+                    overflow: "hidden",
+                    transform: `translateX(${expanded ? "0" : "-8px"})`,
+                    transition:
+                      "max-width 180ms ease, opacity 140ms ease, transform 180ms ease",
+                  }}
+                >
+                  <Text fw={700} size="sm" c="red.8" truncate>
                     {isSigningOut ? "Signing out..." : "Sign out"}
                   </Text>
                 </Box>
-              </Box>
-            </Box>
-          </Stack>
-        </Stack>
+              </Group>
+            </UnstyledButton>
+          </Paper>
+        </AppShell.Section>
       </AppShell.Navbar>
 
       <AppShell.Main className="app-shell-main">

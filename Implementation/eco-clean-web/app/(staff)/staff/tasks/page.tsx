@@ -5,10 +5,10 @@ import {
   Box,
   Card,
   Center,
-  Chip,
   Container,
   Flex,
   Group,
+  Indicator,
   Loader,
   SegmentedControl,
   Stack,
@@ -20,11 +20,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import { DateTime } from "luxon";
 import { APP_TZ } from "@/lib/dateTime";
 import { useQuery } from "@tanstack/react-query";
-import { getStaffAppointments } from "@/lib/api/appointments";
+import { getMarkedDates, getStaffAppointments } from "@/lib/api/appointments";
 import { useRouter } from "next/navigation";
-import { useDisclosure } from "@mantine/hooks";
 import {
-  IoCheckmarkCircleOutline,
   IoLocationOutline,
   IoPersonOutline,
   IoTimeOutline,
@@ -33,7 +31,7 @@ import { useSession } from "next-auth/react";
 import { AppointmentReminderWatcher } from "@/app/components/AppointmentReminderWatcher";
 import { LocalNotificationDemo } from "@/app/components/LocalNotificationDemo";
 import { requestPermission } from "@/lib/notifications/showNotification";
-import { MiniCalendar } from "@mantine/dates";
+import { Calendar, DatePicker } from "@mantine/dates";
 import dayjs from "dayjs";
 import { useStaffUiStore } from "@/stores/store";
 
@@ -60,37 +58,66 @@ type Appointment = {
 const Page = () => {
   const { data: session } = useSession();
   const staffId = session?.user?.id;
-  const [opened, { open, close }] = useDisclosure(false);
   const router = useRouter();
-  const [selectedDate, setSelectedDate] = useState<string | null>(
-    DateTime.now().setZone(APP_TZ).toISODate(),
-  );
+
   const [value, setValue] = useState<string>("upcoming");
-  const range = useMemo(() => {
-    const base = selectedDate
-      ? DateTime.fromISO(selectedDate, { zone: APP_TZ })
+  const today = DateTime.now().setZone(APP_TZ).toISODate()!;
+  const [selectedDate, setSelectedDate] = useState<string | null>(today);
+  const [calendarMonth, setCalendarMonth] = useState<string>(today);
+  const dayRange = useMemo(() => {
+    const baseDate = selectedDate ?? today;
+    const base = baseDate
+      ? DateTime.fromISO(baseDate, { zone: APP_TZ })
       : DateTime.now().setZone(APP_TZ);
 
     return {
-      start: base.startOf("week").toUTC().toISO()!,
-      end: base.endOf("week").toUTC().toISO()!,
+      start: base.startOf("day").toUTC().toISO()!,
+      end: base.endOf("day").toUTC().toISO()!,
     };
-  }, [selectedDate]);
+  }, [selectedDate, today]);
+  const markerRange = useMemo(() => {
+    const base = DateTime.fromISO(calendarMonth, { zone: APP_TZ });
+    return {
+      start: base.startOf("month").toUTC().toISO()!,
+      end: base.endOf("month").toUTC().toISO()!,
+    };
+  }, [calendarMonth]);
+
   const setTitle = useStaffUiStore((s) => s.setTitle);
   const setBack = useStaffUiStore((s) => s.setBack);
   const setRefreshing = useStaffUiStore((s) => s.setRefreshing);
   const setOnRefresh = useStaffUiStore((s) => s.setOnRefresh);
   const resetTopBar = useStaffUiStore((s) => s.resetTopBar);
   const { data, refetch, isLoading, isFetching, error } = useQuery({
-    queryKey: ["staff-tasks", staffId, range.start, range.end],
+    queryKey: ["staff-tasks", staffId, dayRange.start, dayRange.end],
     queryFn: () =>
       getStaffAppointments({
         staffId: staffId!,
-        start: range.start,
-        end: range.end,
+        start: dayRange.start,
+        end: dayRange.end,
       }),
     enabled: !!staffId,
   });
+  const { data: markerData } = useQuery({
+    queryKey: [
+      "staff-task-markers",
+      staffId,
+      markerRange.start,
+      markerRange.end,
+    ],
+    queryFn: () =>
+      getMarkedDates({
+        staffId: staffId!,
+        start: markerRange.start,
+        end: markerRange.end,
+      }),
+    enabled: !!staffId,
+  });
+
+  const markedDates = useMemo(
+    () => new Set(markerData?.dates ?? []),
+    [markerData],
+  );
 
   useEffect(() => {
     setTitle("Eco Clean");
@@ -118,7 +145,11 @@ const Page = () => {
     requestPermission();
   }, []);
 
-  const tasks: Appointment[] = data ?? [];
+  const tasks: Appointment[] = useMemo(
+    () => (Array.isArray(data) ? data : []),
+    [data],
+  );
+
   const appointmentDays = useMemo(
     () =>
       new Set(
@@ -129,13 +160,33 @@ const Page = () => {
     [tasks],
   );
 
-  const selected = selectedDate
-    ? DateTime.fromISO(selectedDate, { zone: APP_TZ })
-    : DateTime.now().setZone(APP_TZ);
+  const effectiveSelectedDate = useMemo(() => {
+    if (selectedDate) {
+      return selectedDate;
+    }
+
+    if (tasks.length) {
+      return DateTime.fromISO(tasks[0].startTime).setZone(APP_TZ).toISODate();
+    }
+
+    return today;
+  }, [selectedDate, tasks, today]);
+
+  // const selected = effectiveSelectedDate
+  //   ? DateTime.fromISO(effectiveSelectedDate, { zone: APP_TZ })
+  //   : DateTime.now().setZone(APP_TZ);
+
+  const [selected, setSelected] = useState(effectiveSelectedDate || today);
+  const handleSelect = (date: string) => {
+    setSelected(date);
+    setSelectedDate(date);
+  };
 
   const dayTasks = tasks.filter((task) => {
+    if (!selected) return false;
+
     const taskDate = DateTime.fromISO(task.startTime).setZone(APP_TZ);
-    return taskDate.hasSame(selected, "day");
+    return taskDate.hasSame(DateTime.fromISO(selected).setZone(APP_TZ), "day");
   });
 
   const upcomingCount = dayTasks.filter(
@@ -148,8 +199,10 @@ const Page = () => {
 
   const filteredTasks = dayTasks.filter((task) => {
     if (value === "completed") return task.status === "COMPLETED";
+    if (value === "cancelled") return task.status === "CANCELLED";
     return task.status === "SCHEDULED" || task.status === "LATE";
   });
+  console.log("filtered", filteredTasks);
 
   if (error) {
     return (
@@ -164,7 +217,7 @@ const Page = () => {
       <AppointmentReminderWatcher appointments={tasks} />
       <LocalNotificationDemo />
       <Stack gap="md" p="md">
-        <Card radius="lg" withBorder p="md" className="staff-app-surface staff-app-surface--hero">
+        {/* <Card radius="lg" withBorder p="md" className="staff-app-surface staff-app-surface--hero">
           <Group justify="space-between" align="start">
             <Box>
               <Title order={3}>My Tasks</Title>
@@ -193,24 +246,34 @@ const Page = () => {
               </Text>
             </Box>
           </Group>
-        </Card>
+        </Card> */}
         <Card radius="lg" withBorder className="staff-app-surface">
           <Center>
-            <MiniCalendar
-              className="staff-mini-calendar"
-              numberOfDays={7}
-              value={selectedDate}
-              onChange={setSelectedDate}
-              getDayProps={(date) => ({
-                className: appointmentDays.has(date)
-                  ? "staff-mini-calendar__day--has-appointments"
-                  : undefined,
-                style: {
-                  color: [0, 6].includes(dayjs(date).day())
-                    ? "var(--mantine-color-red-8)"
-                    : undefined,
-                },
-              })}
+            <Calendar
+              renderDay={(date) => {
+                const hasAppointments = markedDates.has(date);
+                return (
+                  <Indicator
+                    size={6}
+                    color="pink"
+                    offset={-2}
+                    disabled={!hasAppointments}
+                    processing
+                  >
+                    <div>{dayjs(date).date()}</div>
+                  </Indicator>
+                );
+              }}
+              getDayProps={(date) => {
+                const isoDate = DateTime.fromISO(date)
+                  .setZone(APP_TZ)
+                  .toISODate();
+
+                return {
+                  selected: isoDate === selectedDate,
+                  onClick: () => handleSelect(date),
+                };
+              }}
             />
           </Center>
         </Card>
@@ -222,6 +285,7 @@ const Page = () => {
           className="staff-app-segmented"
           data={[
             { value: "upcoming", label: "Upcoming" },
+            { value: "cancelled", label: "Cancelled" },
             { value: "completed", label: "Completed" },
           ]}
         />

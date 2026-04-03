@@ -1,32 +1,58 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Box,
   Button,
   Card,
+  Center,
   Container,
   Grid,
   Group,
+  Loader,
+  Paper,
+  RingProgress,
+  SimpleGrid,
   Stack,
   Text,
   Title,
-  Loader,
-  Center,
-  Divider,
 } from "@mantine/core";
-import {
-  Cell,
-  Legend,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-} from "recharts";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useRouter } from "next/router";
 
-const COLORS = ["#1f6b8f", "#eb7a2f", "#2e7d32"];
+type ChartDatum = {
+  name: string;
+  value: number;
+  color?: string;
+};
+
+type PaySummary = {
+  gross: number;
+  totalDeductions: number;
+  net: number;
+};
+
+type PayDetails = {
+  regularAmount?: number | null;
+  otAmount?: number | null;
+  transportAllowance?: number | null;
+  federalTax?: number | null;
+  ei?: number | null;
+  cpp?: number | null;
+  health?: number | null;
+  other?: number | null;
+};
+
+type PayData = {
+  chartData: ChartDatum[];
+  summary: PaySummary;
+  details?: PayDetails | null;
+};
+
+function formatMoney(value: number) {
+  return `$${value.toFixed(2)}`;
+}
 
 export default function YourPayPage() {
   const { data: session } = useSession();
@@ -60,185 +86,222 @@ export default function YourPayPage() {
     fetchPayData();
   }, [session]);
 
+  const earningsBreakdown = useMemo(
+    () => [
+      { label: "Regular Amount", value: data?.details?.regularAmount || 0 },
+      { label: "OT Amount", value: data?.details?.otAmount || 0 },
+      {
+        label: "Transport Allowance",
+        value: data?.details?.transportAllowance || 0,
+      },
+    ],
+    [data],
+  );
+
+  const deductionBreakdown = useMemo(
+    () => [
+      { label: "Federal Tax", value: data?.details?.federalTax || 0 },
+      { label: "EI", value: data?.details?.ei || 0 },
+      { label: "CPP", value: data?.details?.cpp || 0 },
+      { label: "Health", value: data?.details?.health || 0 },
+      { label: "Other", value: data?.details?.other || 0 },
+    ],
+    [data],
+  );
+
+  const chartTotal = useMemo(
+    () => data?.chartData.reduce((sum, item) => sum + item.value, 0) ?? 0,
+    [data],
+  );
+
   if (loading) {
     return (
-      <Center h="100vh">
-        <Loader size="xl" color="#125f82" />
-      </Center>
+      <Container p={0} className="staff-app-page">
+        <Center mih="70vh">
+          <Stack align="center" gap="sm">
+            <Loader size="lg" color="lime" />
+            <Text c="dimmed">Loading your latest statement...</Text>
+          </Stack>
+        </Center>
+      </Container>
     );
   }
 
   if (!data) {
     return (
-      <Center h="100vh">
-        <Text>No pay statement found.</Text>
-      </Center>
+      <Container p={0} className="staff-app-page">
+        <Center mih="70vh">
+          <Paper withBorder radius="lg" p="xl" className="staff-app-surface">
+            <Stack align="center" gap="xs">
+              <Title order={3}>No pay statement found</Title>
+              <Text c="dimmed" ta="center">
+                Your latest pay details will appear here when a statement is available.
+              </Text>
+            </Stack>
+          </Paper>
+        </Center>
+      </Container>
     );
   }
 
-  // ✅ CORRECT SOURCE
-  const b = data.breakdown || {};
-  const ytd = data.ytd || {};
-
-  const earningsBreakdown = [
-    { label: "Regular", value: b.regularAmount || 0 },
-    { label: "Overtime", value: b.otAmount || 0 },
-    { label: "Allowance", value: b.transportAllowance || 0 },
-  ];
-
-  const deductionBreakdown = [
-    { label: "Federal Tax", value: b.federalTax || 0 },
-    { label: "Quebec Tax", value: b.quebecTax || 0 },
-    { label: "EI", value: b.ei || 0 },
-    { label: "QPP", value: b.qpp || 0 },
-    { label: "QPIP", value: b.qpip || 0 },
-    { label: "Other", value: b.other || 0 },
-  ];
-
-  const gross = data.grossEarnings || 0;
-  const deductions = data.totalDeductions || 0;
-  const net = data.netEarnings || 0;
-
   return (
-    <Container size="lg" py="xl">
-      <Title ta="center" mb="lg">
-        Pay Statement
-      </Title>
-
-      {/* 🔥 EMPLOYEE BLOCK */}
-      <Card withBorder radius="md" p="md" mb="lg">
-        <Group justify="space-between">
-          <Box>
-            <Text fw={700}>Employee</Text>
-            <Text>{data.employeeName}</Text>
-          </Box>
-
-          <Box>
-            <Text fw={700}>Employee ID</Text>
-            <Text>{data.employeeId}</Text>
-          </Box>
-
-          <Box>
-            <Text fw={700}>Pay Date</Text>
-            <Text>
-              {new Date(data.payDate).toLocaleDateString()}
+    <Container p={0} className="staff-app-page">
+      <Stack gap="md" p="md">
+        <Card
+          radius="lg"
+          withBorder
+          p="lg"
+          className="staff-app-surface staff-app-surface--hero"
+        >
+          <Stack gap="xs">
+            <Title order={3}>Your Pay</Title>
+            <Text c="dimmed" size="sm">
+              Review your latest earnings, deductions, and available statements.
             </Text>
-          </Box>
-        </Group>
-      </Card>
-
-      <Grid gutter="xl">
-        {/* 🔥 CHART */}
-        <Grid.Col span={{ base: 12, md: 6 }}>
-          <Card p="lg" withBorder radius="md">
-            <Title order={4} ta="center" mb="md">
-              Earnings Distribution
-            </Title>
-
-            <Box h={320}>
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={[
-                      { name: "Regular", value: b.regularAmount || 0 },
-                      { name: "OT", value: b.otAmount || 0 },
-                      { name: "Allowance", value: b.transportAllowance || 0 },
-                    ]}
-                    dataKey="value"
-                    outerRadius={110}
-                    label
-                  >
-                    {earningsBreakdown.map((_, i) => (
-                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </Box>
-          </Card>
-        </Grid.Col>
-
-        {/* 🔥 SUMMARY */}
-        <Grid.Col span={{ base: 12, md: 6 }}>
-          <Stack gap="lg">
-
-            <SummaryBlock
-              title="Gross Earnings"
-              total={gross}
-              items={earningsBreakdown}
-              ytd={ytd.gross}
-            />
-
-            <SummaryBlock
-              title="Total Deductions"
-              total={deductions}
-              items={deductionBreakdown}
-              ytd={ytd.deductions}
-            />
-
-            <Card withBorder p="md" radius="md" bg="#e6f4ea">
-              <Group justify="space-between">
-                <Text fw={700} size="lg">
-                  Net Earnings
-                </Text>
-                <Text fw={700} size="lg">
-                  ${net.toFixed(2)}
-                </Text>
-              </Group>
-
-              <Divider my="sm" />
-
-              <Group justify="space-between">
-                <Text size="sm" c="dimmed">
-                  YTD Net
-                </Text>
-                <Text fw={600}>
-                  ${ytd.net?.toFixed(2) || "0.00"}
-                </Text>
-              </Group>
-            </Card>
           </Stack>
-        </Grid.Col>
-      </Grid>
 
-      {/* 🔥 BUTTONS (CENTERED CLEAN) */}
-      <Group justify="center" mt={50}>
-        <Stack align="center" gap="md">
-          <Button
-            size="lg"
-            radius="md"
-            w={320}
-            styles={{
-              root: {
-                height: 58,
-                backgroundColor: "#125f82",
-                fontSize: "1.1rem",
-              },
-            }}
-            onClick={() => router.push("/staff/pay-stub")}
-          >
-            Current Statement
-          </Button>
+          <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md" mt="md">
+            <PayStatCard label="Gross Earnings" value={formatMoney(data.summary.gross)} />
+            <PayStatCard
+              label="Total Deductions"
+              value={formatMoney(data.summary.totalDeductions)}
+            />
+            <PayStatCard label="Net Earnings" value={formatMoney(data.summary.net)} accent />
+          </SimpleGrid>
+        </Card>
 
-          <Button
-            size="lg"
-            radius="md"
-            w={320}
-            variant="outline"
-            onClick={() => router.push("/staff/pay-history")}
-          >
-            View History
-          </Button>
-        </Stack>
-      </Group>
+        <Grid gutter="md">
+          <Grid.Col span={{ base: 12, lg: 6 }}>
+            <Card radius="lg" withBorder p="lg" className="staff-app-surface">
+              <Stack gap="xs" mb="sm">
+                <Text fw={700}>Gross pay breakdown</Text>
+                <Text size="sm" c="dimmed">
+                  A quick view of how your current gross pay is composed.
+                </Text>
+              </Stack>
+
+              <Stack align="center" gap="md" py="sm">
+                <RingProgress
+                  size={220}
+                  thickness={24}
+                  roundCaps
+                  sections={data.chartData.map((item) => ({
+                    value: chartTotal ? (item.value / chartTotal) * 100 : 0,
+                    color: item.color ?? "lime",
+                  }))}
+                  label={
+                    <Stack gap={0} align="center">
+                      <Text size="xs" c="dimmed" fw={700}>
+                        Net Pay
+                      </Text>
+                      <Text fw={800}>{formatMoney(data.summary.net)}</Text>
+                    </Stack>
+                  }
+                />
+
+                <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm" w="100%">
+                  {data.chartData.map((item) => (
+                    <Paper key={item.name} withBorder radius="lg" p="sm">
+                      <Group justify="space-between" gap="xs" wrap="nowrap">
+                        <Group gap="xs" wrap="nowrap">
+                          <Box
+                            style={{
+                              width: 10,
+                              height: 10,
+                              borderRadius: 999,
+                              background: `var(--mantine-color-${item.color ?? "lime"}-6)`,
+                              flexShrink: 0,
+                            }}
+                          />
+                          <Text size="sm" c="dimmed">
+                            {item.name}
+                          </Text>
+                        </Group>
+                        <Text fw={700}>{formatMoney(item.value)}</Text>
+                      </Group>
+                    </Paper>
+                  ))}
+                </SimpleGrid>
+              </Stack>
+            </Card>
+          </Grid.Col>
+
+          <Grid.Col span={{ base: 12, lg: 6 }}>
+            <Stack gap="md">
+              <BreakdownCard
+                title="Earnings"
+                total={data.summary.gross}
+                items={earningsBreakdown}
+              />
+              <BreakdownCard
+                title="Deductions"
+                total={data.summary.totalDeductions}
+                items={deductionBreakdown}
+              />
+            </Stack>
+          </Grid.Col>
+        </Grid>
+
+        <Card radius="lg" withBorder p="lg" className="staff-app-surface">
+          <Group grow>
+            <Button
+              component={Link}
+              href="/staff/pay-history"
+              radius="md"
+              color="lime"
+            >
+              View Past Statements
+            </Button>
+            <Button
+              component={Link}
+              href="/staff/pay-periods"
+              radius="md"
+              variant="light"
+              color="lime"
+            >
+              View Pay Periods
+            </Button>
+          </Group>
+        </Card>
+      </Stack>
     </Container>
   );
 }
 
-/* 🔥 CLEAN SUMMARY BLOCK */
-function SummaryBlock({
+function PayStatCard({
+  label,
+  value,
+  accent = false,
+}: {
+  label: string;
+  value: string;
+  accent?: boolean;
+}) {
+  return (
+    <Paper
+      withBorder
+      radius="lg"
+      p="md"
+      style={{
+        background: accent
+          ? "rgba(130, 201, 30, 0.08)"
+          : "rgba(255, 255, 255, 0.72)",
+        borderColor: accent
+          ? "rgba(130, 201, 30, 0.28)"
+          : "rgba(203, 213, 225, 0.85)",
+      }}
+    >
+      <Text size="xs" fw={600} c="dimmed">
+        {label}
+      </Text>
+      <Text size="xl" fw={800} mt={6}>
+        {value}
+      </Text>
+    </Paper>
+  );
+}
+
+function BreakdownCard({
   title,
   total,
   items,
@@ -250,34 +313,24 @@ function SummaryBlock({
   ytd?: number;
 }) {
   return (
-    <Card withBorder p="md" radius="md">
-      <Group justify="space-between">
-        <Text fw={700}>{title}</Text>
-        <Text fw={700}>${total.toFixed(2)}</Text>
-      </Group>
+    <Card radius="lg" withBorder p="lg" className="staff-app-surface">
+      <Stack gap="md">
+        <Group justify="space-between" align="center">
+          <Text fw={700}>{title}</Text>
+          <Text fw={800}>{formatMoney(total)}</Text>
+        </Group>
 
-      <Divider my="sm" />
-
-      <Stack gap={6}>
-        {items.map((item) => (
-          <Group key={item.label} justify="space-between">
-            <Text size="sm">{item.label}</Text>
-            <Text size="sm">${item.value.toFixed(2)}</Text>
-          </Group>
-        ))}
+        <Stack gap="xs">
+          {items.map((item) => (
+            <Group key={item.label} justify="space-between">
+              <Text size="sm" c="dimmed">
+                {item.label}
+              </Text>
+              <Text fw={600}>{formatMoney(item.value)}</Text>
+            </Group>
+          ))}
+        </Stack>
       </Stack>
-
-      {ytd !== undefined && (
-        <>
-          <Divider my="sm" />
-          <Group justify="space-between">
-            <Text size="sm" c="dimmed">
-              YTD
-            </Text>
-            <Text fw={600}>${ytd.toFixed(2)}</Text>
-          </Group>
-        </>
-      )}
     </Card>
   );
 }
