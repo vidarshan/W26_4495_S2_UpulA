@@ -4,9 +4,10 @@ import {
   Box,
   Button,
   Container,
-  Group,
   Text,
   Title,
+  Grid,
+  Group
 } from '@mantine/core';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
@@ -17,288 +18,202 @@ import Image from 'next/image';
 export default function PayStubPage() {
   const pdfRef = useRef<HTMLDivElement>(null);
   const [statement, setStatement] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
 
-  // ✅ Fetch latest pay statement
   useEffect(() => {
-    async function loadPayStub() {
-      try {
-        const res = await fetch(`/api/staff/pay-statements/latest`);
-
-        if (!res.ok) {
-          const text = await res.text();
-          console.error('Failed:', text);
-          return;
-        }
-
-        const data = await res.json();
-        setStatement(data);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
+    async function load() {
+      const res = await fetch('/api/staff/pay-statements/latest');
+      const data = await res.json();
+      setStatement(data);
     }
-
-    loadPayStub();
+    load();
   }, []);
 
-  // ✅ PDF download
   const handleDownloadPdf = async () => {
     if (!pdfRef.current) return;
 
-    const canvas = await html2canvas(pdfRef.current, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: '#ffffff',
-    });
-
+    const canvas = await html2canvas(pdfRef.current, { scale: 2 });
     const imgData = canvas.toDataURL('image/png');
+
     const pdf = new jsPDF('p', 'mm', 'a4');
+    const width = pdf.internal.pageSize.getWidth() - 20;
+    const height = (canvas.height * width) / canvas.width;
 
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const imgWidth = pageWidth - 20;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-    pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
+    pdf.addImage(imgData, 'PNG', 10, 10, width, height);
     pdf.save('pay-stub.pdf');
   };
 
-  // ✅ Loading state
-  if (loading) {
-    return (
-      <Container py="xl">
-        <Text>Loading pay stub...</Text>
-      </Container>
-    );
-  }
+  if (!statement) return <Text>Loading...</Text>;
 
-  if (!statement) {
-    return (
-      <Container py="xl">
-        <Text>No pay statement found.</Text>
-      </Container>
-    );
-  }
-
-  // ✅ Extract breakdown
   const b = statement.breakdown || {};
+  const ytd = statement.ytd || {};
 
-  // ✅ Earnings
-  const earnings = [
+  const rows = [
     {
       label: 'Regular',
       rate: b.regularRate,
       units: b.regularHours,
       amount: b.regularAmount,
-      yearToDate: null,
+      ytd: ytd.regular,
     },
     {
       label: 'Overtime',
       rate: b.otRate,
       units: b.otHours,
       amount: b.otAmount,
-      yearToDate: null,
+      ytd: ytd.overtime,
     },
     {
-      label: 'Transport Allowance',
-      rate: null,
-      units: null,
+      label: 'Transport',
+      rate: '',
+      units: '',
       amount: b.transportAllowance,
-      yearToDate: null,
+      ytd: ytd.allowance,
     },
   ];
 
-  // ✅ Deductions
   const deductions = [
-    { label: 'Federal Tax', amount: -b.federalTax },
-    { label: 'Quebec Tax', amount: -b.quebecTax },
-    { label: 'EI', amount: -b.ei },
-    { label: 'QPP', amount: -b.qpp },
-    { label: 'QPP2', amount: -b.qpp2 },
-    { label: 'QPIP', amount: -b.qpip },
-    { label: 'Health', amount: -b.health },
-    { label: 'Other', amount: -b.other },
+    { label: 'Federal Tax', amount: b.federalTax, ytd: ytd.federalTax },
+    { label: 'Quebec Tax', amount: b.quebecTax, ytd: ytd.quebecTax },
+    { label: 'EI', amount: b.ei, ytd: ytd.ei },
+    { label: 'QPP', amount: b.qpp, ytd: ytd.qpp },
+    { label: 'QPP2', amount: b.qpp2, ytd: ytd.qpp2 },
+    { label: 'QPIP', amount: b.qpip, ytd: ytd.qpip },
   ];
 
-  const grossEarnings = statement.grossEarnings ?? 0;
-  const totalDeductions = statement.totalDeductions ?? 0;
-  const netEarnings = statement.netEarnings ?? 0;
-
   return (
-    <Container size="lg" py="xl">
-      <Group justify="flex-end" mb="md">
+    <Container py="xl">
+      <Group justify="center" mb="md">
         <Button
-          leftSection={<IoDownloadOutline size={18} />}
+          leftSection={<IoDownloadOutline />}
           onClick={handleDownloadPdf}
         >
           Download PDF
         </Button>
       </Group>
 
-      <Box
-        ref={pdfRef}
-        bg="white"
-        p="xl"
-        style={{
-          border: '1px solid #ddd',
-          maxWidth: 900,
-          margin: '0 auto',
-        }}
-      >
-        {/* Header */}
-        <Group justify="space-between" align="flex-start" mb="lg">
-          <Box>
-            <Box
-              style={{
-                width: 90,
-                height: 90,
-                border: '2px solid #7cb342',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Image src="/logo.png" alt="Company Logo" width={80} height={80} />
-            </Box>
-          </Box>
+      <Box ref={pdfRef} p="lg" bg="white" mt="md" style={{ border: '1px solid black' }}>
 
-          <Box ta="center">
-            <Title order={2}>Company Address</Title>
+        {/* HEADER */}
+        <Grid mb="md">
+          <Grid.Col span={3}>
+            <Image src="/logo.png" alt="logo" width={80} height={80} />
+          </Grid.Col>
 
-            <Text fw={800} mt="md" size="xl">
-              STATEMENT OF EARNINGS AND DEDUCTIONS
+          <Grid.Col span={9}>
+            <Title order={3}>STATEMENT OF EARNINGS</Title>
+            <Text size="sm">
+              Pay Period: {new Date(statement.payPeriodStart).toLocaleDateString()} -{' '}
+              {new Date(statement.payPeriodEnd).toLocaleDateString()}
             </Text>
+          </Grid.Col>
+        </Grid>
 
-            <Group justify="center" mt="md" gap="xs">
-              <Text fw={700}>Pay Period :</Text>
+        {/* EMPLOYEE INFO */}
+        <Box mb="md" p="sm" style={{ border: '1px solid black' }}>
+          <Grid>
+            <Grid.Col span={6}>
+              <Text><b>Employee:</b> {statement.employeeName}</Text>
+              <Text><b>Employee ID:</b> {statement.employeeId}</Text>
+            </Grid.Col>
 
-              <Box px="md" py={6} style={{ border: '2px solid #355c7d', borderRadius: 8 }}>
-                {new Date(statement.payPeriodStart).toLocaleDateString()}
-              </Box>
+            <Grid.Col span={6}>
+              <Text><b>Pay Date:</b> {new Date(statement.payDate).toLocaleDateString()}</Text>
+              <Text><b>Department:</b> Cleaning Services</Text>
+            </Grid.Col>
+          </Grid>
+        </Box>
 
-              <Text fw={700}>to</Text>
+        {/* EARNINGS TABLE */}
+        <TableHeader title="Earnings" />
 
-              <Box px="md" py={6} style={{ border: '2px solid #355c7d', borderRadius: 8 }}>
-                {new Date(statement.payPeriodEnd).toLocaleDateString()}
-              </Box>
-            </Group>
-          </Box>
-
-          <Box />
-        </Group>
-
-        {/* Earnings */}
-        <SectionHeader title="Earnings" />
-        <GridHeader />
-
-        {earnings.map((row) => (
-          <Row key={row.label} {...row} />
+        {rows.map((r) => (
+          <TableRow key={r.label} {...r} />
         ))}
 
-        <TotalRow label="Gross Earnings" value={grossEarnings} />
+        <TableTotal
+          label="Gross Earnings"
+          amount={statement.grossEarnings}
+          ytd={ytd.gross}
+        />
 
-        {/* Deductions */}
-        <SectionHeader title="Deductions" mt="lg" />
+        {/* DEDUCTIONS */}
+        <TableHeader title="Deductions" />
 
-        {deductions.map((row) => (
-          <DeductionRow key={row.label} {...row} />
+        {deductions.map((d) => (
+          <TableRow key={d.label} label={d.label} amount={d.amount} ytd={d.ytd} />
         ))}
 
-        <Box
-          mt="md"
-          px="md"
-          py="sm"
-          style={{
-            backgroundColor: '#8bcf6c',
-            borderTop: '2px solid black',
-            borderBottom: '2px solid black',
-          }}
-        >
-          <Group justify="space-between">
-            <Text fw={800} size="xl">
-              Net Earnings
-            </Text>
-            <Text fw={800} size="xl">
-              {netEarnings.toFixed(2)}
-            </Text>
-          </Group>
+        <TableTotal
+          label="Total Deductions"
+          amount={statement.totalDeductions}
+          ytd={ytd.deductions}
+        />
+
+        {/* NET */}
+        <Box mt="md" p="sm" style={{ border: '2px solid black', background: '#d4edda' }}>
+          <Grid>
+            <Grid.Col span={6}>
+              <Text fw={700}>Net Earnings</Text>
+            </Grid.Col>
+            <Grid.Col span={3}>
+              <Text ta="right">{statement.netEarnings.toFixed(2)}</Text>
+            </Grid.Col>
+            <Grid.Col span={3}>
+              <Text ta="right">{ytd.net?.toFixed(2)}</Text>
+            </Grid.Col>
+          </Grid>
         </Box>
       </Box>
     </Container>
   );
 }
 
-// ===== Components =====
+/* ---------- COMPONENTS ---------- */
 
-function SectionHeader({ title, mt }: { title: string; mt?: any }) {
+function TableHeader({ title }: { title: string }) {
   return (
-    <Box
-      mt={mt}
-      px="md"
-      py="xs"
-      style={{
-        backgroundColor: '#d9ead3',
-        borderTop: '2px solid black',
-        borderBottom: '2px solid black',
-      }}
-    >
-      <Text fw={800} size="xl">{title}</Text>
+    <Box mt="md" style={{ borderBottom: '2px solid black' }}>
+      <Grid>
+        <Grid.Col span={6}><Text fw={700}>{title}</Text></Grid.Col>
+        <Grid.Col span={2}><Text ta="right">Amount</Text></Grid.Col>
+        <Grid.Col span={2}><Text ta="right">YTD</Text></Grid.Col>
+      </Grid>
     </Box>
   );
 }
 
-function GridHeader() {
+function TableRow({ label, rate, units, amount, ytd }: any) {
   return (
-    <Group px="md" py="xs" justify="space-between" style={{ borderBottom: '2px solid #999' }}>
-      <Text w="30%" />
-      <Text w="10%" ta="right">Rate</Text>
-      <Text w="10%" ta="right">Units</Text>
-      <Text w="20%" ta="right">Amount</Text>
-      <Text w="20%" ta="right">Year To Date</Text>
-    </Group>
+    <Box style={{ borderBottom: '1px solid #ccc' }} py={4}>
+      <Grid>
+        <Grid.Col span={6}>
+          <Text>{label}</Text>
+        </Grid.Col>
+        <Grid.Col span={2}>
+          <Text ta="right">{amount?.toFixed?.(2) || '0.00'}</Text>
+        </Grid.Col>
+        <Grid.Col span={2}>
+          <Text ta="right">{ytd?.toFixed?.(2) || ''}</Text>
+        </Grid.Col>
+      </Grid>
+    </Box>
   );
 }
 
-function Row({ label, rate, units, amount, yearToDate }: any) {
+function TableTotal({ label, amount, ytd }: any) {
   return (
-    <Group px="md" py="xs" justify="space-between" style={{ background: '#efefef' }}>
-      <Text w="30%">{label}</Text>
-      <Text w="10%" ta="right">{rate ?? ''}</Text>
-      <Text w="10%" ta="right">{units ?? ''}</Text>
-      <Text w="20%" ta="right">{amount?.toFixed?.(2) ?? '0.00'}</Text>
-      <Text w="20%" ta="right">{yearToDate ?? ''}</Text>
-    </Group>
-  );
-}
-
-function DeductionRow({ label, amount }: any) {
-  return (
-    <Group px="md" py="xs" justify="space-between" style={{ background: '#efefef', marginTop: 4 }}>
-      <Text w="30%">{label}</Text>
-      <Text w="40%" ta="right">{amount?.toFixed?.(2) ?? '0.00'}</Text>
-      <Text w="20%" />
-    </Group>
-  );
-}
-
-function TotalRow({ label, value }: any) {
-  return (
-    <Box
-      px="md"
-      py="xs"
-      style={{
-        borderTop: '2px solid black',
-        borderBottom: '2px solid black',
-        marginTop: 4,
-      }}
-    >
-      <Group justify="space-between">
-        <Text w="30%">{label}</Text>
-        <Text w="40%" ta="right">{value?.toFixed?.(2) ?? '0.00'}</Text>
-        <Text w="20%" />
-      </Group>
+    <Box mt="xs" style={{ borderTop: '2px solid black', borderBottom: '2px solid black' }}>
+      <Grid>
+        <Grid.Col span={6}>
+          <Text fw={700}>{label}</Text>
+        </Grid.Col>
+        <Grid.Col span={2}>
+          <Text fw={700} ta="right">{amount?.toFixed?.(2)}</Text>
+        </Grid.Col>
+        <Grid.Col span={2}>
+          <Text fw={700} ta="right">{ytd?.toFixed?.(2)}</Text>
+        </Grid.Col>
+      </Grid>
     </Box>
   );
 }
