@@ -23,13 +23,14 @@ import {
   Tooltip,
 } from "recharts";
 import { useSession } from "next-auth/react";
-
+import { useRouter } from 'next/navigation';
 const COLORS = ["#1f6b8f", "#eb7a2f", "#2e7d32"];
 
 export default function YourPayPage() {
   const { data: session } = useSession();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+const router = useRouter();
 
   // 1. Fetching logic to link to your route.ts
   useEffect(() => {
@@ -130,8 +131,16 @@ export default function YourPayPage() {
         <Button
           size="lg"
           radius="md"
-          styles={{ root: { minWidth: 320, height: 58, backgroundColor: "#125f82", fontSize: "1.1rem", fontWeight: 500 } }}
-          onClick={() => window.open('/pay')}
+          styles={{
+            root: {
+              minWidth: 320,
+              height: 58,
+              backgroundColor: "#125f82",
+              fontSize: "1.1rem",
+              fontWeight: 500,
+            },
+          }}
+          onClick={() => router.push('/staff/pay-stub')}
         >
           Download Current Statements
         </Button>
@@ -139,7 +148,16 @@ export default function YourPayPage() {
         <Button
           size="lg"
           radius="md"
-          styles={{ root: { minWidth: 320, height: 58, backgroundColor: "#125f82", fontSize: "1.1rem", fontWeight: 500 } }}
+          styles={{
+            root: {
+              minWidth: 320,
+              height: 58,
+              backgroundColor: "#125f82",
+              fontSize: "1.1rem",
+              fontWeight: 500,
+            },
+          }}
+          onClick={() => router.push('/staff/pay-history')}
         >
           Download Past Statements
         </Button>
