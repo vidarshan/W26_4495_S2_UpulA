@@ -15,6 +15,8 @@ import {
 } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import { useForm } from '@mantine/form';
+import { useSession } from "next-auth/react";
+import { useEffect } from "react";
 
 type DayAvailability = {
   active: boolean;
@@ -42,6 +44,17 @@ const DAYS = [
 ];
 
 export default function EnterAvailabilityPage() {
+
+  const { data: session, status } = useSession();
+
+  useEffect(() => {
+    if (session?.user?.name) {
+      form.setFieldValue("employeeName", session.user.name);
+    }
+  }, [session]);
+
+
+
   const form = useForm<AvailabilityFormValues>({
     initialValues: {
       todaysDate: new Date(),
@@ -66,8 +79,7 @@ export default function EnterAvailabilityPage() {
   });
 
   async function handleSubmit(values: AvailabilityFormValues) {
-    const staffProfileId = '3b32d468-9f20-4808-9f25-bffabed6a9cb';
-
+    const staffProfileId = session?.user?.id;
     try {
       const response = await fetch(
         `/api/staff/${staffProfileId}/availability`,
@@ -105,6 +117,11 @@ export default function EnterAvailabilityPage() {
 
       if (!response.ok) throw new Error('Failed to save availability.');
 
+      if (!staffProfileId) {
+        alert("User not loaded yet");
+        return;
+      }
+
       alert('Availability updated successfully!');
       form.reset();
     } catch (error: any) {
@@ -133,6 +150,7 @@ export default function EnterAvailabilityPage() {
             <TextInput
               label="Employee Name"
               {...form.getInputProps('employeeName')}
+              readOnly
             />
           </Group>
 
