@@ -40,7 +40,7 @@ export default function AiTaskAssistantCard({ data }: Props) {
 
   return (
     <Card
-      radius="md"
+      radius="lg"
       withBorder
       shadow="sm"
       p="md"
