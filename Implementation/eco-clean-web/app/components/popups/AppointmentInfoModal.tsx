@@ -19,7 +19,6 @@ import {
   Text,
   Textarea,
   ThemeIcon,
-  Title,
 } from "@mantine/core";
 import { DateInput, TimeInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
@@ -154,14 +153,14 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
   const { data: appointment, isLoading } = useAppointment(selectedApptId);
   const qc = useQueryClient();
 
-  const { data: staffData, isLoading: staffLoading } = useQuery({
+  const { data: staffData, isLoading: staffLoading } = useQuery<Staff[]>({
     queryKey: ["staff", "all"],
     queryFn: () => getStaff(),
     staleTime: 60_000,
   });
 
   const staffOptions = useMemo(() => {
-    return (staffData?.data ?? []).map((s) => ({
+    return (staffData ?? []).map((s) => ({
       value: s.id,
       label: s.name,
     }));

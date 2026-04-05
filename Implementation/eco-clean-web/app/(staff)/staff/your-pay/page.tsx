@@ -19,7 +19,6 @@ import {
 } from "@mantine/core";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { useRouter } from "next/router";
 
 type ChartDatum = {
   name: string;
@@ -56,23 +55,17 @@ function formatMoney(value: number) {
 
 export default function YourPayPage() {
   const { data: session } = useSession();
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<PayData | null>(null);
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
 
   useEffect(() => {
     async function fetchPayData() {
       try {
-        const userId =
-          session?.user?.id || "3b32d468-9f20-4808-9f25-bffabed6a9cb";
-
-        const res = await fetch(
-          `/api/staff/pay-statements/latest`
-        );
+        const res = await fetch("/api/staff/pay-statements/latest");
 
         if (!res.ok) throw new Error("Failed to fetch");
 
-        const result = await res.json();
+        const result: PayData = await res.json();
         console.log("📦 PAY DATA:", result);
 
         setData(result);
@@ -84,7 +77,7 @@ export default function YourPayPage() {
     }
 
     fetchPayData();
-  }, [session]);
+  }, [session?.user?.id]);
 
   const earningsBreakdown = useMemo(
     () => [
@@ -305,12 +298,10 @@ function BreakdownCard({
   title,
   total,
   items,
-  ytd,
 }: {
   title: string;
   total: number;
   items: { label: string; value: number }[];
-  ytd?: number;
 }) {
   return (
     <Card radius="lg" withBorder p="lg" className="staff-app-surface">

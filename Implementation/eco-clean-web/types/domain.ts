@@ -401,3 +401,16 @@ export type UpdateAppointmentPayload = {
 export type BaseAppointment = {
   staffIds: string[];
 };
+
+export type PayBreakdown = {
+  regularAmount?: number;
+  otAmount?: number;
+  transportAllowance?: number;
+
+  federalTax?: number;
+  quebecTax?: number;
+  ei?: number;
+  qpp?: number;
+  qpp2?: number;
+  qpip?: number;
+};

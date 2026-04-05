@@ -12,10 +12,7 @@ import {
   Text,
   ThemeIcon,
 } from "@mantine/core";
-import {
-  IoSparklesOutline,
-  IoTrophyOutline,
-} from "react-icons/io5";
+import { IoSparklesOutline, IoTrophyOutline } from "react-icons/io5";
 import { Staff } from "@/types";
 import { StaffRecommendationResponse } from "@/lib/ai/schemas";
 
@@ -124,7 +121,7 @@ const AIStaffSuggestionCard = ({
             No availability guidance returned for this appointment.
           </Text>
         ) : null}
-        <Divider />
+
         {aiSuggestion ? (
           <Stack gap="xs">
             <Text fw={600} size="md">
@@ -170,83 +167,49 @@ const AIStaffSuggestionCard = ({
             ) : null}
           </Stack>
         ) : null}
-        <Divider />
+
         {recommendedMembers.length > 0 ? (
-          <Stack gap="xs">
-            <Text fw={600} size="md">
-              Recommended
-            </Text>
-            {recommendedMembers.map((member) => (
-              <Group
-                key={member.staff.id}
-                justify="space-between"
-                align="flex-start"
-              >
-                <Box>
-                  <Text size="sm" fw={600}>
-                    {member.staff.name}
-                  </Text>
-                  <Text size="xs">
-                    Reason:{" "}
-                    {member.reason === "home" ? "Home" : "Last Job Location"}
-                  </Text>
-                </Box>
-                <Badge color="green" variant="light">
-                  Available
-                </Badge>
-              </Group>
-            ))}
-          </Stack>
-        ) : null}
-        <Divider />
-        {aiSuggestion?.alternates.length ? (
-          <Stack gap="xs">
-            <Text fw={600} size="md">
-              Alternates
-            </Text>
-
-            {aiSuggestion.alternates.map((member) => (
-              <Group
-                key={member.staffId}
-                justify="space-between"
-                align="flex-start"
-              >
-                <Box>
-                  <Text size="sm" fw={600}>
-                    {member.name}
-                  </Text>
-                  <Text size="xs">{member.reason}</Text>
-                </Box>
-                <Badge color="blue" variant="light">
-                  Alternate
-                </Badge>
-              </Group>
-            ))}
-          </Stack>
-        ) : null}
-        <Divider />
-        {unavailableMembers.length > 0 ? (
-          <Stack gap="xs">
-            <Group gap="xs">
+          <>
+            <Divider />
+            <Stack gap="xs">
               <Text fw={600} size="md">
-                Unavailable
+                Recommended
               </Text>
-            </Group>
-
-            {unavailableMembers.map((member) => {
-              const hasLeaveConflict = (member.leaves?.length ?? 0) > 0;
-              const hasAssignmentConflict =
-                (member.assignments?.length ?? 0) > 0;
-              const reasons = [
-                hasLeaveConflict ? "Leave conflict" : null,
-                hasAssignmentConflict ? "Schedule conflict" : null,
-              ]
-                .filter(Boolean)
-                .join(" • ");
-
-              return (
+              {recommendedMembers.map((member) => (
                 <Group
-                  key={member.id}
+                  key={member.staff.id}
+                  justify="space-between"
+                  align="flex-start"
+                >
+                  <Box>
+                    <Text size="sm" fw={600}>
+                      {member.staff.name}
+                    </Text>
+                    <Text size="xs">
+                      Reason:{" "}
+                      {member.reason === "home" ? "Home" : "Last Job Location"}
+                    </Text>
+                  </Box>
+                  <Badge color="green" variant="light">
+                    Available
+                  </Badge>
+                </Group>
+              ))}
+            </Stack>
+          </>
+        ) : null}
+
+        {aiSuggestion?.alternates.length ? (
+          <>
+            <Divider />
+            <Stack gap="xs">
+              <Text fw={600} size="md">
+                Alternates
+              </Text>
+
+              {aiSuggestion.alternates.map((member) => (
+                <Group
+                  key={member.staffId}
                   justify="space-between"
                   align="flex-start"
                 >
@@ -254,17 +217,60 @@ const AIStaffSuggestionCard = ({
                     <Text size="sm" fw={600}>
                       {member.name}
                     </Text>
-                    <Text size="sm">
-                      {reasons || "Not recommended for this slot"}
-                    </Text>
+                    <Text size="xs">{member.reason}</Text>
                   </Box>
-                  <Badge color="red" variant="light">
-                    Busy
+                  <Badge color="blue" variant="light">
+                    Alternate
                   </Badge>
                 </Group>
-              );
-            })}
-          </Stack>
+              ))}
+            </Stack>
+          </>
+        ) : null}
+
+        {unavailableMembers.length > 0 ? (
+          <>
+            <Divider />
+            <Stack gap="xs">
+              <Group gap="xs">
+                <Text fw={600} size="md">
+                  Unavailable
+                </Text>
+              </Group>
+
+              {unavailableMembers.map((member) => {
+                const hasLeaveConflict = (member.leaves?.length ?? 0) > 0;
+                const hasAssignmentConflict =
+                  (member.assignments?.length ?? 0) > 0;
+                const reasons = [
+                  hasLeaveConflict ? "Leave conflict" : null,
+                  hasAssignmentConflict ? "Schedule conflict" : null,
+                ]
+                  .filter(Boolean)
+                  .join(" • ");
+
+                return (
+                  <Group
+                    key={member.id}
+                    justify="space-between"
+                    align="flex-start"
+                  >
+                    <Box>
+                      <Text size="sm" fw={600}>
+                        {member.name}
+                      </Text>
+                      <Text size="sm">
+                        {reasons || "Not recommended for this slot"}
+                      </Text>
+                    </Box>
+                    <Badge color="red" variant="light">
+                      Busy
+                    </Badge>
+                  </Group>
+                );
+              })}
+            </Stack>
+          </>
         ) : null}
       </Stack>
     </Card>
