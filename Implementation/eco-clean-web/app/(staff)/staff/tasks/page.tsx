@@ -16,7 +16,7 @@ import {
   ThemeIcon,
   Title,
 } from "@mantine/core";
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DateTime } from "luxon";
 import { APP_TZ } from "@/lib/dateTime";
 import { useQuery } from "@tanstack/react-query";
@@ -31,7 +31,7 @@ import { useSession } from "next-auth/react";
 import { AppointmentReminderWatcher } from "@/app/components/AppointmentReminderWatcher";
 import { LocalNotificationDemo } from "@/app/components/LocalNotificationDemo";
 import { requestPermission } from "@/lib/notifications/showNotification";
-import { Calendar, DatePicker } from "@mantine/dates";
+import { Calendar } from "@mantine/dates";
 import dayjs from "dayjs";
 import { useStaffUiStore } from "@/stores/store";
 
@@ -150,51 +150,36 @@ const Page = () => {
     [data],
   );
 
-  const appointmentDays = useMemo(
-    () =>
-      new Set(
-        tasks.map((task) =>
-          DateTime.fromISO(task.startTime).setZone(APP_TZ).toISODate(),
-        ),
-      ),
-    [tasks],
-  );
-
   const effectiveSelectedDate = useMemo(() => {
     if (selectedDate) {
       return selectedDate;
     }
 
     if (tasks.length) {
-      return DateTime.fromISO(tasks[0].startTime).setZone(APP_TZ).toISODate();
+      return (
+        DateTime.fromISO(tasks[0].startTime).setZone(APP_TZ).toISODate() ??
+        today
+      );
     }
 
     return today;
   }, [selectedDate, tasks, today]);
 
-  // const selected = effectiveSelectedDate
-  //   ? DateTime.fromISO(effectiveSelectedDate, { zone: APP_TZ })
-  //   : DateTime.now().setZone(APP_TZ);
-
-  const [selected, setSelected] = useState(effectiveSelectedDate || today);
   const handleSelect = (date: string) => {
-    setSelected(date);
     setSelectedDate(date);
+    setCalendarMonth(date);
   };
 
   const dayTasks = tasks.filter((task) => {
-    if (!selected) return false;
-
     const taskDate = DateTime.fromISO(task.startTime).setZone(APP_TZ);
-    return taskDate.hasSame(DateTime.fromISO(selected).setZone(APP_TZ), "day");
+    return taskDate.hasSame(
+      DateTime.fromISO(effectiveSelectedDate).setZone(APP_TZ),
+      "day",
+    );
   });
 
   const upcomingCount = dayTasks.filter(
     (t) => t.status === "SCHEDULED" || t.status === "LATE",
-  ).length;
-
-  const completedCount = dayTasks.filter(
-    (t) => t.status === "COMPLETED",
   ).length;
 
   const filteredTasks = dayTasks.filter((task) => {
@@ -202,7 +187,13 @@ const Page = () => {
     if (value === "cancelled") return task.status === "CANCELLED";
     return task.status === "SCHEDULED" || task.status === "LATE";
   });
-  console.log("filtered", filteredTasks);
+
+  const selectedDateLabel = DateTime.fromISO(effectiveSelectedDate, {
+    zone: APP_TZ,
+  }).toFormat("cccc, LLL d");
+  const selectedMonthLabel = DateTime.fromISO(calendarMonth, {
+    zone: APP_TZ,
+  }).toFormat("LLLL yyyy");
 
   if (error) {
     return (
@@ -216,79 +207,80 @@ const Page = () => {
     <Container p={0} className="staff-app-page">
       <AppointmentReminderWatcher appointments={tasks} />
       <LocalNotificationDemo />
-      <Stack gap="md" p="md">
-        {/* <Card radius="lg" withBorder p="md" className="staff-app-surface staff-app-surface--hero">
-          <Group justify="space-between" align="start">
-            <Box>
-              <Title order={3}>My Tasks</Title>
-              <Text size="sm" c="dimmed">
-                {selected.toFormat("cccc, LLL d")}
-              </Text>
-            </Box>
-          </Group>
+      <Stack gap="lg" p="md">
+        <Card radius="xl" withBorder p="lg" className="staff-app-surface">
+          <Stack gap="md">
+            <Group justify="space-between" align="end" gap="md">
+              <Box>
+                <Title order={3}>Your Tasks</Title>
+                <Text size="sm" c="dimmed" mt={4}>
+                  {selectedDateLabel}
+                </Text>
+              </Box>
 
-          <Group mt="md" grow>
-            <Box>
-              <Text size="xs" c="dimmed">
-                Upcoming
-              </Text>
-              <Text fw={700} fz={24}>
-                {upcomingCount}
-              </Text>
-            </Box>
+              <Group gap="xs" wrap="wrap">
+                <Badge variant="light" color="lime" radius="xl">
+                  {upcomingCount} active
+                </Badge>
+                <Badge variant="light" color="gray" radius="xl">
+                  {dayTasks.length} total
+                </Badge>
+              </Group>
+            </Group>
 
-            <Box>
-              <Text size="xs" c="dimmed">
-                Completed
-              </Text>
-              <Text fw={700} fz={24}>
-                {completedCount}
-              </Text>
-            </Box>
-          </Group>
-        </Card> */}
-        <Card radius="lg" withBorder className="staff-app-surface">
-          <Center>
-            <Calendar
-              renderDay={(date) => {
-                const hasAppointments = markedDates.has(date);
-                return (
-                  <Indicator
-                    size={6}
-                    color="pink"
-                    offset={-2}
-                    disabled={!hasAppointments}
-                    processing
-                  >
-                    <div>{dayjs(date).date()}</div>
-                  </Indicator>
-                );
-              }}
-              getDayProps={(date) => {
-                const isoDate = DateTime.fromISO(date)
-                  .setZone(APP_TZ)
-                  .toISODate();
-
-                return {
-                  selected: isoDate === selectedDate,
-                  onClick: () => handleSelect(date),
-                };
-              }}
+            <SegmentedControl
+              value={value}
+              color="lime"
+              radius="lg"
+              onChange={(v) => setValue(v || "upcoming")}
+              className="staff-app-segmented"
+              data={[
+                { value: "upcoming", label: "Upcoming" },
+                { value: "cancelled", label: "Cancelled" },
+                { value: "completed", label: "Completed" },
+              ]}
             />
-          </Center>
+
+            <Box>
+              <Group justify="space-between" align="center" mb="md">
+                <Text size="sm" fw={600}>
+                  {selectedMonthLabel}
+                </Text>
+              </Group>
+              <Center>
+                <Calendar
+                  date={calendarMonth}
+                  onDateChange={(date) => setCalendarMonth(date)}
+                  onNextMonth={(date) => setCalendarMonth(date)}
+                  onPreviousMonth={(date) => setCalendarMonth(date)}
+                  renderDay={(date) => {
+                    const hasAppointments = markedDates.has(date);
+                    return (
+                      <Indicator
+                        size={4}
+                        color="blue"
+                        position="bottom-center"
+                        disabled={!hasAppointments}
+                      >
+                        {dayjs(date).date()}
+                      </Indicator>
+                    );
+                  }}
+                  getDayProps={(date) => {
+                    const isoDate = DateTime.fromISO(date)
+                      .setZone(APP_TZ)
+                      .toISODate();
+
+                    return {
+                      selected: isoDate === effectiveSelectedDate,
+                      onClick: () => handleSelect(date),
+                    };
+                  }}
+                />
+              </Center>
+            </Box>
+          </Stack>
         </Card>
-        <SegmentedControl
-          value={value}
-          color="lime"
-          radius="lg"
-          onChange={(v) => setValue(v || "upcoming")}
-          className="staff-app-segmented"
-          data={[
-            { value: "upcoming", label: "Upcoming" },
-            { value: "cancelled", label: "Cancelled" },
-            { value: "completed", label: "Completed" },
-          ]}
-        />
 
         <Stack gap="md">
           {isLoading ? (
@@ -311,77 +303,79 @@ const Page = () => {
               <Text c="dimmed">No tasks found for this section.</Text>
             </Card>
           ) : (
-            filteredTasks.map((task) => {
-              const start = DateTime.fromISO(task.startTime).setZone(APP_TZ);
-              const end = DateTime.fromISO(task.endTime).setZone(APP_TZ);
+            <>
+              {filteredTasks.map((task) => {
+                const start = DateTime.fromISO(task.startTime).setZone(APP_TZ);
+                const end = DateTime.fromISO(task.endTime).setZone(APP_TZ);
 
-              return (
-                <Card
-                  key={task.id}
-                  withBorder
-                  radius="lg"
-                  p="lg"
-                  className="staff-app-surface"
-                  style={{ cursor: "pointer" }}
-                  onClick={() => router.push(`/staff/tasks/${task.id}`)}
-                >
-                  <Group justify="space-between" align="start" mb="sm">
-                    <Box style={{ flex: 1 }}>
-                      <Text fw={700} size="md">
-                        {task.job.title}
-                      </Text>
-                      <Text size="sm" c="dimmed">
-                        {start.toFormat("cccc, LLL d")}
-                      </Text>
-                    </Box>
+                return (
+                  <Card
+                    key={task.id}
+                    withBorder
+                    radius="lg"
+                    p="lg"
+                    className="staff-app-surface"
+                    style={{ cursor: "pointer" }}
+                    onClick={() => router.push(`/staff/tasks/${task.id}`)}
+                  >
+                    <Group justify="space-between" align="start" mb="sm">
+                      <Box style={{ flex: 1 }}>
+                        <Text fw={700} size="md">
+                          {task.job.title}
+                        </Text>
+                        <Text size="sm" c="dimmed">
+                          {start.toFormat("cccc, LLL d")}
+                        </Text>
+                      </Box>
 
-                    <Badge
-                      radius="lg"
-                      color={
-                        task.status === "COMPLETED"
-                          ? "green"
-                          : task.status === "CANCELLED"
-                            ? "red"
-                            : "blue"
-                      }
-                      variant="light"
-                    >
-                      {task.status}
-                    </Badge>
-                  </Group>
-
-                  <Stack gap="xs">
-                    <Group gap="xs" wrap="nowrap">
-                      <ThemeIcon radius="lg" variant="light" color="green">
-                        <IoTimeOutline size={14} />
-                      </ThemeIcon>
-                      <Text size="sm">
-                        {start.toFormat("h:mm a")} - {end.toFormat("h:mm a")}
-                      </Text>
+                      <Badge
+                        radius="lg"
+                        color={
+                          task.status === "COMPLETED"
+                            ? "green"
+                            : task.status === "CANCELLED"
+                              ? "red"
+                              : "blue"
+                        }
+                        variant="light"
+                      >
+                        {task.status}
+                      </Badge>
                     </Group>
 
-                    <Group gap="xs" wrap="nowrap">
-                      <ThemeIcon radius="lg" variant="light" color="blue">
-                        <IoPersonOutline size={14} />
-                      </ThemeIcon>
-                      <Text size="sm">
-                        {task.job.client.firstName} {task.job.client.lastName}
-                      </Text>
-                    </Group>
+                    <Stack gap="xs">
+                      <Group gap="xs" wrap="nowrap">
+                        <ThemeIcon radius="lg" variant="light" color="green">
+                          <IoTimeOutline size={14} />
+                        </ThemeIcon>
+                        <Text size="sm">
+                          {start.toFormat("h:mm a")} - {end.toFormat("h:mm a")}
+                        </Text>
+                      </Group>
 
-                    <Group gap="xs" wrap="nowrap" align="start">
-                      <ThemeIcon radius="lg" variant="light" color="teal">
-                        <IoLocationOutline size={14} />
-                      </ThemeIcon>
-                      <Text size="sm" c="dimmed">
-                        {task.job.address.street1}, {task.job.address.city},{" "}
-                        {task.job.address.province}
-                      </Text>
-                    </Group>
-                  </Stack>
-                </Card>
-              );
-            })
+                      <Group gap="xs" wrap="nowrap">
+                        <ThemeIcon radius="lg" variant="light" color="blue">
+                          <IoPersonOutline size={14} />
+                        </ThemeIcon>
+                        <Text size="sm">
+                          {task.job.client.firstName} {task.job.client.lastName}
+                        </Text>
+                      </Group>
+
+                      <Group gap="xs" wrap="nowrap" align="start">
+                        <ThemeIcon radius="lg" variant="light" color="teal">
+                          <IoLocationOutline size={14} />
+                        </ThemeIcon>
+                        <Text size="sm" c="dimmed">
+                          {task.job.address.street1}, {task.job.address.city},{" "}
+                          {task.job.address.province}
+                        </Text>
+                      </Group>
+                    </Stack>
+                  </Card>
+                );
+              })}
+            </>
           )}
         </Stack>
       </Stack>

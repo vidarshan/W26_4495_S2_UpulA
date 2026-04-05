@@ -55,7 +55,7 @@ import { useStaffUiStore } from "@/stores/store";
 
 const CARD_RADIUS = "md";
 const HERO_PADDING = "lg";
-const CARD_PADDING = "md";
+const CARD_PADDING = "lg";
 
 function formatAddress(address?: {
   street1?: string | null;
@@ -162,8 +162,11 @@ const Page = () => {
   const qc = useQueryClient();
   const { startUpload, isUploading } = useUploadThing("appointmentImages");
 
-  const { data: appointment, isLoading, error } =
-    useAppointmentDetails(appointmentId);
+  const {
+    data: appointment,
+    isLoading,
+    error,
+  } = useAppointmentDetails(appointmentId);
 
   const { data: aiTaskAssistant, isLoading: isAssistantLoading } =
     useQuery<TaskAssistantResponse>({
@@ -358,11 +361,7 @@ const Page = () => {
   const client = job?.client ?? null;
   const address = job?.address ?? undefined;
 
-  const clientName = [
-    client?.title,
-    client?.firstName,
-    client?.lastName,
-  ]
+  const clientName = [client?.title, client?.firstName, client?.lastName]
     .filter(Boolean)
     .join(" ")
     .trim();
@@ -462,10 +461,21 @@ const Page = () => {
       </Drawer>
 
       <Stack gap="sm" p="md">
-        <Card radius="lg" withBorder p={HERO_PADDING} className="staff-app-surface staff-app-surface--hero">
+        <Card
+          radius="lg"
+          withBorder
+          p={HERO_PADDING}
+          className="staff-app-surface staff-app-surface--hero"
+        >
           <Group justify="space-between" align="start" mb="sm">
             <Box>
-              <Text size="xs" fw={800} tt="uppercase" c="#64748b" style={{ letterSpacing: "0.08em" }}>
+              <Text
+                size="xs"
+                fw={800}
+                tt="uppercase"
+                c="#64748b"
+                style={{ letterSpacing: "0.08em" }}
+              >
                 Today&apos;s Appointment
               </Text>
               <Text fw={800} size="xl" mt={4}>
@@ -639,7 +649,11 @@ const Page = () => {
               const memberState = getMemberState(member.id);
 
               return (
-                <Group key={member.id} justify="space-between" className="staff-task-detail__row">
+                <Group
+                  key={member.id}
+                  justify="space-between"
+                  className="staff-task-detail__row"
+                >
                   <Text size="sm" fw={isMe ? 700 : 500}>
                     {member.name} {isMe ? "(You)" : ""}
                   </Text>
@@ -664,7 +678,12 @@ const Page = () => {
           </Stack>
         </Card>
 
-        <Card radius="lg" withBorder p={CARD_PADDING} className="staff-app-surface">
+        <Card
+          radius="lg"
+          withBorder
+          p={CARD_PADDING}
+          className="staff-app-surface"
+        >
           <Group mb="sm" gap="xs">
             <ThemeIcon radius="md" variant="light" color="teal">
               <IoLocationOutline size={16} />
@@ -674,7 +693,7 @@ const Page = () => {
             </Text>
           </Group>
 
-          <Flex justify="space-between" align="center" gap="md" className="staff-task-detail__split">
+          <Flex justify="space-between" align="center" gap="md">
             <Box style={{ flex: 1 }}>
               <Text size="sm" fw={600}>
                 {address?.street1 ?? "Address unavailable"}
@@ -685,7 +704,8 @@ const Page = () => {
               ) : null}
 
               <Text size="sm">
-                {address?.city ?? ""}{address?.city && address?.province ? ", " : ""}
+                {address?.city ?? ""}
+                {address?.city && address?.province ? ", " : ""}
                 {address?.province ?? ""}
               </Text>
 
@@ -709,7 +729,12 @@ const Page = () => {
           </Text>
         </Card>
 
-        <Card radius="lg" withBorder p={CARD_PADDING} className="staff-app-surface">
+        <Card
+          radius="lg"
+          withBorder
+          p={CARD_PADDING}
+          className="staff-app-surface"
+        >
           <Group mb="sm" gap="xs">
             <ThemeIcon radius="md" variant="light" color="blue">
               <IoPersonOutline size={16} />
@@ -760,7 +785,12 @@ const Page = () => {
           </Group>
         </Card>
 
-        <Card radius="lg" withBorder p={CARD_PADDING} className="staff-app-surface">
+        <Card
+          radius="lg"
+          withBorder
+          p={CARD_PADDING}
+          className="staff-app-surface"
+        >
           <Group mb="sm" gap="xs">
             <ThemeIcon radius="md" variant="light" color="grape">
               <IoDocumentTextOutline size={16} />
@@ -773,7 +803,13 @@ const Page = () => {
           <Stack gap="xs">
             {notes?.length ? (
               notes.map((note) => (
-                <Paper key={note.id} radius="lg" p="sm" withBorder className="staff-task-detail__note">
+                <Paper
+                  key={note.id}
+                  radius="lg"
+                  p="sm"
+                  withBorder
+                  className="staff-task-detail__note"
+                >
                   <Group justify="space-between" align="flex-start" mb={6}>
                     <Box style={{ flex: 1 }}>
                       <Text fw={600} size="sm">
@@ -836,7 +872,12 @@ const Page = () => {
           </Stack>
         </Card>
 
-        <Card radius="lg" withBorder p={CARD_PADDING} className="staff-app-surface">
+        <Card
+          radius="lg"
+          withBorder
+          p={CARD_PADDING}
+          className="staff-app-surface"
+        >
           <Group mb="sm" gap="xs">
             <ThemeIcon radius="md" variant="light" color="orange">
               <IoDocumentTextOutline size={16} />
@@ -849,7 +890,13 @@ const Page = () => {
           <Stack gap="xs">
             {appointment.notes?.length ? (
               appointment.notes.map((note) => (
-                <Paper key={note.id} radius="lg" p="sm" withBorder className="staff-task-detail__note">
+                <Paper
+                  key={note.id}
+                  radius="lg"
+                  p="sm"
+                  withBorder
+                  className="staff-task-detail__note"
+                >
                   <Group justify="space-between" mb={6}>
                     <Text fw={600} size="sm">
                       Visit note
@@ -889,7 +936,12 @@ const Page = () => {
           </Stack>
         </Card>
 
-        <Card radius="lg" withBorder p={CARD_PADDING} className="staff-app-surface">
+        <Card
+          radius="lg"
+          withBorder
+          p={CARD_PADDING}
+          className="staff-app-surface"
+        >
           <Group mb="sm" gap="xs">
             <ThemeIcon radius="md" variant="light" color="orange">
               <IoDocumentTextOutline size={16} />

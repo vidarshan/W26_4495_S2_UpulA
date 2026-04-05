@@ -1,5 +1,4 @@
 import {
-  Badge,
   Button,
   Card,
   Divider,
@@ -25,12 +24,6 @@ type Props = {
   data: TaskAssistantResponse;
 };
 
-const riskColor = (risk: TaskAssistantResponse["riskLevel"]) => {
-  if (risk === "high") return "red";
-  if (risk === "medium") return "yellow";
-  return "green";
-};
-
 export default function AiTaskAssistantCard({ data }: Props) {
   const [collapse, setCollapse] = useState(false);
   const totalMinutes = data.timePlan.reduce(
@@ -40,7 +33,7 @@ export default function AiTaskAssistantCard({ data }: Props) {
 
   return (
     <Card
-      radius="md"
+      radius="lg"
       withBorder
       shadow="sm"
       p="md"

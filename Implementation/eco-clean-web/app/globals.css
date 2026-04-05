@@ -262,6 +262,14 @@ body {
   width: 100%;
 }
 
+.staff-calendar [data-mantine-component="CalendarHeader"] {
+  margin-bottom: 0.5rem;
+}
+
+.staff-calendar [data-mantine-component="MonthLevel"] {
+  width: 100%;
+}
+
 .staff-calendar-day {
   display: flex;
   flex-direction: column;
