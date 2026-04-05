@@ -182,14 +182,6 @@ const Page = () => {
     (t) => t.status === "SCHEDULED" || t.status === "LATE",
   ).length;
 
-  const cancelledCount = dayTasks.filter(
-    (t) => t.status === "CANCELLED",
-  ).length;
-
-  const completedCount = dayTasks.filter(
-    (t) => t.status === "COMPLETED",
-  ).length;
-
   const filteredTasks = dayTasks.filter((task) => {
     if (value === "completed") return task.status === "COMPLETED";
     if (value === "cancelled") return task.status === "CANCELLED";
@@ -202,12 +194,6 @@ const Page = () => {
   const selectedMonthLabel = DateTime.fromISO(calendarMonth, {
     zone: APP_TZ,
   }).toFormat("LLLL yyyy");
-  const shownCount =
-    value === "upcoming"
-      ? upcomingCount
-      : value === "cancelled"
-        ? cancelledCount
-        : completedCount;
 
   if (error) {
     return (

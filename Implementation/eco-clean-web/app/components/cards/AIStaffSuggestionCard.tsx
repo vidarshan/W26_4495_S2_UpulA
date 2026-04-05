@@ -6,20 +6,15 @@ import {
   Divider,
   Flex,
   Group,
-  Loader,
   Paper,
   Skeleton,
   Stack,
   Text,
   ThemeIcon,
 } from "@mantine/core";
-import React from "react";
 import {
-  IoAlertCircleOutline,
   IoSparklesOutline,
-  IoStarOutline,
   IoTrophyOutline,
-  IoWarningSharp,
 } from "react-icons/io5";
 import { Staff } from "@/types";
 import { StaffRecommendationResponse } from "@/lib/ai/schemas";

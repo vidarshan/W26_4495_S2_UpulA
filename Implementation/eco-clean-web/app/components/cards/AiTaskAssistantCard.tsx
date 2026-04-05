@@ -1,5 +1,4 @@
 import {
-  Badge,
   Button,
   Card,
   Divider,
@@ -23,12 +22,6 @@ import { TaskAssistantResponse } from "@/lib/ai/schemas";
 
 type Props = {
   data: TaskAssistantResponse;
-};
-
-const riskColor = (risk: TaskAssistantResponse["riskLevel"]) => {
-  if (risk === "high") return "red";
-  if (risk === "medium") return "yellow";
-  return "green";
 };
 
 export default function AiTaskAssistantCard({ data }: Props) {
