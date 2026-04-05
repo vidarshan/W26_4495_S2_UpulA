@@ -57,6 +57,14 @@ export default function ManageStaffPage() {
                   View pending requests, approve or reject leave, and monitor
                   employee leave records.
                 </Text>
+                <Button
+                  component={Link}
+                  href="/admin/manage-staff/leave-approval"
+                  variant="light"
+                  rightSection={<IoArrowForwardOutline size={16} />}
+                >
+                  View & Approve Pending Leave Requests
+                </Button>
               </Accordion.Panel>
             </Accordion.Item>
           </Accordion>
@@ -104,13 +112,23 @@ export default function ManageStaffPage() {
                   time-off related staff activities.
                 </Text>
 
-                <Button
-                  component={Link}
-                  href="/admin/timesheets"
-                  rightSection={<IoArrowForwardOutline size={16} />}
-                >
-                  Open Timesheet Overview
-                </Button>
+                <Stack>
+                  <Button
+                    component={Link}
+                    href="/admin/timesheets"
+                    rightSection={<IoArrowForwardOutline size={16} />}
+                  >
+                    Approve Timesheets
+                  </Button>
+
+                  <Button
+                    component={Link}
+                    href="/admin/timesheets"
+                    rightSection={<IoArrowForwardOutline size={16} />}
+                  >
+                    Approve Leave Requests
+                  </Button>
+                </Stack>
               </Accordion.Panel>
             </Accordion.Item>
 
@@ -145,13 +163,12 @@ export default function ManageStaffPage() {
   const navItems = (
     <Stack gap="xs">
       <NavLink
-        label="Leave Management"
-        leftSection={<IoCalendarClearOutline size={18} />}
-        active={activeSection === 'leave'}
-        onClick={() => {
-          setActiveSection('leave');
-          close();
-        }}
+        label="Time & Time-Off"
+        component={Link}
+        href="/admin/manage-staff/leave-approval"
+        leftSection={<IoTimeOutline size={18} />}
+        active={pathname.startsWith('/admin/leave-approval')}
+        onClick={close}
       />
 
       <NavLink
@@ -166,11 +183,8 @@ export default function ManageStaffPage() {
       <NavLink
         label="Time & Time-Off"
         leftSection={<IoTimeOutline size={18} />}
-        active={activeSection === 'time'}
-        onClick={() => {
-          setActiveSection('time');
-          close();
-        }}
+        active={pathname.startsWith('/admin/manage-staff/leave-approval')}
+        onClick={close}
       />
     </Stack>
   );

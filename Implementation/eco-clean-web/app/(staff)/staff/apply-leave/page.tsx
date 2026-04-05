@@ -26,6 +26,7 @@ import {
 } from "@mantine/core";
 import { DatePickerInput, TimeInput } from "@mantine/dates";
 import { useMediaQuery } from "@mantine/hooks";
+import { useSession } from "next-auth/react";
 
 type Mode = "balances" | "request";
 type Balance = { policy: string; hours: number };
@@ -81,9 +82,38 @@ export default function ApplyLeavePage() {
   const [errorMessage, setErrorMessage] = useState("");
 
   const [leaveData, setLeaveData] = useState<LeaveRecord[]>([]);
+  const [summary, setSummary] = useState({
+    vacationRemaining: 0,
+    sickUsed: 0,
+  });
+
+  const { data: session, status } = useSession();
+
+
+
+
 
   // TODO: replace with session-based user context
-  const staffId = "3b32d468-9f20-4808-9f25-bffabed6a9cb";
+
+  if (status === "loading") return <Loader />;
+
+  const staffId = session?.user?.id;
+
+  if (!staffId) {
+    return <Text>No user found</Text>;
+  }
+
+  useEffect(() => {
+    if (!staffId) return;
+
+    async function fetchSummary() {
+      const res = await fetch(`/api/staff/${staffId}/leave/leave-summary`);
+      const data = await res.json();
+      setSummary(data);
+    }
+
+    fetchSummary();
+  }, [staffId]);
 
   useEffect(() => {
     async function fetchData() {
@@ -109,23 +139,35 @@ export default function ApplyLeavePage() {
     const hoursUsed = leaveData
       .filter((l) => l.type === "VACATION")
       .reduce((acc, curr) => {
-        const diff =
-          new Date(curr.endAt).getTime() - new Date(curr.startAt).getTime();
-        return acc + diff / 3600000;
+        const start = new Date(curr.startAt);
+        const end = new Date(curr.endAt);
+
+        const days =
+          Math.ceil(
+            (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)
+          ) || 1;
+
+        return acc + days * 8;
       }, 0);
 
     return startingEntitlement - hoursUsed;
   }, [leaveData]);
 
   const sickHoursUsed = useMemo(() => {
-    return leaveData
-      .filter((l) => l.type.includes("SICK"))
-      .reduce((acc, curr) => {
-        const diff =
-          new Date(curr.endAt).getTime() - new Date(curr.startAt).getTime();
-        return acc + diff / 3600000;
-      }, 0);
-  }, [leaveData]);
+  return leaveData
+    .filter((l) => l.type.includes("SICK"))
+    .reduce((acc, curr) => {
+      const start = new Date(curr.startAt);
+      const end = new Date(curr.endAt);
+
+      const days =
+        Math.ceil(
+          (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)
+        ) || 1;
+
+      return acc + days * 8;
+    }, 0);
+}, [leaveData]);
 
   const hoursScheduled = useMemo(() => {
     return leaveType === "FULL_DAY" ? 8 : 3.5;
@@ -164,6 +206,12 @@ export default function ApplyLeavePage() {
 
       const startAt = combineDateAndTime(selectedDate, startTime);
       const endAt = combineDateAndTime(selectedDate, endTime);
+      const requestedHours =
+        (endAt.getTime() - startAt.getTime()) / 3600000;
+
+      if (reason === "VACATION" && requestedHours > summary.vacationRemaining) {
+        throw new Error("Not enough vacation balance.");
+      }
 
       if (endAt <= startAt) {
         throw new Error("End time must be after start time.");
@@ -280,13 +328,38 @@ export default function ApplyLeavePage() {
 
           <Stack gap="md">
             {mode === "balances" ? (
-              <BalancesCard
-                balances={[
-                  { policy: "Vacation Remaining", hours: vacationBalance },
-                  { policy: "Sick Used", hours: sickHoursUsed },
-                ]}
-                onRequest={() => setMode("request")}
-              />
+              <Card withBorder radius="md" p="lg">
+                <Stack gap="md">
+                  <Group justify="space-between">
+                    <Text fw={800}>Time Off Balances</Text>
+                    <Button size="sm" onClick={() => setMode("request")}>
+                      Request time off
+                    </Button>
+                  </Group>
+
+                  <Divider />
+
+                  <Group grow>
+                    <Card withBorder p="md">
+                      <Text size="sm" c="dimmed">
+                        Vacation Remaining
+                      </Text>
+                      <Text fw={800} size="lg">
+                        {summary.vacationRemaining.toFixed(1)} hrs
+                      </Text>
+                    </Card>
+
+                    <Card withBorder p="md">
+                      <Text size="sm" c="dimmed">
+                        Sick Used
+                      </Text>
+                      <Text fw={800} size="lg">
+                        {summary.sickUsed.toFixed(1)} hrs
+                      </Text>
+                    </Card>
+                  </Group>
+                </Stack>
+              </Card>
             ) : (
               <LeaveRequestCard
                 selectedDate={selectedDate}
@@ -302,8 +375,11 @@ export default function ApplyLeavePage() {
                 comments={comments}
                 setComments={setComments}
                 hoursScheduled={hoursScheduled}
-                hoursAvailable={reason === "VACATION" ? vacationBalance : 40}
-                onPrevious={() => setMode("balances")}
+                hoursAvailable={
+                  reason === "VACATION"
+                    ? summary.vacationRemaining
+                    : 40
+                } onPrevious={() => setMode("balances")}
                 onSubmit={handleSubmitLeave}
                 submitting={submitting}
                 isMobile={!!isMobile}

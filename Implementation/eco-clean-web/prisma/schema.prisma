@@ -330,6 +330,7 @@ model Leave {
   startAt   DateTime
   endAt     DateTime
   reason    String?
+  status    LeaveStatus @default(PENDING)
   createdAt DateTime  @default(now())
 
   staff User @relation(fields: [staffId], references: [id], onDelete: Cascade)
@@ -496,6 +497,12 @@ enum LeaveType {
   VACATION
   PERSONAL
   UNPAID_SICK
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum TimesheetStatus {
