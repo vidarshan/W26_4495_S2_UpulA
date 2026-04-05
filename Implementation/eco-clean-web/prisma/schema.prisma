@@ -230,6 +230,7 @@ model StaffProfile {
   staffId    String?  @unique
   position   String?
   hourlyRate Float   @default(0)
+  phoneNumber String?
 
   user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   availabilities   StaffAvailability[]

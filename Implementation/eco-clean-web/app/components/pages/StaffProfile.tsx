@@ -16,6 +16,9 @@ import {
   Title,
   Center,
   Box,
+  Button,
+  Modal,
+  TextInput
 } from "@mantine/core";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -26,6 +29,9 @@ import {
   IoShieldOutline,
   IoTimeOutline,
 } from "react-icons/io5";
+import { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+
 
 type StaffMeResponse = {
   id: string;
@@ -36,8 +42,10 @@ type StaffMeResponse = {
   staffProfile?: {
     id: string;
     userId: string;
+    staffId: string;
     position: string;
     hourlyRate: number;
+    phoneNumber?: string;
     staffAddress?: {
       street1: string;
       street2: string | null;
@@ -60,6 +68,8 @@ type InfoRowProps = {
   value?: React.ReactNode;
 };
 
+
+
 function InfoRow({ icon, label, value }: InfoRowProps) {
   return (
     <Group align="flex-start" wrap="nowrap">
@@ -80,6 +90,9 @@ function InfoRow({ icon, label, value }: InfoRowProps) {
 }
 
 export default function StaffProfileDetailsCard() {
+
+
+
   const { data, isLoading, error } = useQuery<StaffMeResponse>({
     queryKey: ["staff-me"],
     queryFn: async () => {
@@ -92,6 +105,79 @@ export default function StaffProfileDetailsCard() {
       return (await res.json()) as StaffMeResponse;
     },
   });
+  const queryClient = useQueryClient();
+
+  const profile = data?.staffProfile;
+  const address = profile?.staffAddress;
+  const emergency = profile?.emergencyContact;
+
+  const [addressOpen, setAddressOpen] = useState(false);
+  const [emergencyOpen, setEmergencyOpen] = useState(false);
+
+  const [phoneOpen, setPhoneOpen] = useState(false);
+
+  const [formPhone, setFormPhone] = useState("");
+
+  const [formAddress, setFormAddress] = useState(() =>
+    address
+      ? {
+        street1: address.street1 ?? "",
+        street2: address.street2 ?? null,
+        city: address.city ?? "",
+        province: address.province ?? "",
+        postalCode: address.postalCode ?? "",
+        country: address.country ?? "",
+      }
+      : {
+        street1: "",
+        street2: null,
+        city: "",
+        province: "",
+        postalCode: "",
+        country: "",
+      }
+  );
+
+  useEffect(() => {
+    if (address) {
+      setFormAddress({
+        street1: address.street1 ?? "",
+        street2: address.street2 ?? "",
+        city: address.city ?? "",
+        province: address.province ?? "",
+        postalCode: address.postalCode ?? "",
+        country: address.country ?? "",
+      });
+    }
+
+    if (emergency) {
+      setFormEmergency({
+        name: emergency.name ?? "",
+        phoneNumber: emergency.phoneNumber ?? "",
+        relationship: emergency.relationship ?? "",
+      });
+    }
+
+    if (profile?.phoneNumber) {
+      setFormPhone(profile.phoneNumber);
+    }
+  }, [address, emergency]);
+
+  const [formEmergency, setFormEmergency] = useState(() =>
+    emergency
+      ? {
+        name: emergency.name ?? "",
+        phoneNumber: emergency.phoneNumber ?? "",
+        relationship: emergency.relationship ?? "",
+      }
+      : {
+        name: "",
+        phoneNumber: "",
+        relationship: "",
+      }
+  );
+
+
 
   if (isLoading) {
     return (
@@ -109,51 +195,69 @@ export default function StaffProfileDetailsCard() {
     );
   }
 
-  const profile = data.staffProfile;
-  const address = profile?.staffAddress;
-  const emergency = profile?.emergencyContact;
+
 
   const fullAddress = address
     ? [
-        address.street1,
-        address.street2,
-        `${address.city}, ${address.province} ${address.postalCode}`,
-        address.country,
-      ]
-        .filter(Boolean)
-        .join(", ")
+      address.street1,
+      address.street2,
+      `${address.city}, ${address.province} ${address.postalCode}`,
+      address.country,
+    ]
+      .filter(Boolean)
+      .join(", ")
     : null;
 
   return (
     <Box p="md">
       <Stack gap="lg">
-        <Group justify="space-between" align="flex-start">
-          <Group align="center" wrap="nowrap">
+        <Center>
+          <Stack align="center" gap="xs">
             <Avatar
               radius="xl"
-              size={64}
+              size={72}
               name={data.name}
               variant="filled"
               color="green"
             />
 
-            <Stack gap={4}>
-              <Title order={3}>{data.name}</Title>
+            <Title order={3} ta="center">
+              {data.name}
+            </Title>
 
-              <Group gap="xs">
-                <Badge variant="filled" color="blue" radius="sm">
-                  {data.role}
+            <Group gap="xs" justify="center">
+              <Badge variant="filled" color="blue" radius="sm">
+                {data.role}
+              </Badge>
+
+              {profile?.position && (
+                <Badge variant="outline" radius="sm">
+                  {profile.position}
                 </Badge>
+              )}
 
-                {profile?.position && (
-                  <Badge variant="outline" radius="sm">
-                    {profile.position}
-                  </Badge>
-                )}
-              </Group>
-            </Stack>
-          </Group>
-        </Group>
+              {/* STAFF ID */}
+              {profile?.id && (
+                <Badge variant="light" color="gray">
+                  ID: {profile.staffId}
+                </Badge>
+              )}
+            </Group>
+            <Group justify="space-between" align="center">
+              <InfoRow
+                icon={<IoCallOutline />}
+                label="Contact Number"
+                value={profile?.phoneNumber || "—"}
+              />
+
+              <Button size="xs" variant="light" onClick={() => setPhoneOpen(true)}>
+                Edit
+              </Button>
+            </Group>
+
+
+          </Stack>
+        </Center>
 
         <Divider />
 
@@ -192,6 +296,9 @@ export default function StaffProfileDetailsCard() {
                     <IoHomeOutline size={18} />
                   </ThemeIcon>
                   <Title order={5}>Address</Title>
+                  <Button size="xs" variant="light" onClick={() => setAddressOpen(true)}>
+                    Edit
+                  </Button>
                 </Group>
 
                 {address ? (
@@ -234,6 +341,9 @@ export default function StaffProfileDetailsCard() {
                     <IoCallOutline size={18} />
                   </ThemeIcon>
                   <Title order={5}>Emergency Contact</Title>
+                  <Button size="xs" variant="light" onClick={() => setEmergencyOpen(true)}>
+                    Edit
+                  </Button>
                 </Group>
 
                 {emergency ? (
@@ -266,6 +376,183 @@ export default function StaffProfileDetailsCard() {
           </Grid.Col>
         </Grid>
       </Stack>
+
+      <Modal
+        opened={addressOpen}
+        onClose={() => setAddressOpen(false)}
+        title="Edit Address"
+      >
+        <Stack>
+          <TextInput
+            label="Street 1"
+            value={formAddress.street1}
+            onChange={(e) =>
+              setFormAddress((prev) => ({
+                ...prev,
+                street1: e.target.value,
+              }))
+            }
+          />
+
+          <TextInput
+            label="Street 2"
+            value={formAddress.street2 ?? ""}
+            onChange={(e) =>
+              setFormAddress((prev) => ({
+                ...prev,
+                street2: e.target.value,
+              }))
+            }
+          />
+
+          <TextInput
+            label="City"
+            value={formAddress.city}
+            onChange={(e) =>
+              setFormAddress((prev) => ({
+                ...prev,
+                city: e.target.value,
+              }))
+            }
+          />
+
+          <TextInput
+            label="Province"
+            value={formAddress.province}
+            onChange={(e) =>
+              setFormAddress((prev) => ({
+                ...prev,
+                province: e.target.value,
+              }))
+            }
+          />
+
+          <TextInput
+            label="Postal Code"
+            value={formAddress.postalCode}
+            onChange={(e) =>
+              setFormAddress((prev) => ({
+                ...prev,
+                postalCode: e.target.value,
+              }))
+            }
+          />
+
+          <TextInput
+            label="Country"
+            value={formAddress.country}
+            onChange={(e) =>
+              setFormAddress((prev) => ({
+                ...prev,
+                country: e.target.value,
+              }))
+            }
+          />
+
+          <Button
+            mt="md"
+            onClick={async () => {
+              await fetch("/api/staff/address", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  ...formAddress,
+                  street2: formAddress.street2 || null,
+                  postalCode: formAddress.postalCode || null,
+                }),
+              });
+
+              queryClient.invalidateQueries({ queryKey: ["staff-me"] });
+
+              setAddressOpen(false);
+            }}
+          >
+            Save
+          </Button>
+        </Stack>
+      </Modal>
+
+      <Modal
+        opened={emergencyOpen}
+        onClose={() => setEmergencyOpen(false)}
+        title="Edit Emergency Contact"
+      >
+        <Stack>
+          <TextInput
+            label="Name"
+            value={formEmergency.name}
+            onChange={(e) =>
+              setFormEmergency((prev) => ({ ...prev, name: e.target.value }))
+            }
+          />
+
+          <TextInput
+            label="Phone"
+            value={formEmergency?.phoneNumber || ""}
+            onChange={(e) =>
+              setFormEmergency({
+                ...formEmergency,
+                phoneNumber: e.target.value,
+              })
+            }
+          />
+
+          <TextInput
+            label="Relationship"
+            value={formEmergency?.relationship || ""}
+            onChange={(e) =>
+              setFormEmergency({
+                ...formEmergency,
+                relationship: e.target.value,
+              })
+            }
+          />
+
+          <Button
+            onClick={async () => {
+              await fetch("/api/staff/emergency", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(formEmergency),
+              });
+              setEmergencyOpen(false);
+            }}
+          >
+            Save
+          </Button>
+        </Stack>
+      </Modal>
+      <Modal
+        opened={phoneOpen}
+        onClose={() => setPhoneOpen(false)}
+        title="Edit Contact Number"
+      >
+        <Stack>
+          <TextInput
+            label="Phone Number"
+            value={formPhone}
+            onChange={(e) => setFormPhone(e.target.value)}
+          />
+
+          <Button
+            onClick={async () => {
+              await fetch("/api/staff/phone", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ phoneNumber: formPhone }),
+              });
+
+              queryClient.invalidateQueries({ queryKey: ["staff-me"] });
+
+              setPhoneOpen(false);
+            }}
+          >
+            Save
+          </Button>
+        </Stack>
+      </Modal>
+
+
     </Box>
   );
 }

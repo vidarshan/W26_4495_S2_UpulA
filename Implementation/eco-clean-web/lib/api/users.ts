@@ -40,6 +40,36 @@ export function getStaff(params?: {
   });
 }
 
+export async function getAvailableStaff({
+  date,
+  startTime,
+  endTime,
+  q,
+}: {
+  date: string | null;
+  startTime: string;
+  endTime: string;
+  q?: string;
+}) {
+  if (!date || !startTime || !endTime) return [];
+
+  const params = new URLSearchParams({
+    date,
+    startTime,
+    endTime,
+  });
+
+  if (q) params.append("q", q);
+
+  const res = await fetch(`/api/staff/available?${params.toString()}`);
+
+  if (!res.ok) {
+    throw new Error("Failed to fetch available staff");
+  }
+
+  return res.json();
+}
+
 export function createUser(name: string, role: string, email: string) {
   return apiClient<{ user: User; temporaryPassword: string }>(`/api/users`, {
     method: "POST",

@@ -41,6 +41,7 @@ import { DateTime } from "luxon";
 import { APP_TZ } from "@/lib/dateTime";
 import { useUploadThing } from "@/lib/uploadthing";
 import { notifications } from "@mantine/notifications";
+import { getAvailableStaff } from "@/lib/api/users";
 
 interface Props {
   opened: boolean;
@@ -340,24 +341,7 @@ export default function NewJobModal({
     enabled: opened,
   });
 
-  const {
-    data: staffData,
-    isLoading: staffLoading,
-    isFetching: staffFetching,
-    isError: staffError,
-  } = useQuery({
-    queryKey: [
-      "staff",
-      { q: debouncedSearchAssignees, paginate: false },
-    ] as const,
-    queryFn: () =>
-      getStaff({
-        q: debouncedSearchAssignees,
-        paginate: false,
-      }),
-    staleTime: 60_000,
-    enabled: opened,
-  });
+
 
   const {
     data: addressesData,
@@ -775,83 +759,91 @@ export default function NewJobModal({
     ));
 
   const renderAppointments = () =>
-    form.values.appointments.map((appt, index) => (
-      <Card withBorder mt="sm" key={appt.id}>
-        <Grid>
-          <Grid.Col span={4}>
-            <DatePickerInput
-              label="Date"
-              placeholder="Date"
-              key={form.key(`appointments.${index}.startDate`)}
-              {...form.getInputProps(`appointments.${index}.startDate`)}
-              minDate={form.values.appointments?.[0]?.startDate ?? undefined}
-            />
-          </Grid.Col>
+    form.values.appointments.map((appt, index) => {
+      const shouldFetch =
+        opened &&
+        !!appt.startDate &&
+        !!appt.startTime &&
+        !!appt.endTime;
 
-          <Grid.Col span={4}>
-            <TimeInput
-              key={form.key(`appointments.${index}.startTime`)}
-              label="Start"
-              disabled={form.values.isAnytime || isBusy}
-              {...form.getInputProps(`appointments.${index}.startTime`)}
-            />
-          </Grid.Col>
+      const {
+        data: staffData,
+        isLoading: staffLoading,
+        isFetching: staffFetching,
+        isError: staffError,
+      } = useQuery<Staff[]>({
+        queryKey: [
+          "available-staff",
+          appt.startDate,
+          appt.startTime,
+          appt.endTime,
+          debouncedSearchAssignees,
+        ],
+        queryFn: () =>
+          getAvailableStaff({
+            date: appt.startDate!,
+            startTime: appt.startTime || "",
+            endTime: appt.endTime || "",
+            q: debouncedSearchAssignees,
+          }),
+        enabled: opened,
+        staleTime: 30_000,
+      });
 
-          <Grid.Col span={4}>
-            <TimeInput
-              key={form.key(`appointments.${index}.endTime`)}
-              label="End"
-              disabled={form.values.isAnytime || isBusy}
-              {...form.getInputProps(`appointments.${index}.endTime`)}
-            />
-          </Grid.Col>
-
-          <Grid.Col span={12}>
-            <MultiSelect
-              label="Staff"
-              searchable
-              placeholder={
-                staffLoading
-                  ? "Loading staff..."
-                  : staffError
-                    ? "Failed to load staff"
-                    : "Assign staff"
-              }
-              disabled={staffLoading || isBusy}
-              rightSection={staffFetching ? <Loader size="xs" /> : undefined}
-              data={
-                staffData?.map((s: Staff) => ({
-                  value: s.id,
-                  label: s.name || s.email || "Unnamed staff",
-                })) || []
-              }
-              onSearchChange={setSearchAssignees}
-              {...form.getInputProps(`appointments.${index}.staffId`)}
-            />
-          </Grid.Col>
-
-          {appt.uploadedImages?.length ? (
-            <Grid.Col span={12}>
-              <Group mt="xs">
-                {appt.uploadedImages.map((img) => (
-                  <Image
-                    key={img.fileKey}
-                    src={img.url}
-                    alt="attached_img"
-                    style={{
-                      width: 64,
-                      height: 64,
-                      objectFit: "cover",
-                      borderRadius: 8,
-                    }}
-                  />
-                ))}
-              </Group>
+      return (
+        <Card withBorder mt="sm" key={appt.id}>
+          <Grid>
+            <Grid.Col span={4}>
+              <DatePickerInput
+                label="Date"
+                {...form.getInputProps(`appointments.${index}.startDate`)}
+              />
             </Grid.Col>
-          ) : null}
-        </Grid>
-      </Card>
-    ));
+
+            <Grid.Col span={4}>
+              <TimeInput
+                label="Start"
+                {...form.getInputProps(`appointments.${index}.startTime`)}
+              />
+            </Grid.Col>
+
+            <Grid.Col span={4}>
+              <TimeInput
+                label="End"
+                {...form.getInputProps(`appointments.${index}.endTime`)}
+              />
+            </Grid.Col>
+
+            <Grid.Col span={12}>
+              <MultiSelect
+                label="Staff"
+                searchable
+                placeholder={
+                  !shouldFetch
+                    ? "Select date & time first"
+                    : staffLoading
+                      ? "Loading staff..."
+                      : staffError
+                        ? "Failed to load staff"
+                        : "Assign staff"
+                }
+                rightSection={
+                  staffFetching ? <Loader size="xs" /> : undefined
+                }
+                data={
+                  staffData?.map((s) => ({
+                    value: s.id,
+                    label: s.name || s.email,
+                  })) || []
+                }
+                onSearchChange={setSearchAssignees}
+                {...form.getInputProps(`appointments.${index}.staffId`)}
+              />
+            </Grid.Col>
+          </Grid>
+        </Card>
+      );
+    });
 
   return (
     <Modal

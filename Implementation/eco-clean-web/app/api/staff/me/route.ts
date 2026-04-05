@@ -22,7 +22,9 @@ export async function GET() {
           select: {
             id: true,
             userId: true,
+            staffId: true,
             position: true,
+            phoneNumber: true,
             hourlyRate: true,
             staffAddress: {
               select: {
