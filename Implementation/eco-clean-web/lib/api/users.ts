@@ -24,9 +24,9 @@ export function getStaff(params?: {
   }
 
   return apiClient<any>(`/api/users?${sp.toString()}`).then((res) => {
-    const users = res?.data ?? res;
+    const raw = res?.data ?? res;
 
-    return (users || [])
+    const filtered = (raw.data ?? raw)
       .filter((u: any) => u.role === "STAFF")
       .map(
         (u: any): Staff => ({
@@ -37,6 +37,16 @@ export function getStaff(params?: {
           createdAt: u.createdAt ?? new Date().toISOString(),
         })
       );
+
+    return {
+      data: filtered, // ✅ FIX
+      meta: raw.meta ?? {
+        page: 1,
+        limit: filtered.length,
+        total: filtered.length,
+        totalPages: 1,
+      },
+    };
   });
 }
 

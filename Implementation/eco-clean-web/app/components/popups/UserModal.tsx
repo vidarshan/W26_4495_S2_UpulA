@@ -20,7 +20,7 @@ import { notifications } from "@mantine/notifications";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { IoPeopleOutline, IoTextOutline } from "react-icons/io5";
-
+import AdminStaffDetailsModal from "@/app/components/popups/AdminStaffDetailsModal";
 type Mode = "create" | "edit";
 type Role = "ADMIN" | "STAFF";
 
@@ -66,6 +66,7 @@ type EditUserResult = {
     email?: string;
     role?: string;
   };
+  staffProfile?: any;
 };
 
 export default function UserUpsertModal({
@@ -77,6 +78,7 @@ export default function UserUpsertModal({
   const queryClient = useQueryClient();
   const [generatedPassword, setGeneratedPassword] = useState("");
   const [copied, setCopied] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   const initialValues = useMemo<FormValues>(
     () => ({
@@ -327,16 +329,40 @@ export default function UserUpsertModal({
           )}
         </Stack>
 
-        <Flex mt="sm" gap="xs">
-          <Button variant="default" onClick={() => handleClose()} fullWidth>
-            Cancel
-          </Button>
+       <Flex mt="sm" gap="xs" direction="column">
+  {/* ✅ NEW BUTTON */}
+  {mode === "edit" && form.values.role === "STAFF" && (
+    <Button
+      variant="light"
+      color="green"
+      fullWidth
+      onClick={() => {
+        setDetailsOpen(true)
+      }}
+    >
+      Manage Staff Details
+    </Button>
+  )}
 
-          <Button type="submit" loading={isBusy} fullWidth>
-            {submitLabel}
-          </Button>
-        </Flex>
+  <Group grow>
+    <Button variant="default" onClick={() => handleClose()}>
+      Cancel
+    </Button>
+
+    <Button type="submit" loading={isBusy}>
+      {submitLabel}
+    </Button>
+  </Group>
+</Flex>
       </form>
+
+      <AdminStaffDetailsModal
+  opened={detailsOpen}
+  onClose={() => setDetailsOpen(false)}
+  staff={user}
+/>
     </Modal>
+
+    
   );
 }
