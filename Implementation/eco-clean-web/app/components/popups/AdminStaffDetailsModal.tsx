@@ -17,6 +17,7 @@ import { useState } from "react"
 import { ActionIcon, TextInput, NumberInput } from "@mantine/core";
 import { IoPencilOutline } from "react-icons/io5";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import FinancialDetailsModal from "../popups/FinancialDetailsModal";
 
 type Props = {
     opened: boolean;
@@ -35,6 +36,7 @@ export default function AdminStaffDetailsModal({
     const [editingField, setEditingField] = useState<
         "position" | "rate" | null
     >(null);
+    const [financialOpen, setFinancialOpen] = useState(false);
 
     const fetchStaffDetails = async (id: string) => {
         console.log("FETCHING STAFF ID:", id); // 👈 ADD THIS
@@ -259,7 +261,7 @@ export default function AdminStaffDetailsModal({
                     <Button
                         variant="light"
                         color="blue"
-                        onClick={handleFinancial}
+                        onClick={() => setFinancialOpen(true)}
                     >
                         Financial Details
                     </Button>
@@ -276,6 +278,13 @@ export default function AdminStaffDetailsModal({
                     </Group>
                 </Group>
             </Stack>
+            <FinancialDetailsModal
+                opened={financialOpen}
+                onClose={() => setFinancialOpen(false)}
+                staffId={staff.id}
+            />
         </Modal>
+
+
     );
 }
