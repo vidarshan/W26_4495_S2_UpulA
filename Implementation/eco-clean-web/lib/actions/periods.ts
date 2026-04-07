@@ -31,7 +31,7 @@ export async function generateBiweeklyPeriods(year: number) {
     let currentStart = new Date(year, 0, 1);
 
     // 2. Find the 1st period's end date (The 2nd Saturday of January)
-    let firstPeriodEnd = new Date(year, 0, 1);
+    const firstPeriodEnd = new Date(year, 0, 1);
     let saturdaysFound = 0;
 
     while (saturdaysFound < 2) {

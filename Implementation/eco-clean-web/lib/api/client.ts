@@ -1,6 +1,4 @@
-import { Client } from "@/app/components/tables/ClientTable";
-import { ListResponse } from "@/app/types/api";
-import { Address } from "@/types";
+import { Address, Client, ListResponse, PaginatedResponse, Staff } from "@/types";
 
 export type CreateClientPayload = {
   title?: string;
@@ -53,21 +51,10 @@ export type GetClientsParams = {
   q?: string;
   page?: number;
   limit?: number;
+  sort?: "newest" | "oldest";
 };
 
-export interface ApiListResponse<T> {
-  data: T[];
-}
-
-export interface ClientsResponse {
-  data: Client[];
-  meta: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
-}
+export type ClientsResponse = PaginatedResponse<Client>;
 
 export interface AddressResponse {
   id: string;
@@ -76,12 +63,7 @@ export interface AddressResponse {
   province: string;
 }
 
-export interface StaffResponse {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-}
+export type StaffResponse = Pick<Staff, "id" | "name" | "email" | "role">;
 
 type ApiClientOptions<TBody = unknown> = Omit<RequestInit, "body"> & {
   body?: TBody;
@@ -113,10 +95,21 @@ export async function apiClient<TResponse, TBody = unknown>(
 
   return data as TResponse;
 }
-export function getClients(query: string) {
-  return apiClient<ClientsResponse>(
-    `/api/clients?q=${encodeURIComponent(query)}`,
-  );
+export function getClients(params: string | GetClientsParams = "") {
+  const sp = new URLSearchParams();
+
+  if (typeof params === "string") {
+    if (params) sp.set("q", params);
+  } else {
+    if (params.q) sp.set("q", params.q);
+    if (params.page) sp.set("page", String(params.page));
+    if (params.limit) sp.set("limit", String(params.limit));
+    if (params.sort) sp.set("sort", params.sort);
+  }
+
+  const query = sp.toString();
+
+  return apiClient<ClientsResponse>(`/api/clients${query ? `?${query}` : ""}`);
 }
 
 export function getClientAddresses(clientId: string) {

@@ -1,6 +1,7 @@
-import { Client, MetaData } from "@/app/components/tables/ClientTable";
+import { PaginatedResponse, Client, SortOrder } from "@/types";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { getClients } from "@/lib/api/client";
+import { queryKeys } from "@/lib/queryKeys";
 
 export function useClients({
   query,
@@ -11,25 +12,11 @@ export function useClients({
   query: string;
   page: number;
   limit?: number;
-  sort: "newest" | "oldest";
+  sort: SortOrder;
 }) {
-  return useQuery({
-    queryKey: ["clients", { query, page, limit, sort }],
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      if (query) params.set("q", query);
-      if (page) params.set("page", String(page));
-      if (limit) params.set("limit", String(limit));
-      params.set("sort", sort);
-
-      const res = await fetch(`/api/clients?${params}`);
-
-      if (!res.ok) {
-        throw new Error("Failed to fetch clients");
-      }
-
-      return res.json();
-    },
+  return useQuery<PaginatedResponse<Client>>({
+    queryKey: queryKeys.clients.list({ query, page, limit, sort }),
+    queryFn: () => getClients({ q: query, page, limit, sort }),
     placeholderData: keepPreviousData,
   });
 }

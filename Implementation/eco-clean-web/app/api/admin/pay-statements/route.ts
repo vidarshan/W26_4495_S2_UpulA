@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getToken } from "next-auth/jwt";
 
+type PayStatementInputRow = {
+  userId: string;
+  grossEarnings: number;
+  deductions: number;
+  netEarnings: number;
+  [key: string]: unknown;
+};
+
 /* ================= GET ================= */
 /* Load approved timesheets into payroll UI */
 
@@ -92,7 +100,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { periodId, rows } = await req.json();
+    const { periodId, rows } = (await req.json()) as {
+      periodId?: string;
+      rows?: PayStatementInputRow[];
+    };
 
     if (!periodId || !rows?.length) {
       return NextResponse.json(
@@ -116,11 +127,10 @@ export async function POST(req: NextRequest) {
     const payDate = new Date(); // you can customize later
 
     const created = await prisma.$transaction(
-      rows.map((row: any) =>
+      rows.map((row) =>
         prisma.payStatement.create({
           data: {
-            // ✅ MATCH YOUR SCHEMA
-            userId: row.staffId,
+            userId: row.userId,
             timesheetPeriodId: periodId,
 
             payPeriodStart: period.startDate,

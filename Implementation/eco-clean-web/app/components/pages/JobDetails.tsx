@@ -25,14 +25,14 @@ import { IoPersonOutline, IoTextOutline } from "react-icons/io5";
 import { useQuery } from "@tanstack/react-query";
 import { useDebouncedValue } from "@mantine/hooks";
 import { getClients } from "@/lib/api/client";
-import { Client } from "../tables/ClientTable";
+import { AppointmentStatus, Client } from "@/types";
 
 const JobDetails = () => {
   const params = useParams();
   const id = params.id as string;
-  console.log(id);
+
   const { data: job, isLoading } = useJob(id);
-  console.log(job);
+
   const [searchClients, setSearchClients] = useState("");
   const [debouncedSearchClients] = useDebouncedValue(searchClients, 300);
   const [searchAssignees, setSearchAssignees] = useState("");
@@ -192,9 +192,7 @@ const JobDetails = () => {
 
   if (isLoading) return <div>Loading...</div>;
 
-  const renderAppointments = (
-    status: "SCHEDULED" | "CANCELLED" | "COMPLETED",
-  ) => {
+  const renderAppointments = (status: Exclude<AppointmentStatus, "LATE">) => {
     return job?.appointments
       .filter((appt) => appt.status === status)
       .map((appt) => <AppointmentCard key={appt.id} appointment={appt} />);

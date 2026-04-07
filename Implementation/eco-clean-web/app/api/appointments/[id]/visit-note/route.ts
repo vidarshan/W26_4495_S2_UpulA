@@ -158,7 +158,7 @@ export async function POST(
       ...result,
       staff: result?.assignments.map((a) => a.staff) ?? [],
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("POST /api/appointments/[id]/visit-note error:", err);
 
     const message =

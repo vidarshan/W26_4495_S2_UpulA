@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getToken } from "next-auth/jwt";
+import { PayBreakdown } from "@/types";
 
 export async function GET(
   req: NextRequest,
@@ -20,7 +21,7 @@ export async function GET(
     if (!statementId) {
       return NextResponse.json(
         { error: "Missing statement ID" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -38,8 +39,6 @@ export async function GET(
     if (!statement || statement.userId !== token.sub) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
-
-    // YTD calculation stays SAME — no change needed
 
     const yearStart = new Date(statement.payPeriodStart);
     yearStart.setMonth(0);
@@ -63,7 +62,7 @@ export async function GET(
         acc.deductions += s.totalDeductions || 0;
         acc.net += s.netEarnings || 0;
 
-        const b = (s.breakdown || {}) as any;
+        const b = (s.breakdown || {}) as PayBreakdown;
 
         acc.regular += b?.regularAmount || 0;
         acc.overtime += b?.otAmount || 0;
@@ -82,18 +81,16 @@ export async function GET(
         gross: 0,
         deductions: 0,
         net: 0,
-
         regular: 0,
         overtime: 0,
         allowance: 0,
-
         federalTax: 0,
         quebecTax: 0,
         ei: 0,
         qpp: 0,
         qpp2: 0,
         qpip: 0,
-      }
+      },
     );
 
     return NextResponse.json({
@@ -103,13 +100,12 @@ export async function GET(
       employeeName: statement.user?.name || "N/A",
       employeeId: statement.user?.staffProfile?.staffId || "N/A",
     });
-
   } catch (error) {
     console.error("GET PAY STATEMENT ERROR:", error);
 
     return NextResponse.json(
       { error: "Failed to load pay statement" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

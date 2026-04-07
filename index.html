@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<!-- saved from url=(0067)file:///C:/Users/umata/Downloads/deepseek_html_20260404_c4acfa.html -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eco-Clean References — Academic &amp; Technical Sources</title>
+  <style>
+    :root {
+      --green: #67b62f;
+      --green-dark: #4d8f1f;
+      --green-soft: #eaf6de;
+      --ink: #243018;
+      --text: #2d2d2d;
+      --muted: #5f6b59;
+      --line: #cfe5bc;
+      --card: #ffffff;
+      --bg: #f6f7f2;
+      --shadow: 0 10px 30px rgba(52, 84, 22, 0.1);
+      --danger: #c73d3d;
+      --ref-accent: #2c6e2e;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    html {
+      scroll-behavior: smooth;
+    }
+    body {
+      margin: 0;
+      font-family:
+        Inter,
+        Segoe UI,
+        Arial,
+        sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(
+          circle at top right,
+          rgba(103, 182, 47, 0.08),
+          transparent 22%
+        ),
+        radial-gradient(
+          circle at bottom left,
+          rgba(103, 182, 47, 0.08),
+          transparent 18%
+        ),
+        var(--bg);
+    }
+    .topbar {
+      background: linear-gradient(135deg, var(--green), var(--green-dark));
+      color: white;
+      padding: 20px 24px 30px;
+      position: relative;
+      overflow: hidden;
+    }
+    .topbar::after {
+      content: '';
+      position: absolute;
+      inset: auto -60px -60px auto;
+      width: 220px;
+      height: 220px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.08);
+    }
+    .wrap {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+    .hero {
+      display: grid;
+      grid-template-columns: 1.4fr 0.9fr;
+      gap: 24px;
+      align-items: center;
+    }
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(2rem, 3vw, 3.2rem);
+      line-height: 1.06;
+      letter-spacing: 0.2px;
+    }
+    .subtitle {
+      font-size: 1.06rem;
+      line-height: 1.6;
+      max-width: 760px;
+      color: rgba(255, 255, 255, 0.94);
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      padding: 10px 14px;
+      border-radius: 999px;
+      margin-bottom: 16px;
+      backdrop-filter: blur(6px);
+      font-size: 0.95rem;
+    }
+    .panel {
+      background: rgba(255, 255, 255, 0.14);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 24px;
+      padding: 18px;
+      backdrop-filter: blur(8px);
+      box-shadow: var(--shadow);
+    }
+    /* stats section completely removed — no reference counter panel */
+    .stat-block-removed {
+      display: none;
+    }
+    
+    /* ===== ENHANCED REFERENCES H2 STYLING ===== */
+    .ref-heading {
+      margin: 28px 0 12px 0;
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #2a5c2e 0%, #3f8f2c 100%);
+      background-clip: text;
+      -webkit-background-clip: text;
+      color: transparent;
+      position: relative;
+      display: inline-block;
+      border-left: 6px solid var(--green);
+      padding-left: 20px;
+      transition: all 0.2s ease;
+    }
+    .ref-heading::after {
+      content: '';
+      position: absolute;
+      bottom: -8px;
+      left: 20px;
+      width: 60px;
+      height: 3px;
+      background: var(--green);
+      border-radius: 4px;
+      opacity: 0.6;
+    }
+    .ref-heading:hover {
+      transform: translateX(3px);
+      background: linear-gradient(135deg, #1f4a22 0%, #2f7a1f 100%);
+      background-clip: text;
+      -webkit-background-clip: text;
+    }
+    /* alternative fallback for older browsers */
+    @supports not (background-clip: text) {
+      .ref-heading {
+        color: var(--green-dark);
+        background: none;
+      }
+    }
+
+    main {
+      padding: 28px 0 50px;
+    }
+    .controls {
+      display: grid;
+      grid-template-columns: 1.2fr 0.7fr auto auto;
+      gap: 12px;
+      margin: 0 0 22px;
+    }
+    .input,
+    .select,
+    button {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 13px 14px;
+      font-size: 1rem;
+      background: white;
+      color: var(--text);
+      outline: none;
+    }
+    .input:focus,
+    .select:focus {
+      border-color: var(--green);
+      box-shadow: 0 0 0 4px rgba(103, 182, 47, 0.14);
+    }
+    button {
+      cursor: pointer;
+      font-weight: 700;
+      transition: 0.18s ease;
+    }
+    .btn-primary {
+      background: var(--green);
+      color: white;
+      border-color: var(--green);
+    }
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      background: var(--green-dark);
+    }
+    .btn-soft {
+      background: var(--green-soft);
+      color: var(--green-dark);
+    }
+    .btn-soft:hover {
+      transform: translateY(-1px);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 18px 18px 16px;
+      box-shadow: var(--shadow);
+      transition: 0.22s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 16px 36px rgba(52, 84, 22, 0.14);
+    }
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 5px;
+      background: linear-gradient(90deg, var(--green), #99ce62);
+    }
+    .row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.82rem;
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: var(--green-soft);
+      color: var(--green-dark);
+      border: 1px solid var(--line);
+      white-space: nowrap;
+    }
+    .title {
+      margin: 0;
+      font-size: 1.12rem;
+      color: var(--ink);
+      line-height: 1.35;
+    }
+    .meta {
+      color: var(--muted);
+      font-size: 0.92rem;
+      margin: 6px 0 12px;
+    }
+    .ref {
+      font-size: 0.98rem;
+      line-height: 1.62;
+      background: #fbfcf8;
+      border: 1px dashed var(--line);
+      border-radius: 16px;
+      padding: 12px;
+      margin: 0 0 14px;
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .mini {
+      border: none;
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-size: 0.92rem;
+      background: #eef7e5;
+      color: var(--green-dark);
+      cursor: pointer;
+      transition: 0.1s ease;
+    }
+    .mini.link {
+      background: #f3f3f3;
+      color: #3d3d3d;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+    }
+    .mini:hover {
+      filter: brightness(0.96);
+      transform: translateY(-1px);
+    }
+    .empty {
+      display: none;
+      background: white;
+      border: 1px dashed var(--line);
+      border-radius: 20px;
+      padding: 30px;
+      text-align: center;
+      color: var(--muted);
+    }
+    .footer-note {
+      margin-top: 24px;
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 16px 18px;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+    .count {
+      color: var(--muted);
+      margin: 0 0 14px;
+      font-size: 0.95rem;
+      background: var(--green-soft);
+      display: inline-block;
+      padding: 5px 14px;
+      border-radius: 30px;
+      font-weight: 500;
+    }
+    .pulse {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: white;
+      margin-right: 8px;
+      position: relative;
+    }
+    .pulse::after {
+      content: '';
+      position: absolute;
+      inset: -5px;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.55);
+      animation: pulse 1.8s infinite;
+    }
+    @keyframes pulse {
+      0% {
+        transform: scale(0.65);
+        opacity: 0.9;
+      }
+      100% {
+        transform: scale(1.8);
+        opacity: 0;
+      }
+    }
+    @media (max-width: 920px) {
+      .hero {
+        grid-template-columns: 1fr;
+      }
+      .controls {
+        grid-template-columns: 1fr 1fr;
+      }
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    @media (max-width: 620px) {
+      .controls {
+        grid-template-columns: 1fr;
+      }
+      .wrap {
+        padding: 0 14px;
+      }
+      .topbar {
+        padding: 18px 14px 24px;
+      }
+      .ref-heading {
+        font-size: 1.8rem;
+        padding-left: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap">
+    <div class="hero">
+      <div>
+        <div class="hero-badge">
+          <span class="pulse"></span>Eco-Clean project references
+        </div>
+        <h1>
+          An Affordable Digital Transformation Enabler for Workforce
+          Scheduling in Small Businesses: Eco-Clean
+        </h1>
+        <h3>Vidarshan Rathnayake | Upul Atapattu</h3>
+        <p class="subtitle">
+          <br><br>
+          Eco-Clean is a digital scheduling platform designed for small
+          service businesses such as cleaning companies, which improves
+          appointment management, staff coordination, availability tracking,
+          leave handling, and timesheet workflows. Its novelty lies in
+          combining a centralized web platform with a staff-focused
+          Progressive Web Application (PWA) for delivering a practical,
+          low-cost solution.
+        </p>
+        <!-- 
+          The previous stats panel (reference counter block) has been completely removed.
+          No "References 8" badge or counter panel appears here. Only the enhanced H2 heading.
+        -->
+      </div>
+      <!-- Right column: no stats panel anymore. Previously the .stats div is entirely eliminated -->
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <!-- Enhanced References Heading (styled H2) -->
+    <h2 class="ref-heading">References</h2>
+
+    <div class="controls">
+      <input id="searchBox" class="input" type="text" placeholder="Search references, tools, or keywords…">
+      <select id="filterType" class="select">
+        <option value="all">All categories</option>
+        <option value="Company">Company / Industry</option>
+        <option value="Framework">Framework / UI</option>
+        <option value="Infrastructure">Infrastructure / Deployment</option>
+        <option value="Database">Database / ORM</option>
+        <option value="Messaging">Messaging / Email</option>
+        <option value="AI">AI / API</option>
+        <option value="Upload">Uploads / Storage</option>
+      </select>
+      <button class="btn-primary" id="copyAllBtn">Copy all APA refs</button>
+      <button class="btn-soft" id="toggleThemeBtn">Soft contrast</button>
+    </div>
+
+    <p class="count">
+      <span id="visibleCount">8</span> reference cards showing
+    </p>
+    <section id="cards" class="grid">
+      <article class="card">
+        <div class="row">
+          <div class="tag">Company · Industry Partner</div>
+        </div>
+        <h3 class="title">Nettoyage Eco Vert</h3>
+        <p class="meta">Industry partner website used for project context and business background.</p>
+        <div class="ref">Nettoyage Eco Vert. (2026, January 3). Home. Nettoyage Eco Vert. https://nettoyageecovert.ca/</div>
+        <div class="actions">
+          <button class="mini copy-apa-btn" data-apa="Nettoyage Eco Vert. (2026, January 3). Home. Nettoyage Eco Vert. https://nettoyageecovert.ca/">Copy APA</button>
+          <a class="mini link" href="https://nettoyageecovert.ca/" target="_blank" rel="noopener noreferrer">Open source</a>
+        </div>
+      </article>
+    
+      <article class="card">
+        <div class="row">
+          <div class="tag">Framework · UI Library</div>
+        </div>
+        <h3 class="title">Mantine v8 Changelog</h3>
+        <p class="meta">UI component library used for interface design and implementation.</p>
+        <div class="ref">Mantine. (2025, May 5). Version 8.0.0 (Changelog). Mantine.dev. https://mantine.dev/changelog/8-0-0/</div>
+        <div class="actions">
+          <button class="mini copy-apa-btn" data-apa="Mantine. (2025, May 5). Version 8.0.0 (Changelog). Mantine.dev. https://mantine.dev/changelog/8-0-0/">Copy APA</button>
+          <a class="mini link" href="https://mantine.dev/changelog/8-0-0/" target="_blank" rel="noopener noreferrer">Open source</a>
+        </div>
+      </article>
+    
+      <article class="card">
+        <div class="row">
+          <div class="tag">Database · ORM</div>
+        </div>
+        <h3 class="title">Introduction to Prisma</h3>
+        <p class="meta">ORM documentation supporting schema design, database access, and migrations.</p>
+        <div class="ref">Prisma. (n.d.). Introduction to Prisma. Prisma Documentation. https://www.prisma.io/docs</div>
+        <div class="actions">
+          <button class="mini copy-apa-btn" data-apa="Prisma. (n.d.). Introduction to Prisma. Prisma Documentation. https://www.prisma.io/docs">Copy APA</button>
+          <a class="mini link" href="https://www.prisma.io/docs" target="_blank" rel="noopener noreferrer">Open source</a>
+        </div>
+      </article>
+    
+      <article class="card">
+        <div class="row">
+          <div class="tag">Database · Backend Platform</div>
+        </div>
+        <h3 class="title">Supabase</h3>
+        <p class="meta">Cloud-hosted PostgreSQL and backend tooling considered for deployment.</p>
+        <div class="ref">Supabase. (n.d.). Supabase – The open-source Firebase alternative. https://supabase.com/</div>
+        <div class="actions">
+          <button class="mini copy-apa-btn" data-apa="Supabase. (n.d.). Supabase – The open-source Firebase alternative. https://supabase.com/">Copy APA</button>
+          <a class="mini link" href="https://supabase.com/" target="_blank" rel="noopener noreferrer">Open source</a>
+        </div>
+      </article>
+    
+      <article class="card">
+        <div class="row">
+          <div class="tag">Infrastructure · App Framework</div>
+        </div>
+        <h3 class="title">Next.js App Router</h3>
+        <p class="meta">Primary framework used for full-stack routing, UI, and server functionality.</p>
+        <div class="ref">Vercel. (2026, February 20). Getting started (App Router). Next.js Documentation. https://nextjs.org/docs/app/getting-started</div>
+        <div class="actions">
+          <button class="mini copy-apa-btn" data-apa="Vercel. (2026, February 20). Getting started (App Router). Next.js Documentation. https://nextjs.org/docs/app/getting-started">Copy APA</button>
+          <a class="mini link" href="https://nextjs.org/docs/app/getting-started" target="_blank" rel="noopener noreferrer">Open source</a>
+        </div>
+      </article>
+    
+      <article class="card">
+        <div class="row">
+          <div class="tag">Upload · File Uploads</div>
+        </div>
+        <h3 class="title">UploadThing App Router Setup</h3>
+        <p class="meta">Used for handling file upload workflows such as appointment images.</p>
+        <div class="ref">UploadThing. (n.d.). Next.js App Router setup. UploadThing Documentation. https://docs.uploadthing.com/getting-started/appdir</div>
+        <div class="actions">
+          <button class="mini copy-apa-btn" data-apa="UploadThing. (n.d.). Next.js App Router setup. UploadThing Documentation. https://docs.uploadthing.com/getting-started/appdir">Copy APA</button>
+          <a class="mini link" href="https://docs.uploadthing.com/getting-started/appdir" target="_blank" rel="noopener noreferrer">Open source</a>
+        </div>
+      </article>
+    
+      <article class="card">
+        <div class="row">
+          <div class="tag">Messaging · Transactional Email</div>
+        </div>
+        <h3 class="title">Resend Introduction</h3>
+        <p class="meta">Supports email notification workflows and delivery features.</p>
+        <div class="ref">Resend. (n.d.). Introduction. Resend Documentation. https://resend.com/docs/introduction</div>
+        <div class="actions">
+          <button class="mini copy-apa-btn" data-apa="Resend. (n.d.). Introduction. Resend Documentation. https://resend.com/docs/introduction">Copy APA</button>
+          <a class="mini link" href="https://resend.com/docs/introduction" target="_blank" rel="noopener noreferrer">Open source</a>
+        </div>
+      </article>
+    
+      <article class="card">
+        <div class="row">
+          <div class="tag">AI · AI API</div>
+        </div>
+        <h3 class="title">OpenAI API Quickstart</h3>
+        <p class="meta">Reference for integrating AI-powered assistant and automation capabilities.</p>
+        <div class="ref">OpenAI. (n.d.). Developer quickstart. OpenAI API Documentation. https://developers.openai.com/api/docs/quickstart/</div>
+        <div class="actions">
+          <button class="mini copy-apa-btn" data-apa="OpenAI. (n.d.). Developer quickstart. OpenAI API Documentation. https://developers.openai.com/api/docs/quickstart/">Copy APA</button>
+          <a class="mini link" href="https://developers.openai.com/api/docs/quickstart/" target="_blank" rel="noopener noreferrer">Open source</a>
+        </div>
+      </article>
+    </section>
+    <div id="emptyState" class="empty" style="display: none;">
+      <h3>No matches found</h3>
+      <p>
+        Try a broader keyword or switch the category filter back to “All
+        categories”.
+      </p>
+    </div>
+    <div class="footer-note">
+      ⚡ All references are formatted in APA style. Use "Copy all APA refs" to collect citations for your bibliography.
+    </div>
+  </div>
+</main>
+
+<script>
+  const references = [
+    {
+      type: 'Company',
+      short: 'Industry Partner',
+      title: 'Nettoyage Eco Vert',
+      link: 'https://nettoyageecovert.ca/',
+      apa: 'Nettoyage Eco Vert. (2026, January 3). Home. Nettoyage Eco Vert. https://nettoyageecovert.ca/',
+      note: 'Industry partner website used for project context and business background.',
+    },
+    {
+      type: 'Framework',
+      short: 'UI Library',
+      title: 'Mantine v8 Changelog',
+      link: 'https://mantine.dev/changelog/8-0-0/',
+      apa: 'Mantine. (2025, May 5). Version 8.0.0 (Changelog). Mantine.dev. https://mantine.dev/changelog/8-0-0/',
+      note: 'UI component library used for interface design and implementation.',
+    },
+    {
+      type: 'Database',
+      short: 'ORM',
+      title: 'Introduction to Prisma',
+      link: 'https://www.prisma.io/docs',
+      apa: 'Prisma. (n.d.). Introduction to Prisma. Prisma Documentation. https://www.prisma.io/docs',
+      note: 'ORM documentation supporting schema design, database access, and migrations.',
+    },
+    {
+      type: 'Database',
+      short: 'Backend Platform',
+      title: 'Supabase',
+      link: 'https://supabase.com/',
+      apa: 'Supabase. (n.d.). Supabase – The open-source Firebase alternative. https://supabase.com/',
+      note: 'Cloud-hosted PostgreSQL and backend tooling considered for deployment.',
+    },
+    {
+      type: 'Infrastructure',
+      short: 'App Framework',
+      title: 'Next.js App Router',
+      link: 'https://nextjs.org/docs/app/getting-started',
+      apa: 'Vercel. (2026, February 20). Getting started (App Router). Next.js Documentation. https://nextjs.org/docs/app/getting-started',
+      note: 'Primary framework used for full-stack routing, UI, and server functionality.',
+    },
+    {
+      type: 'Upload',
+      short: 'File Uploads',
+      title: 'UploadThing App Router Setup',
+      link: 'https://docs.uploadthing.com/getting-started/appdir',
+      apa: 'UploadThing. (n.d.). Next.js App Router setup. UploadThing Documentation. https://docs.uploadthing.com/getting-started/appdir',
+      note: 'Used for handling file upload workflows such as appointment images.',
+    },
+    {
+      type: 'Messaging',
+      short: 'Transactional Email',
+      title: 'Resend Introduction',
+      link: 'https://resend.com/docs/introduction',
+      apa: 'Resend. (n.d.). Introduction. Resend Documentation. https://resend.com/docs/introduction',
+      note: 'Supports email notification workflows and delivery features.',
+    },
+    {
+      type: 'AI',
+      short: 'AI API',
+      title: 'OpenAI API Quickstart',
+      link: 'https://developers.openai.com/api/docs/quickstart/',
+      apa: 'OpenAI. (n.d.). Developer quickstart. OpenAI API Documentation. https://developers.openai.com/api/docs/quickstart/',
+      note: 'Reference for integrating AI-powered assistant and automation capabilities.',
+    },
+  ];
+
+  const cards = document.getElementById('cards');
+  const searchBox = document.getElementById('searchBox');
+  const filterType = document.getElementById('filterType');
+  const visibleCount = document.getElementById('visibleCount');
+  const emptyState = document.getElementById('emptyState');
+  const copyAllBtn = document.getElementById('copyAllBtn');
+  const toggleThemeBtn = document.getElementById('toggleThemeBtn');
+
+  // Note: there is no "refCount" element anymore (stats panel removed). Total count only visible through cards logic.
+  function render() {
+    const q = searchBox.value.trim().toLowerCase();
+    const type = filterType.value;
+
+    const filtered = references.filter((r) => {
+      const matchesType = type === 'all' || r.type === type;
+      const hay = [r.type, r.short, r.title, r.apa, r.note]
+        .join(' ')
+        .toLowerCase();
+      const matchesSearch = !q || hay.includes(q);
+      return matchesType && matchesSearch;
+    });
+
+    cards.innerHTML = filtered
+      .map(
+        (r) => `
+      <article class="card">
+        <div class="row">
+          <div class="tag">${escapeHtml(r.type)} · ${escapeHtml(r.short)}</div>
+        </div>
+        <h3 class="title">${escapeHtml(r.title)}</h3>
+        <p class="meta">${escapeHtml(r.note)}</p>
+        <div class="ref">${escapeHtml(r.apa)}</div>
+        <div class="actions">
+          <button class="mini copy-apa-btn" data-apa="${escapeAttr(r.apa)}">Copy APA</button>
+          <a class="mini link" href="${escapeAttr(r.link)}" target="_blank" rel="noopener noreferrer">Open source</a>
+        </div>
+      </article>
+    `,
+      )
+      .join('');
+
+    visibleCount.textContent = filtered.length;
+    emptyState.style.display = filtered.length ? 'none' : 'block';
+
+    // attach dynamic copy handlers for each individual copy button
+    document.querySelectorAll('.copy-apa-btn').forEach((btn) => {
+      btn.removeEventListener('click', handleCopyClick);
+      btn.addEventListener('click', handleCopyClick);
+    });
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function escapeAttr(str) {
+    if (!str) return '';
+    return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  async function handleCopyClick(event) {
+    const btn = event.currentTarget;
+    const apaText = btn.getAttribute('data-apa');
+    if (!apaText) return;
+    try {
+      await navigator.clipboard.writeText(apaText);
+      const originalText = btn.textContent;
+      btn.textContent = '✓ Copied!';
+      setTimeout(() => {
+        btn.textContent = originalText;
+      }, 1000);
+    } catch (err) {
+      alert('Manual copy failed: you can select the APA text manually.');
+    }
+  }
+
+  async function copyAllReferences() {
+    const allApa = references.map((r) => r.apa).join('\n');
+    try {
+      await navigator.clipboard.writeText(allApa);
+      const originalText = copyAllBtn.textContent;
+      copyAllBtn.textContent = '✓ All references copied!';
+      setTimeout(() => {
+        copyAllBtn.textContent = originalText;
+      }, 1500);
+    } catch (e) {
+      alert('Could not copy automatically. You can select APA lines manually.');
+    }
+  }
+
+  let softContrast = false;
+  function toggleTheme() {
+    softContrast = !softContrast;
+    if (softContrast) {
+      document.documentElement.style.setProperty('--bg', '#f2f5ed');
+      document.documentElement.style.setProperty('--card', '#fcfdf9');
+      document.documentElement.style.setProperty('--green', '#5ba52b');
+      document.documentElement.style.setProperty('--green-dark', '#3f7b17');
+      document.documentElement.style.setProperty('--green-soft', '#e2f0d3');
+    } else {
+      document.documentElement.style.removeProperty('--bg');
+      document.documentElement.style.removeProperty('--card');
+      document.documentElement.style.removeProperty('--green');
+      document.documentElement.style.removeProperty('--green-dark');
+      document.documentElement.style.setProperty('--green-soft', '#eaf6de');
+    }
+  }
+
+  copyAllBtn.addEventListener('click', copyAllReferences);
+  toggleThemeBtn.addEventListener('click', toggleTheme);
+  searchBox.addEventListener('input', render);
+  filterType.addEventListener('change', render);
+
+  // initial render
+  render();
+</script>
+
+</body></html>

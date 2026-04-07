@@ -18,12 +18,19 @@ import {
 } from '@mantine/core';
 import { useState, useEffect } from 'react';
 import { generateBiweeklyPeriods } from '@/lib/actions/periods';
-import { IoCalendarOutline, IoTimeOutline } from 'react-icons/io5';
+import { IoCalendarOutline } from 'react-icons/io5';
 import { useRouter } from 'next/navigation';
+
+type TimesheetPeriod = {
+  id: string;
+  startDate: string;
+  endDate: string;
+  status: string;
+};
 
 export default function ManagePayPeriodsPage() {
   const [loading, setLoading] = useState(false);
-  const [periods, setPeriods] = useState<any[]>([]);
+  const [periods, setPeriods] = useState<TimesheetPeriod[]>([]);
   const [fetching, setFetching] = useState(true);
   const router = useRouter();
 
@@ -32,7 +39,7 @@ export default function ManagePayPeriodsPage() {
     setFetching(true);
     try {
       const res = await fetch('/api/timesheet-periods'); // Ensure this GET route exists
-      const data = await res.json();
+      const data = (await res.json()) as TimesheetPeriod[];
       setPeriods(data);
     } catch (error) {
       console.error("Failed to fetch periods:", error);

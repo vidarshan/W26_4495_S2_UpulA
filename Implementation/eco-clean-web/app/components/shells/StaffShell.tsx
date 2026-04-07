@@ -3,63 +3,91 @@
 import TopBar from "@/app/components/pwa/TopBar";
 import { useStaffUiStore } from "@/stores/store";
 import {
-  ActionIcon,
   Box,
-  Button,
   Container,
   Drawer,
   Group,
+  Paper,
   Stack,
   Text,
+  ThemeIcon,
   UnstyledButton,
+  alpha,
 } from "@mantine/core";
 import { signOut } from "next-auth/react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   IoCalendarClearOutline,
+  IoCashOutline,
   IoCheckboxOutline,
-  IoCloseOutline,
+  IoClipboardOutline,
+  IoLogOutOutline,
   IoPersonOutline,
   IoTimeOutline,
-  IoClipboardOutline,
-  IoCashOutline
 } from "react-icons/io5";
 
-type MenuItemProps = {
+const PANEL_RADIUS = 18;
+const ITEM_RADIUS = 14;
+const ICON_RADIUS = 12;
+
+type NavItem = {
   href: string;
   label: string;
+  description: string;
   icon: React.ReactNode;
-  active?: boolean;
+  active: boolean;
+};
+
+type MenuItemProps = NavItem & {
   onClick: () => void;
 };
 
-function MenuItem({ href, label, icon, active, onClick }: MenuItemProps) {
+function MenuItem({
+  href,
+  label,
+  description,
+  icon,
+  active,
+  onClick,
+}: MenuItemProps) {
   return (
     <UnstyledButton
       component={Link}
       href={href}
       onClick={onClick}
-      style={{
+      style={(theme) => ({
+        display: "block",
         width: "100%",
-        padding: "10px 4px",
-        borderRadius: 12,
-      }}
+        padding: "9px 11px",
+        borderRadius: ITEM_RADIUS,
+        background: active ? alpha(theme.colors.lime[0], 0.9) : "transparent",
+        border: `1px solid ${
+          active ? alpha(theme.colors.lime[4], 0.32) : "transparent"
+        }`,
+        transition:
+          "background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease",
+      })}
     >
-      <Group gap="sm">
-        <Box
-          style={{
-            display: "flex",
-            alignItems: "center",
-            color: "var(--mantine-color-dark-8)",
-          }}
+      <Group gap="xs" wrap="nowrap">
+        <ThemeIcon
+          size={32}
+          radius={ICON_RADIUS}
+          variant={active ? "filled" : "light"}
+          color={active ? "lime" : "gray"}
         >
           {icon}
-        </Box>
+        </ThemeIcon>
 
-        <Text fw={active ? 700 : 500} size="lg">
-          {label}
-        </Text>
+        <Box style={{ minWidth: 0, flex: 1 }}>
+          <Text fw={active ? 700 : 500} size="sm" c="dark.9" truncate>
+            {label}
+          </Text>
+          <Text size="xs" c="dimmed" truncate>
+            {description}
+          </Text>
+        </Box>
       </Group>
     </UnstyledButton>
   );
@@ -83,14 +111,64 @@ export default function StaffShell({
 
   const pathname = usePathname();
 
+  const navItems: NavItem[] = [
+    {
+      href: "/staff/tasks",
+      label: "My Tasks",
+      description: "Assignments and updates",
+      icon: <IoCheckboxOutline size={18} />,
+      active: pathname === "/staff" || pathname.startsWith("/staff/tasks"),
+    },
+    {
+      href: "/staff/profile",
+      label: "Profile",
+      description: "Personal and job details",
+      icon: <IoPersonOutline size={18} />,
+      active:
+        pathname.startsWith("/staff/profile") ||
+        pathname.startsWith("/staff/staff-profile"),
+    },
+    {
+      href: "/staff/enter-time",
+      label: "Your Time",
+      description: "Timesheets and entries",
+      icon: <IoClipboardOutline size={18} />,
+      active: pathname.startsWith("/staff/enter-time"),
+    },
+    {
+      href: "/staff/your-pay",
+      label: "Your Pay",
+      description: "Statements and history",
+      icon: <IoCashOutline size={18} />,
+      active:
+        pathname.startsWith("/staff/your-pay") ||
+        pathname.startsWith("/staff/pay-history") ||
+        pathname.startsWith("/staff/pay-periods"),
+    },
+    {
+      href: "/staff/apply-leave",
+      label: "Time-off",
+      description: "Leave requests",
+      icon: <IoCalendarClearOutline size={18} />,
+      active: pathname.startsWith("/staff/apply-leave"),
+    },
+    {
+      href: "/staff/enter-availability",
+      label: "Availability",
+      description: "Schedule preferences",
+      icon: <IoTimeOutline size={18} />,
+      active: pathname.startsWith("/staff/enter-availability"),
+    },
+  ];
+
   return (
-    <Container p={0} mih="100vh">
+    <Container p={0} mih="100vh" className="staff-shell__content">
       <Drawer
         opened={drawerOpened}
         onClose={closeDrawer}
         withCloseButton={false}
         position="left"
-        size="78%"
+        size="72%"
         overlayProps={{ backgroundOpacity: 0.45, blur: 0 }}
         styles={{
           body: {
@@ -98,114 +176,72 @@ export default function StaffShell({
             height: "100%",
           },
           content: {
-            backgroundColor: "white",
+            background:
+              "linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.98))",
           },
         }}
       >
-        <Box pt="lg" px="sm">
-          <Group justify="space-between" align="center" mb="xl">
-            <Text size="xl" fw={500}>
-              Eco Clean
-            </Text>
+        <Stack h="100%" p="sm" gap="sm">
+          <Paper
+            radius={PANEL_RADIUS}
+            p="xs"
+            withBorder
+            className="staff-shell-nav-card"
+          >
+            <Group justify="space-between" align="center" wrap="nowrap">
+              <Group gap="sm" wrap="nowrap">
+                <ThemeIcon
+                  size={36}
+                  radius={ICON_RADIUS}
+                  variant="light"
+                  color="lime"
+                >
+                  <Image src="/logo.png" alt="Eco Clean" width={22} height={22} />
+                </ThemeIcon>
+                <Box>
+                  <Text size="sm" fw={700} c="dark.9">
+                    Eco Clean
+                  </Text>
+                </Box>
+              </Group>
+            </Group>
+          </Paper>
 
-            <ActionIcon
-              variant="subtle"
-              color="dark"
-              radius="xl"
-              onClick={closeDrawer}
+          <Stack gap={4}>
+            {navItems.map((item) => (
+              <MenuItem key={item.href} {...item} onClick={closeDrawer} />
+            ))}
+          </Stack>
+
+          <Box mt="auto">
+            <UnstyledButton
+              onClick={() => signOut({ callbackUrl: "/login" })}
+              style={(theme) => ({
+                display: "block",
+                width: "100%",
+                padding: "9px 11px",
+                borderRadius: ITEM_RADIUS,
+                background: alpha(theme.colors.red[0], 0.75),
+                border: `1px solid ${alpha(theme.colors.red[2], 0.55)}`,
+              })}
             >
-              <IoCloseOutline size={28} />
-            </ActionIcon>
-          </Group>
-        </Box>
-        <Stack px="sm" gap="xs">
-          <Button
-            component={Link}
-            href="/staff/tasks"
-            variant="subtle"
-            radius="md"
-            fullWidth
-            justify="flex-start"
-            onClick={closeDrawer}
-            color="dark"
-            leftSection={<IoCheckboxOutline />}
-          >
-            My Tasks
-          </Button>
-
-          <Button
-            component={Link}
-            href="/staff/profile"
-            variant="subtle"
-            radius="md"
-            fullWidth
-            color="dark"
-            justify="flex-start"
-            onClick={closeDrawer}
-            leftSection={<IoPersonOutline />}
-          >
-            Profile
-          </Button>
-          <Button
-            component={Link}
-            variant="subtle"
-            href="/staff/enter-time"
-            radius="md"
-            fullWidth
-            justify="flex-start"
-            onClick={closeDrawer}
-            color="dark"
-            leftSection={<IoClipboardOutline />}
-          >
-            Your Time
-          </Button>
-          <Button
-            component={Link}
-            variant="subtle"
-            href="/staff/your-pay"
-            radius="md"
-            fullWidth
-            justify="flex-start"
-            onClick={closeDrawer}
-            color="dark"
-            leftSection={<IoCashOutline />}
-          >
-            Your Pay
-          </Button>
-          <Button
-            component={Link}
-            variant="subtle"
-            href="/staff/apply-leave"
-            radius="md"
-            fullWidth
-            justify="flex-start"
-            onClick={closeDrawer}
-            color="dark"
-            leftSection={<IoCalendarClearOutline />}
-          >
-            Time-off
-          </Button>
-          <Button
-            component={Link}
-            variant="subtle"
-            href="/staff/enter-availability"
-            radius="md"
-            fullWidth
-            justify="flex-start"
-            onClick={closeDrawer}
-            color="dark"
-            leftSection={<IoTimeOutline />}
-          >
-            Availability
-          </Button>
-
-          <Button
-            radius="md"
-            onClick={() => signOut({ callbackUrl: "/login" })}
-            fullWidth
-          >
-            Logout
-          </Button>
+              <Group gap="xs" wrap="nowrap">
+                <ThemeIcon
+                  size={32}
+                  radius={ICON_RADIUS}
+                  variant="light"
+                  color="red"
+                >
+                  <IoLogOutOutline size={18} />
+                </ThemeIcon>
+                <Box style={{ minWidth: 0 }}>
+                  <Text fw={700} size="sm" c="red.8" truncate>
+                    Logout
+                  </Text>
+                </Box>
+              </Group>
+            </UnstyledButton>
+          </Box>
         </Stack>
       </Drawer>
 

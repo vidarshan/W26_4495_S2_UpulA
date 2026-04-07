@@ -2,6 +2,17 @@ export const runtime = 'nodejs';
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 
+type StatementBreakdown = {
+  federalTax?: number;
+  taxes?: {
+    federal?: number;
+  };
+};
+
+function getFederalTax(breakdown: StatementBreakdown | null | undefined) {
+  return breakdown?.federalTax ?? breakdown?.taxes?.federal ?? 0;
+}
+
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -35,8 +46,18 @@ export async function GET(
       },
       chartData: [
         { name: 'Net Pay', value: statement.netEarnings, color: '#106283' },
-        { name: 'Taxes', value: (statement.breakdown as any)?.federalTax || 0, color: '#e67437' },
-        { name: 'Other Deductions', value: statement.totalDeductions - ((statement.breakdown as any)?.federalTax || 0), color: '#1a632a' },
+        {
+          name: 'Taxes',
+          value: getFederalTax(statement.breakdown as StatementBreakdown | null),
+          color: '#e67437',
+        },
+        {
+          name: 'Other Deductions',
+          value:
+            statement.totalDeductions -
+            getFederalTax(statement.breakdown as StatementBreakdown | null),
+          color: '#1a632a',
+        },
       ],
       details: statement.breakdown, // Contains RegularAmount, OTAmount, Transport, EI, CPP, etc.
       period: {

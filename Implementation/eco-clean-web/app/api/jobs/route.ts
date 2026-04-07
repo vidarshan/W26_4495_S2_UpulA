@@ -510,10 +510,15 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json(result, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("POST /api/jobs error:", error);
     return NextResponse.json(
-      { error: "Bad request", detail: String(error?.message ?? error) },
+      {
+        error: "Bad request",
+        detail: String(
+          error instanceof Error ? error.message : error,
+        ),
+      },
       { status: 400 },
     );
   }

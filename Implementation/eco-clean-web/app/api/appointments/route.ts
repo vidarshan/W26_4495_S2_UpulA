@@ -104,7 +104,7 @@ export async function GET(req: NextRequest) {
       AND: andFilters,
       ...(staffId ? { assignments: { some: { staffId } } } : {}),
     };
-
+   
     const appointments = await prisma.appointment.findMany({
       where,
       include: {

@@ -1,4 +1,4 @@
-import { Job } from "@/types";
+import { Job, JobType, LineItem as SharedLineItem, ListResponse } from "@/types";
 import { apiClient } from "./client";
 
 export type CreateJobPayload = {
@@ -78,16 +78,7 @@ export interface JobFormValues {
   notes: string;
 }
 
-export interface LineItem {
-  id: string;
-  name: string;
-  quantity: number;
-  unitCost: number;
-  unitPrice: number;
-  description: string;
-}
-
-type JobType = "ONE_OFF" | "RECURRING";
+export type LineItem = SharedLineItem;
 
 export function createJob(data: CreateJobPayload) {
   return apiClient("/api/jobs", {
@@ -97,22 +88,16 @@ export function createJob(data: CreateJobPayload) {
 }
 
 export function getJobs() {
-  return apiClient("/api/jobs");
+  return apiClient<ListResponse<Job>>("/api/jobs");
 }
 
-export async function getJobDetails(id: string): Promise<Job> {
-  const res = await fetch(`/api/jobs/${id}`);
-
-  if (!res.ok) {
-    throw new Error("Failed to fetch job");
-  }
-
-  return res.json() as Promise<Job>;
+export function getJobDetails(id: string) {
+  return apiClient<Job>(`/api/jobs/${id}`);
 }
 
 export function cancelJob(id: string) {
   return apiClient(`/api/jobs/${id}`, {
     method: "PATCH",
-    body: JSON.stringify("CANCEL_JOBS"),
+    body: "CANCEL_JOBS",
   });
 }

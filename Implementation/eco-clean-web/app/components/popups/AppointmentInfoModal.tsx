@@ -19,7 +19,6 @@ import {
   Text,
   Textarea,
   ThemeIcon,
-  Title,
 } from "@mantine/core";
 import { DateInput, TimeInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
@@ -38,106 +37,27 @@ import {
 
 import Loader from "../UI/Loader";
 import { useDashboardUI } from "@/stores/store";
-import { Status, useAppointment } from "@/hooks/useAppointment";
+import { useAppointment } from "@/hooks/useAppointment";
 import { getStaff } from "@/lib/api/users";
 import { updateAppointment } from "@/lib/api/appointments";
 import { dateOnlyAndHHmmToIso, isoToDateOnly, isoToHHmm } from "@/lib/dateTime";
 import { deleteAppointmentImage } from "@/lib/uploadthing";
+import {
+  AppointmentStatus,
+  AppointmentWithRelations,
+  JobAddress,
+  JobClient,
+  Staff,
+} from "@/types";
 
 import classes from "./AppointmentInfoModal.module.css";
-
-type AppointmentImage = {
-  id: string;
-  url: string;
-};
-
-type AppointmentStaff = {
-  id: string;
-  name?: string;
-  email?: string;
-};
-
-type AppointmentNote = {
-  id: string;
-  content: string;
-  createdAt: string;
-  isClientVisible?: boolean;
-};
-
-type JobNoteImage = {
-  id: string;
-  url: string;
-  fileKey: string;
-};
-
-type JobNote = {
-  id: string;
-  title: string | null;
-  content: string | null;
-  category: string | null;
-  isClientVisible: boolean;
-  isPinned: boolean;
-  createdAt: string | Date;
-  images?: JobNoteImage[];
-};
-
-type JobLineItem = {
-  id: string;
-  name: string;
-  quantity: number;
-  unitCost: number;
-  unitPrice: number;
-  total: number;
-  description?: string | null;
-};
-
-type JobClient = {
-  id: string;
-  title?: string | null;
-  firstName?: string | null;
-  lastName?: string | null;
-  companyName?: string | null;
-  email?: string | null;
-  phone?: string | null;
-  preferredContact?: string | null;
-};
-
-type JobAddress = {
-  id: string;
-  street1?: string | null;
-  street2?: string | null;
-  city?: string | null;
-  province?: string | null;
-  postalCode?: string | null;
-  country?: string | null;
-};
-
-type AppointmentCache = {
-  id: string;
-  startTime: string;
-  endTime: string;
-  status: Status;
-  staff?: AppointmentStaff[];
-  notes?: AppointmentNote[];
-  images?: AppointmentImage[];
-  job?: {
-    id: string;
-    title: string;
-    type: string;
-    isAnytime?: boolean;
-    visitInstructions?: string | null;
-    client?: JobClient | null;
-    address?: JobAddress | null;
-    lineItems?: JobLineItem[];
-    notes?: JobNote[];
-  };
-};
+type AppointmentCache = AppointmentWithRelations;
 
 type FormValues = {
   date: Date | null;
   startTime: string;
   endTime: string;
-  status: Status;
+  status: AppointmentStatus;
   staff: string[];
   note: string;
 };
@@ -233,14 +153,14 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
   const { data: appointment, isLoading } = useAppointment(selectedApptId);
   const qc = useQueryClient();
 
-  const { data: staffData, isLoading: staffLoading } = useQuery({
+  const { data: staffData, isLoading: staffLoading } = useQuery<Staff[]>({
     queryKey: ["staff", "all"],
     queryFn: () => getStaff(),
     staleTime: 60_000,
   });
 
   const staffOptions = useMemo(() => {
-    return (staffData?.data ?? []).map((s) => ({
+    return (staffData ?? []).map((s) => ({
       value: s.id,
       label: s.name,
     }));
@@ -278,7 +198,7 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
         (a, b) =>
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       ) ?? [];
-  console.log(appointment);
+
   const sortedJobNotes =
     appointment?.job?.notes?.slice().sort((a, b) => {
       if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
@@ -391,6 +311,12 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
       onClose={handleClose}
       centered
       closeOnClickOutside={false}
+      classNames={{
+        content: "app-modal__content",
+        header: "app-modal__header",
+        title: "app-modal__title",
+        body: "app-modal__body",
+      }}
     >
       {isLoading ? (
         <Loader />

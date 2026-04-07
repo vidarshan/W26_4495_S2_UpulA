@@ -1,3 +1,8 @@
+import {
+  StaffRecommendationResponse,
+  TaskAssistantResponse,
+} from "@/lib/ai/schemas";
+import { AppointmentWithRelations, CandidateResponse } from "@/types";
 import { apiClient } from "./client";
 
 export type UpdateAppointmentPayload = Partial<{
@@ -14,7 +19,7 @@ export function updateAppointment(
 ) {
   return apiClient(`/api/appointments/${id}`, {
     method: "PATCH",
-    body: JSON.stringify(payload),
+    body: payload,
   });
 }
 
@@ -72,82 +77,92 @@ export async function getStaffAppointments({
   return res.json();
 }
 
-export async function getAppointmentById(id: string) {
-  const res = await fetch(`/api/appointments/${id}`, {
-    method: "GET",
+export async function getMarkedDates({
+  staffId,
+  start,
+  end,
+}: {
+  staffId: string;
+  start: string;
+  end: string;
+}) {
+  const params = new URLSearchParams({ staffId, start, end });
+  const res = await fetch(`/api/appointments/marked-dates?${params}`, {
     cache: "no-store",
   });
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => null);
-    throw new Error(err?.error || "Failed to fetch appointment");
-  }
-  return res.json();
+  if (!res.ok) throw new Error("Failed to fetch marked dates");
+  return res.json() as Promise<{ dates: string[] }>;
 }
 
-export async function startAppointment(id: string, staffId?: string) {
-  const res = await fetch(`/api/appointments/${id}/start`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ staffId }),
+export function getAppointmentById(id: string) {
+  return apiClient<AppointmentWithRelations>(`/api/appointments/${id}`, {
+    method: "GET",
+    cache: "no-store",
   });
-
-  const json = await res.json().catch(() => null);
-  if (!res.ok) {
-    throw new Error(json?.error || "Failed to start appointment");
-  }
-
-  return json;
 }
 
-export async function pauseAppointment(id: string, staffId?: string) {
-  const res = await fetch(`/api/appointments/${id}/pause`, {
+export function startAppointment(id: string, staffId?: string) {
+  return apiClient(`/api/appointments/${id}/start`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ staffId }),
+    body: { staffId },
   });
-
-  const json = await res.json().catch(() => null);
-  if (!res.ok) {
-    throw new Error(json?.error || "Failed to pause appointment");
-  }
-
-  return json;
 }
 
-export async function completeAppointment(id: string) {
-  const res = await fetch(`/api/appointments/${id}/complete`, {
+export function pauseAppointment(id: string, staffId?: string) {
+  return apiClient(`/api/appointments/${id}/pause`, {
+    method: "POST",
+    body: { staffId },
+  });
+}
+
+export function completeAppointment(id: string) {
+  return apiClient(`/api/appointments/${id}/complete`, {
     method: "POST",
   });
-
-  const json = await res.json().catch(() => null);
-  if (!res.ok) {
-    throw new Error(json?.error || "Failed to complete appointment");
-  }
-
-  return json;
 }
 
-export async function saveVisitNote(
+export function saveVisitNote(
   appointmentId: string,
   body: {
     content: string;
     images?: Array<{ url: string; fileKey?: string | null }>;
   },
 ) {
-  const res = await fetch(`/api/appointments/${appointmentId}/visit-note`, {
+  return apiClient(`/api/appointments/${appointmentId}/visit-note`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
+    body,
   });
+}
 
-  const data = await res.json();
+export function runTaskAssistantPreview(body: {
+  addressId: string;
+  appointmentStart: string;
+  appointmentEnd: string;
+  mode?: "plan" | "complete";
+  includePreviousVisit?: boolean;
+  staffNoteDraft?: string | null;
+  jobTitle?: string;
+  clientName?: string;
+  requiredStaffCount?: number;
+}): Promise<TaskAssistantResponse> {
+  return apiClient<TaskAssistantResponse>("/api/ai/task-assistant", {
+    method: "POST",
+    body,
+  });
+}
 
-  if (!res.ok) {
-    throw new Error(data?.error || "Failed to save visit note");
-  }
-
-  return data;
+export function runStaffRecommendationPreview(body: {
+  appointmentStart: string;
+  appointmentEnd: string;
+  jobTitle?: string;
+  candidateData: CandidateResponse["data"];
+}): Promise<StaffRecommendationResponse> {
+  return apiClient<StaffRecommendationResponse>(
+    "/api/ai/staff-recommendation",
+    {
+      method: "POST",
+      body,
+    },
+  );
 }

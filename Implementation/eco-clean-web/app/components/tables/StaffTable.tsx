@@ -12,14 +12,16 @@ import {
   TextInput,
   Button,
 } from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
 import { useCallback, useMemo, useState } from "react";
 import { IoFilterOutline, IoSearchOutline } from "react-icons/io5";
 import Loader from "../UI/Loader";
 import { formatDateTime } from "@/lib/utils/formatDateTime";
 import UserUpsertModal from "../popups/UserModal";
-import { Staff } from "@/app/types/staff";
+import { Staff } from "@/types";
 
 export default function StaffTable() {
+  const isNarrow = useMediaQuery("(max-width: 62em)");
   const [sort, setSort] = useState<"newest" | "oldest">("newest");
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
@@ -84,14 +86,15 @@ export default function StaffTable() {
         user={selectedUser}
       />
 
-      <Group justify="space-between" gap="sm" mb="md">
+      <Group justify="space-between" gap="sm" mb="md" align="end">
         <Box></Box>
-        <Group gap="sm">
+        <Group gap="sm" wrap="wrap" style={{ width: isNarrow ? "100%" : "auto" }}>
           <TextInput
             placeholder="Search users"
             leftSection={<IoSearchOutline size={16} />}
             radius="xl"
             onChange={(e) => handleSearch(e.target.value)}
+            style={{ flex: isNarrow ? 1 : undefined, minWidth: isNarrow ? 220 : undefined }}
           />
           <Select
             placeholder="Sort by"
@@ -105,6 +108,7 @@ export default function StaffTable() {
               setSort((value as "newest" | "oldest") ?? "newest")
             }
             radius="xl"
+            style={{ minWidth: isNarrow ? 180 : undefined }}
           />
         </Group>
       </Group>
@@ -113,8 +117,8 @@ export default function StaffTable() {
         <Loader />
       ) : (
         <>
-          <ScrollArea mih="60vh">
-            <Table striped highlightOnHover withRowBorders>
+          <ScrollArea mih="60vh" offsetScrollbars>
+            <Table striped highlightOnHover withRowBorders miw={620}>
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th>Name</Table.Th>
@@ -127,7 +131,7 @@ export default function StaffTable() {
             </Table>
           </ScrollArea>
 
-          <Flex mt="sm" w="100%" justify="flex-end">
+          <Flex mt="sm" w="100%" justify={isNarrow ? "center" : "flex-end"}>
             {meta?.totalPages ? (
               <Group justify="center" mt="md">
                 <Pagination

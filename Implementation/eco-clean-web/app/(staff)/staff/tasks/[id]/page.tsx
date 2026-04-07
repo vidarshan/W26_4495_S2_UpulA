@@ -13,7 +13,7 @@ import { useUploadThing } from "@/lib/uploadthing";
 import formatPrettyDate from "@/lib/utils/formatPrettyDate";
 import { TaskAssistantResponse } from "@/lib/ai/schemas";
 import { APP_TZ } from "@/lib/dateTime";
-import { WorkSession } from "@/types";
+import { JobNote, WorkSession } from "@/types";
 import {
   Badge,
   Box,
@@ -37,7 +37,7 @@ import { Dropzone } from "@mantine/dropzone";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { DateTime } from "luxon";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import {
   IoArrowBackOutline,
@@ -53,10 +53,9 @@ import {
 } from "react-icons/io5";
 import { useStaffUiStore } from "@/stores/store";
 
-const HERO_RADIUS = "lg";
 const CARD_RADIUS = "md";
 const HERO_PADDING = "lg";
-const CARD_PADDING = "md";
+const CARD_PADDING = "lg";
 
 function formatAddress(address?: {
   street1?: string | null;
@@ -132,6 +131,10 @@ function formatSeconds(total: number) {
   return `${hrs}:${mins}:${secs}`;
 }
 
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Request failed";
+}
+
 const Page = () => {
   const router = useRouter();
   const params = useParams<{ id: string }>();
@@ -143,11 +146,11 @@ const Page = () => {
   const [imgOpened, setImgOpened] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [visitNote, setVisitNote] = useState("");
-  const [visitImages, setVisitImages] = useState<File[]>([]);
+  const [, setVisitImages] = useState<File[]>([]);
   const [uploadedVisitImages, setUploadedVisitImages] = useState<
     { url: string; fileKey: string }[]
   >([]);
-  const [nowMs, setNowMs] = useState(Date.now());
+  const [nowMs, setNowMs] = useState(() => Date.now());
 
   const setTitle = useStaffUiStore((s) => s.setTitle);
   const setBack = useStaffUiStore((s) => s.setBack);
@@ -199,8 +202,10 @@ const Page = () => {
   }, []);
 
   const refreshAppointment = (updated: unknown) => {
-    qc.setQueryData(["appointment-details", appointmentId], updated);
-    qc.invalidateQueries({ queryKey: ["appointment-details", appointmentId] });
+    qc.setQueryData(["appointments", "detail", appointmentId ?? null], updated);
+    qc.invalidateQueries({
+      queryKey: ["appointments", "detail", appointmentId ?? null],
+    });
     qc.invalidateQueries({ queryKey: ["staff-tasks"] });
   };
 
@@ -225,9 +230,9 @@ const Page = () => {
       setUploadedVisitImages([]);
       showLocalNotification("Visit note saved", "/staff/tasks");
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       showLocalNotification(
-        error?.message || "Failed to save note",
+        getErrorMessage(error) || "Failed to save note",
         "/staff/tasks",
       );
     },
@@ -244,9 +249,9 @@ const Page = () => {
       refreshAppointment(updated);
       showLocalNotification("Job started", `/staff/tasks/${appointment!.id}`);
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       showLocalNotification(
-        error?.message || "Failed to start job",
+        getErrorMessage(error) || "Failed to start job",
         "/staff/tasks",
       );
     },
@@ -263,9 +268,9 @@ const Page = () => {
       refreshAppointment(updated);
       showLocalNotification("Job paused", `/staff/tasks/${appointment!.id}`);
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       showLocalNotification(
-        error?.message || "Job pause failed",
+        getErrorMessage(error) || "Job pause failed",
         `/staff/tasks/${appointment!.id}`,
       );
     },
@@ -285,9 +290,9 @@ const Page = () => {
         `/staff/tasks/${appointment!.id}`,
       );
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       showLocalNotification(
-        error?.message || "Job completion failed",
+        getErrorMessage(error) || "Job completion failed",
         `/staff/tasks/${appointment!.id}`,
       );
     },
@@ -352,18 +357,27 @@ const Page = () => {
 
   const start = DateTime.fromISO(appointment.startTime).setZone(APP_TZ);
   const end = DateTime.fromISO(appointment.endTime).setZone(APP_TZ);
+  const job = appointment.job;
+  const client = job?.client ?? null;
+  const address = job?.address ?? undefined;
 
-  const clientName = [
-    appointment.job.client.title,
-    appointment.job.client.firstName,
-    appointment.job.client.lastName,
-  ]
+  const clientName = [client?.title, client?.firstName, client?.lastName]
     .filter(Boolean)
-    .join(" ");
+    .join(" ")
+    .trim();
 
-  const phone = appointment.job.client.phone;
-  const notes = appointment.job.notes;
-  const fullAddress = formatAddress(appointment.job.address);
+  const phone = client?.phone ?? null;
+  const notes: Note[] = (job?.notes ?? []).map((note: JobNote) => ({
+    id: note.id,
+    title: note.title,
+    content: note.content ?? "",
+    category: note.category,
+    isPinned: note.isPinned,
+    isClientVisible: note.isClientVisible,
+    createdAt: note.createdAt,
+    images: note.images,
+  }));
+  const fullAddress = formatAddress(address);
 
   const allSessions = appointment.workSessions ?? [];
 
@@ -395,7 +409,7 @@ const Page = () => {
   const isOvertime = elapsedSeconds > scheduledSeconds;
 
   const activeStaffIds = new Set(
-    allSessions.filter((s: any) => !s.endedAt).map((s: any) => s.staffId),
+    allSessions.filter((s: WorkSession) => !s.endedAt).map((s) => s.staffId),
   );
 
   const assignedStaff = appointment.assignments ?? [];
@@ -408,9 +422,9 @@ const Page = () => {
 
   const getMemberState = (staffId: string) => {
     const memberSessions = allSessions.filter(
-      (s: any) => s.staffId === staffId,
+      (s: WorkSession) => s.staffId === staffId,
     );
-    const isActive = memberSessions.some((s: any) => !s.endedAt);
+    const isActive = memberSessions.some((s: WorkSession) => !s.endedAt);
 
     if (isActive) return "Running";
     if (memberSessions.length > 0) return "Paused";
@@ -418,7 +432,7 @@ const Page = () => {
   };
 
   return (
-    <Container p={0} bg="#f5f6f7" mih="100vh">
+    <Container p={0} mih="100vh" className="staff-app-page">
       <Drawer
         opened={imgOpened}
         overlayProps={{ backgroundOpacity: 0.55, blur: 3 }}
@@ -428,7 +442,7 @@ const Page = () => {
         }}
         position="bottom"
         size="90%"
-        radius={CARD_RADIUS}
+        radius="lg"
         title="Image Preview"
         padding="md"
       >
@@ -438,7 +452,7 @@ const Page = () => {
               src={selectedImage}
               alt="Preview"
               fit="contain"
-              radius={CARD_RADIUS}
+              radius="lg"
               mah="75vh"
               w="100%"
             />
@@ -447,11 +461,25 @@ const Page = () => {
       </Drawer>
 
       <Stack gap="sm" p="md">
-        <Card radius={HERO_RADIUS} withBorder p={HERO_PADDING}>
+        <Card
+          radius="lg"
+          withBorder
+          p={HERO_PADDING}
+          className="staff-app-surface staff-app-surface--hero"
+        >
           <Group justify="space-between" align="start" mb="sm">
             <Box>
-              <Text fw={700} size="lg">
-                {appointment.job.title}
+              <Text
+                size="xs"
+                fw={800}
+                tt="uppercase"
+                c="#64748b"
+                style={{ letterSpacing: "0.08em" }}
+              >
+                Today&apos;s Appointment
+              </Text>
+              <Text fw={800} size="xl" mt={4}>
+                {job?.title ?? "Appointment"}
               </Text>
               <Text size="sm" c="dimmed">
                 {start.toFormat("cccc, LLL d")}
@@ -460,11 +488,11 @@ const Page = () => {
 
             <Badge
               size="lg"
-              radius="md"
-              color={appointment.job.type === "ONE_OFF" ? "lime" : "blue"}
-              variant="filled"
+              radius="lg"
+              color={job?.type === "ONE_OFF" ? "lime" : "blue"}
+              variant="light"
             >
-              {appointment.job.type === "ONE_OFF" ? "ONE OFF" : "RECURRING"}
+              {job?.type === "ONE_OFF" ? "ONE OFF" : "RECURRING"}
             </Badge>
           </Group>
 
@@ -500,7 +528,7 @@ const Page = () => {
             value={progressPct}
             animated={isRunning}
             color="lime"
-            radius="xl"
+            radius="lg"
           />
 
           <Text mt={6} fw={600} size="xs" c={isOvertime ? "red" : "dimmed"}>
@@ -518,10 +546,7 @@ const Page = () => {
             align="center"
             mt="md"
             p="sm"
-            style={{
-              borderRadius: 10,
-              background: "#f8f9fa",
-            }}
+            className="staff-task-detail__timeband"
           >
             <Group gap="xs" align="center">
               <ThemeIcon variant="light" radius="md" color="lime">
@@ -556,7 +581,7 @@ const Page = () => {
         <SimpleGrid cols={2} spacing="sm">
           <Button
             leftSection={<IoPlayOutline />}
-            radius="md"
+            radius="lg"
             color="lime"
             fullWidth
             disabled={!canAct || isRunning}
@@ -568,7 +593,7 @@ const Page = () => {
 
           <Button
             leftSection={<IoPauseOutline />}
-            radius="md"
+            radius="xl"
             color="lime"
             fullWidth
             disabled={!canAct || !isRunning}
@@ -580,7 +605,7 @@ const Page = () => {
         </SimpleGrid>
 
         <Button
-          radius="md"
+          radius="lg"
           color="blue"
           fullWidth
           disabled={!canAct}
@@ -603,7 +628,7 @@ const Page = () => {
           <AiTaskAssistantCard data={aiTaskAssistant} />
         ) : null}
 
-        <Card radius="md" withBorder p="md">
+        <Card radius="lg" withBorder p="md" className="staff-app-surface">
           <Group mb="sm" gap="xs">
             <ThemeIcon radius="md" variant="light" color="teal">
               <IoPersonOutline size={16} />
@@ -618,13 +643,17 @@ const Page = () => {
               {activeStaffIds.size} of {assignedStaff.length} active
             </Text>
 
-            {assignedStaff.map((assignment: any) => {
+            {assignedStaff.map((assignment) => {
               const member = assignment.staff;
               const isMe = member.id === myStaffId;
               const memberState = getMemberState(member.id);
 
               return (
-                <Group key={member.id} justify="space-between">
+                <Group
+                  key={member.id}
+                  justify="space-between"
+                  className="staff-task-detail__row"
+                >
                   <Text size="sm" fw={isMe ? 700 : 500}>
                     {member.name} {isMe ? "(You)" : ""}
                   </Text>
@@ -649,7 +678,12 @@ const Page = () => {
           </Stack>
         </Card>
 
-        <Card radius={CARD_RADIUS} withBorder p={CARD_PADDING}>
+        <Card
+          radius="lg"
+          withBorder
+          p={CARD_PADDING}
+          className="staff-app-surface"
+        >
           <Group mb="sm" gap="xs">
             <ThemeIcon radius="md" variant="light" color="teal">
               <IoLocationOutline size={16} />
@@ -662,27 +696,29 @@ const Page = () => {
           <Flex justify="space-between" align="center" gap="md">
             <Box style={{ flex: 1 }}>
               <Text size="sm" fw={600}>
-                {appointment.job.address.street1}
+                {address?.street1 ?? "Address unavailable"}
               </Text>
 
-              {appointment.job.address.street2 ? (
-                <Text size="sm">{appointment.job.address.street2}</Text>
+              {address?.street2 ? (
+                <Text size="sm">{address.street2}</Text>
               ) : null}
 
               <Text size="sm">
-                {appointment.job.address.city},{" "}
-                {appointment.job.address.province}
+                {address?.city ?? ""}
+                {address?.city && address?.province ? ", " : ""}
+                {address?.province ?? ""}
               </Text>
 
-              <Text size="sm">{appointment.job.address.postalCode}</Text>
+              <Text size="sm">{address?.postalCode ?? ""}</Text>
             </Box>
 
             <Button
               component="a"
-              href={buildDirectionsUrl(appointment.job.address)}
+              href={buildDirectionsUrl(address)}
               leftSection={<IoMapOutline />}
-              radius="md"
+              radius="lg"
               color="lime"
+              disabled={!address}
             >
               Directions
             </Button>
@@ -693,7 +729,12 @@ const Page = () => {
           </Text>
         </Card>
 
-        <Card radius={CARD_RADIUS} withBorder p={CARD_PADDING}>
+        <Card
+          radius="lg"
+          withBorder
+          p={CARD_PADDING}
+          className="staff-app-surface"
+        >
           <Group mb="sm" gap="xs">
             <ThemeIcon radius="md" variant="light" color="blue">
               <IoPersonOutline size={16} />
@@ -706,15 +747,15 @@ const Page = () => {
           <Stack gap={4}>
             <Text fw={600}>{clientName}</Text>
 
-            {appointment.job.client.companyName ? (
+            {client?.companyName ? (
               <Text size="sm" c="dimmed">
-                {appointment.job.client.companyName}
+                {client.companyName}
               </Text>
             ) : null}
 
-            {appointment.job.client.email ? (
+            {client?.email ? (
               <Text size="sm" c="dimmed">
-                {appointment.job.client.email}
+                {client.email}
               </Text>
             ) : null}
           </Stack>
@@ -722,7 +763,7 @@ const Page = () => {
           <Group mt="md" grow>
             <Button
               component="a"
-              radius="md"
+              radius="lg"
               color="lime"
               leftSection={<IoCallOutline />}
               href={phone ? `tel:${phone}` : undefined}
@@ -733,7 +774,7 @@ const Page = () => {
 
             <Button
               component="a"
-              radius="md"
+              radius="lg"
               color="blue"
               leftSection={<IoChatbubbleEllipsesOutline />}
               href={phone ? `sms:${phone}` : undefined}
@@ -744,7 +785,12 @@ const Page = () => {
           </Group>
         </Card>
 
-        <Card radius={CARD_RADIUS} withBorder p={CARD_PADDING}>
+        <Card
+          radius="lg"
+          withBorder
+          p={CARD_PADDING}
+          className="staff-app-surface"
+        >
           <Group mb="sm" gap="xs">
             <ThemeIcon radius="md" variant="light" color="grape">
               <IoDocumentTextOutline size={16} />
@@ -756,8 +802,14 @@ const Page = () => {
 
           <Stack gap="xs">
             {notes?.length ? (
-              notes.map((note: Note) => (
-                <Paper key={note.id} radius="md" p="sm" withBorder>
+              notes.map((note) => (
+                <Paper
+                  key={note.id}
+                  radius="lg"
+                  p="sm"
+                  withBorder
+                  className="staff-task-detail__note"
+                >
                   <Group justify="space-between" align="flex-start" mb={6}>
                     <Box style={{ flex: 1 }}>
                       <Text fw={600} size="sm">
@@ -820,7 +872,12 @@ const Page = () => {
           </Stack>
         </Card>
 
-        <Card radius={CARD_RADIUS} withBorder p={CARD_PADDING}>
+        <Card
+          radius="lg"
+          withBorder
+          p={CARD_PADDING}
+          className="staff-app-surface"
+        >
           <Group mb="sm" gap="xs">
             <ThemeIcon radius="md" variant="light" color="orange">
               <IoDocumentTextOutline size={16} />
@@ -832,8 +889,14 @@ const Page = () => {
 
           <Stack gap="xs">
             {appointment.notes?.length ? (
-              appointment.notes.map((note: Note) => (
-                <Paper key={note.id} radius="md" p="sm" withBorder>
+              appointment.notes.map((note) => (
+                <Paper
+                  key={note.id}
+                  radius="lg"
+                  p="sm"
+                  withBorder
+                  className="staff-task-detail__note"
+                >
                   <Group justify="space-between" mb={6}>
                     <Text fw={600} size="sm">
                       Visit note
@@ -873,7 +936,12 @@ const Page = () => {
           </Stack>
         </Card>
 
-        <Card radius={CARD_RADIUS} withBorder p={CARD_PADDING}>
+        <Card
+          radius="lg"
+          withBorder
+          p={CARD_PADDING}
+          className="staff-app-surface"
+        >
           <Group mb="sm" gap="xs">
             <ThemeIcon radius="md" variant="light" color="orange">
               <IoDocumentTextOutline size={16} />
@@ -890,6 +958,7 @@ const Page = () => {
               minRows={4}
               value={visitNote}
               onChange={(e) => setVisitNote(e.currentTarget.value)}
+              radius="lg"
             />
 
             {uploadedVisitImages.length ? (
@@ -911,6 +980,7 @@ const Page = () => {
             <Dropzone
               accept={["image/png", "image/jpeg", "image/webp"]}
               maxFiles={10}
+              className="staff-task-detail__dropzone"
               onDrop={async (files) => {
                 const uploaded = await startUpload(files);
 
@@ -939,7 +1009,7 @@ const Page = () => {
             </Dropzone>
 
             <Button
-              radius="md"
+              radius="xl"
               color="orange"
               loading={saveVisitNoteMutation.isPending}
               disabled={

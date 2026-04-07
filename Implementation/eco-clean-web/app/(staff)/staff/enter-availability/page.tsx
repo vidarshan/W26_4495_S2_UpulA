@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import {
   Container,
@@ -12,9 +12,9 @@ import {
   Box,
   Table,
   Card,
-} from '@mantine/core';
-import { DateInput } from '@mantine/dates';
-import { useForm } from '@mantine/form';
+} from "@mantine/core";
+import { DateInput } from "@mantine/dates";
+import { useForm } from "@mantine/form";
 import { useSession } from "next-auth/react";
 import { useEffect } from "react";
 
@@ -34,17 +34,16 @@ type AvailabilityFormValues = {
 };
 
 const DAYS = [
-  { label: 'Monday', key: 'mon' },
-  { label: 'Tuesday', key: 'tue' },
-  { label: 'Wednesday', key: 'wed' },
-  { label: 'Thursday', key: 'thu' },
-  { label: 'Friday', key: 'fri' },
-  { label: 'Saturday', key: 'sat' },
-  { label: 'Sunday', key: 'sun' },
+  { label: "Monday", key: "mon" },
+  { label: "Tuesday", key: "tue" },
+  { label: "Wednesday", key: "wed" },
+  { label: "Thursday", key: "thu" },
+  { label: "Friday", key: "fri" },
+  { label: "Saturday", key: "sat" },
+  { label: "Sunday", key: "sun" },
 ];
 
 export default function EnterAvailabilityPage() {
-
   const { data: session, status } = useSession();
 
   useEffect(() => {
@@ -53,14 +52,12 @@ export default function EnterAvailabilityPage() {
     }
   }, [session]);
 
-
-
   const form = useForm<AvailabilityFormValues>({
     initialValues: {
       todaysDate: new Date(),
-      employeeName: '',
+      employeeName: "",
       effectiveDate: null,
-      comments: '',
+      comments: "",
       availability: {
         mon: { active: false, s1: false, s2: false },
         tue: { active: false, s1: false, s2: false },
@@ -73,8 +70,8 @@ export default function EnterAvailabilityPage() {
     },
     validate: {
       employeeName: (v) =>
-        v.trim().length > 0 ? null : 'Employee name is required',
-      effectiveDate: (v) => (v ? null : 'Effective date is required'),
+        v.trim().length > 0 ? null : "Employee name is required",
+      effectiveDate: (v) => (v ? null : "Effective date is required"),
     },
   });
 
@@ -84,8 +81,8 @@ export default function EnterAvailabilityPage() {
       const response = await fetch(
         `/api/staff/${staffProfileId}/availability`,
         {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             effectiveFrom: values.effectiveDate
               ? new Date(values.effectiveDate).toISOString()
@@ -115,14 +112,14 @@ export default function EnterAvailabilityPage() {
         },
       );
 
-      if (!response.ok) throw new Error('Failed to save availability.');
+      if (!response.ok) throw new Error("Failed to save availability.");
 
       if (!staffProfileId) {
         alert("User not loaded yet");
         return;
       }
 
-      alert('Availability updated successfully!');
+      alert("Availability updated successfully!");
       form.reset();
     } catch (error: any) {
       alert(error.message);
@@ -138,7 +135,7 @@ export default function EnterAvailabilityPage() {
       <Box
         component="form"
         onSubmit={form.onSubmit(handleSubmit)}
-        style={{ maxWidth: 720, marginInline: 'auto' }}
+        style={{ maxWidth: 720, marginInline: "auto" }}
       >
         <Stack gap="xl">
           <Group grow>
@@ -149,14 +146,14 @@ export default function EnterAvailabilityPage() {
             />
             <TextInput
               label="Employee Name"
-              {...form.getInputProps('employeeName')}
+              {...form.getInputProps("employeeName")}
               readOnly
             />
           </Group>
 
           <DateInput
             label="Effective Date"
-            {...form.getInputProps('effectiveDate')}
+            {...form.getInputProps("effectiveDate")}
             placeholder="When does this start?"
             minDate={new Date(new Date().getTime() + 7 * 24 * 3600)}
           />
@@ -164,7 +161,7 @@ export default function EnterAvailabilityPage() {
           {/* THE SHIFT GRID */}
           <Box>
             <Text fw={600} mb={10}>
-              Weekly Shift Availability <span style={{ color: 'red' }}>*</span>
+              Weekly Shift Availability <span style={{ color: "red" }}>*</span>
             </Text>
             <Card withBorder radius="md" p={0}>
               <Table verticalSpacing="sm" horizontalSpacing="md">
@@ -222,7 +219,7 @@ export default function EnterAvailabilityPage() {
             </Card>
           </Box>
 
-          <TextInput label="Comments" {...form.getInputProps('comments')} />
+          <TextInput label="Comments" {...form.getInputProps("comments")} />
 
           <Group justify="center" mt="md">
             <Button

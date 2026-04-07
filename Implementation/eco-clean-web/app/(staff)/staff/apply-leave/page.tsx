@@ -89,10 +89,6 @@ export default function ApplyLeavePage() {
 
   const { data: session, status } = useSession();
 
-
-
-
-
   // TODO: replace with session-based user context
 
   if (status === "loading") return <Loader />;
@@ -144,7 +140,7 @@ export default function ApplyLeavePage() {
 
         const days =
           Math.ceil(
-            (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)
+            (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24),
           ) || 1;
 
         return acc + days * 8;
@@ -154,20 +150,20 @@ export default function ApplyLeavePage() {
   }, [leaveData]);
 
   const sickHoursUsed = useMemo(() => {
-  return leaveData
-    .filter((l) => l.type.includes("SICK"))
-    .reduce((acc, curr) => {
-      const start = new Date(curr.startAt);
-      const end = new Date(curr.endAt);
+    return leaveData
+      .filter((l) => l.type.includes("SICK"))
+      .reduce((acc, curr) => {
+        const start = new Date(curr.startAt);
+        const end = new Date(curr.endAt);
 
-      const days =
-        Math.ceil(
-          (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)
-        ) || 1;
+        const days =
+          Math.ceil(
+            (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24),
+          ) || 1;
 
-      return acc + days * 8;
-    }, 0);
-}, [leaveData]);
+        return acc + days * 8;
+      }, 0);
+  }, [leaveData]);
 
   const hoursScheduled = useMemo(() => {
     return leaveType === "FULL_DAY" ? 8 : 3.5;
@@ -206,8 +202,7 @@ export default function ApplyLeavePage() {
 
       const startAt = combineDateAndTime(selectedDate, startTime);
       const endAt = combineDateAndTime(selectedDate, endTime);
-      const requestedHours =
-        (endAt.getTime() - startAt.getTime()) / 3600000;
+      const requestedHours = (endAt.getTime() - startAt.getTime()) / 3600000;
 
       if (reason === "VACATION" && requestedHours > summary.vacationRemaining) {
         throw new Error("Not enough vacation balance.");
@@ -376,10 +371,9 @@ export default function ApplyLeavePage() {
                 setComments={setComments}
                 hoursScheduled={hoursScheduled}
                 hoursAvailable={
-                  reason === "VACATION"
-                    ? summary.vacationRemaining
-                    : 40
-                } onPrevious={() => setMode("balances")}
+                  reason === "VACATION" ? summary.vacationRemaining : 40
+                }
+                onPrevious={() => setMode("balances")}
                 onSubmit={handleSubmitLeave}
                 submitting={submitting}
                 isMobile={!!isMobile}

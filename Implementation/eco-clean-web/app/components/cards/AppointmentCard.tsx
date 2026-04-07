@@ -1,17 +1,6 @@
 import { Card, Text, Group, Badge, Stack, Divider } from "@mantine/core";
 import { format } from "date-fns";
-
-interface Appointment {
-  id: string;
-  jobId: string;
-  startTime: string;
-  endTime: string;
-  status: "SCHEDULED" | "CANCELLED" | "COMPLETED";
-  createdAt: string;
-  completionSent: boolean;
-  reminder1dSent: boolean;
-  reminder5dSent: boolean;
-}
+import { Appointment } from "@/types";
 
 interface Props {
   appointment: Appointment;

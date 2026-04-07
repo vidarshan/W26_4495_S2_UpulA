@@ -27,6 +27,7 @@ export async function GET(req: NextRequest) {
     });
 
     const data = staff.map((s) => ({
+      userId: s.userId,
       staffId: s.staffId ?? `STF-${s.id.slice(0, 6)}`,
       staffName: s.user?.name ?? "Unknown",
       hourlyRate: s.hourlyRate ?? 0,

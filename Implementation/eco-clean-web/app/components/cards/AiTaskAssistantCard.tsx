@@ -1,5 +1,4 @@
 import {
-  Badge,
   Button,
   Card,
   Divider,
@@ -19,29 +18,10 @@ import {
   IoCheckmarkCircleOutline,
   IoSparklesOutline,
 } from "react-icons/io5";
-
-type TaskAssistantResponse = {
-  brief: string;
-  priorityOrder: string[];
-  timePlan: {
-    label: string;
-    minutes: number;
-  }[];
-  alerts: string[];
-  checklist: string[];
-  riskLevel: "low" | "medium" | "high";
-  riskReason: string | null;
-  completionDraft: string | null;
-};
+import { TaskAssistantResponse } from "@/lib/ai/schemas";
 
 type Props = {
   data: TaskAssistantResponse;
-};
-
-const riskColor = (risk: TaskAssistantResponse["riskLevel"]) => {
-  if (risk === "high") return "red";
-  if (risk === "medium") return "yellow";
-  return "green";
 };
 
 export default function AiTaskAssistantCard({ data }: Props) {
@@ -53,7 +33,7 @@ export default function AiTaskAssistantCard({ data }: Props) {
 
   return (
     <Card
-      radius="md"
+      radius="lg"
       withBorder
       shadow="sm"
       p="md"

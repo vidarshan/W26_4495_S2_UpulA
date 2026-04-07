@@ -83,7 +83,11 @@ export async function GET(
             },
           },
         },
-        appointmentAiInsight: true,
+        appointmentAiInsights: {
+          where: { type: "task_assistant.plan" },
+          take: 1,
+          orderBy: { updatedAt: "desc" },
+        },
         job: {
           include: {
             client: true,
@@ -118,6 +122,7 @@ export async function GET(
 
     return NextResponse.json({
       ...appointment,
+      appointmentAiInsight: appointment.appointmentAiInsights[0] ?? null,
       staff: appointment.assignments.map((a) => a.staff), // optional compatibility shape
     });
   } catch (err) {

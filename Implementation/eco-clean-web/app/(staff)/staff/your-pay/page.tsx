@@ -28,7 +28,6 @@ import { useRouter } from "next/navigation";
 
 import { Collapse, Select } from "@mantine/core";
 
-
 const COLORS = ["#1f6b8f", "#eb7a2f", "#2e7d32"];
 
 export default function YourPayPage() {
@@ -47,12 +46,9 @@ export default function YourPayPage() {
   useEffect(() => {
     async function fetchPayData() {
       try {
-        const userId =
-          session?.user?.id;
+        const userId = session?.user?.id;
 
-        const res = await fetch(
-          `/api/staff/pay-statements/latest`
-        );
+        const res = await fetch(`/api/staff/pay-statements/latest`);
 
         const res2 = await fetch("/api/staff/pay-statements/latest");
         const historyData = await res2.json();
@@ -99,7 +95,7 @@ export default function YourPayPage() {
 
   // ✅ CORRECT SOURCE
   const latest = data.latest || {};
-const b = latest.breakdown || {};
+  const b = latest.breakdown || {};
   const ytd = data.ytd || {};
 
   const earningsBreakdown = [
@@ -117,30 +113,30 @@ const b = latest.breakdown || {};
     { label: "Other", value: b.other || 0 },
   ];
 
- const gross = latest.grossEarnings || 0;
-const deductions = latest.totalDeductions || 0;
-const net = latest.netEarnings || 0;
+  const gross = latest.grossEarnings || 0;
+  const deductions = latest.totalDeductions || 0;
+  const net = latest.netEarnings || 0;
 
   const historyOptionsB = history
-  .filter((p) => {
-    if (!periodA) return true; // before A is selected, show all
+    .filter((p) => {
+      if (!periodA) return true; // before A is selected, show all
 
-    const selectedA = new Date(periodA.payPeriodStart);
-    const current = new Date(p.payPeriodStart);
+      const selectedA = new Date(periodA.payPeriodStart);
+      const current = new Date(p.payPeriodStart);
 
-    return current > selectedA; // only newer periods
-  })
-  .map((p) => ({
+      return current > selectedA; // only newer periods
+    })
+    .map((p) => ({
+      value: p.id,
+      label: `${new Date(p.payPeriodStart).toLocaleDateString()} - ${new Date(p.payPeriodEnd).toLocaleDateString()}`,
+      raw: p,
+    }));
+
+  const historyOptionsA = history.slice(1).map((p) => ({
     value: p.id,
     label: `${new Date(p.payPeriodStart).toLocaleDateString()} - ${new Date(p.payPeriodEnd).toLocaleDateString()}`,
     raw: p,
   }));
-
-const historyOptionsA = history.slice(1).map((p) => ({
-  value: p.id,
-  label: `${new Date(p.payPeriodStart).toLocaleDateString()} - ${new Date(p.payPeriodEnd).toLocaleDateString()}`,
-  raw: p,
-}));
 
   return (
     <Container size="lg" py="xl">
@@ -163,9 +159,7 @@ const historyOptionsA = history.slice(1).map((p) => ({
 
           <Box>
             <Text fw={700}>Pay Date</Text>
-            <Text>
-              {new Date(latest.payDate).toLocaleDateString()}
-            </Text>
+            <Text>{new Date(latest.payDate).toLocaleDateString()}</Text>
           </Box>
         </Group>
       </Card>
@@ -206,7 +200,6 @@ const historyOptionsA = history.slice(1).map((p) => ({
         {/* 🔥 SUMMARY */}
         <Grid.Col span={{ base: 12, md: 6 }}>
           <Stack gap="lg">
-
             <SummaryBlock
               title="Gross Earnings"
               total={gross}
@@ -237,9 +230,7 @@ const historyOptionsA = history.slice(1).map((p) => ({
                 <Text size="sm" c="dimmed">
                   YTD Net
                 </Text>
-                <Text fw={600}>
-                  ${ytd.net?.toFixed(2) || "0.00"}
-                </Text>
+                <Text fw={600}>${ytd.net?.toFixed(2) || "0.00"}</Text>
               </Group>
             </Card>
           </Stack>
@@ -250,17 +241,13 @@ const historyOptionsA = history.slice(1).map((p) => ({
         <Group justify="space-between">
           <Text fw={700}>AI Pay Insights</Text>
 
-          <Button
-            variant="subtle"
-            onClick={() => setOpened((o) => !o)}
-          >
+          <Button variant="subtle" onClick={() => setOpened((o) => !o)}>
             {opened ? "Hide" : "Compare Pay Periods"}
           </Button>
         </Group>
 
         <Collapse in={opened}>
           <Stack mt="md">
-
             {/* Selectors */}
             <Group grow>
               <Select
@@ -268,7 +255,9 @@ const historyOptionsA = history.slice(1).map((p) => ({
                 data={historyOptionsA}
                 value={periodA?.id}
                 onChange={(value) => {
-                  const selected = historyOptionsA.find((p) => p.value === value);
+                  const selected = historyOptionsA.find(
+                    (p) => p.value === value,
+                  );
                   setPeriodA(selected?.raw);
                   setPeriodB(null);
                 }}
@@ -279,10 +268,11 @@ const historyOptionsA = history.slice(1).map((p) => ({
                 data={historyOptionsB}
                 value={periodB?.id}
                 onChange={(value) => {
-                  const selected = historyOptionsB.find((p) => p.value === value);
+                  const selected = historyOptionsB.find(
+                    (p) => p.value === value,
+                  );
                   setPeriodB(selected?.raw);
                 }}
-
               />
             </Group>
 
@@ -314,19 +304,29 @@ const historyOptionsA = history.slice(1).map((p) => ({
                   <Text key={i}>• {d}</Text>
                 ))}
 
-                <Text fw={700} mt="sm">Increases</Text>
+                <Text fw={700} mt="sm">
+                  Increases
+                </Text>
                 {result.increases.map((d: string, i: number) => (
-                  <Text key={i} c="green">+ {d}</Text>
+                  <Text key={i} c="green">
+                    + {d}
+                  </Text>
                 ))}
 
-                <Text fw={700} mt="sm">Decreases</Text>
+                <Text fw={700} mt="sm">
+                  Decreases
+                </Text>
                 {result.decreases.map((d: string, i: number) => (
-                  <Text key={i} c="red">- {d}</Text>
+                  <Text key={i} c="red">
+                    - {d}
+                  </Text>
                 ))}
 
                 {result.recommendation && (
                   <>
-                    <Text fw={700} mt="sm">Recommendation</Text>
+                    <Text fw={700} mt="sm">
+                      Recommendation
+                    </Text>
                     <Text>{result.recommendation}</Text>
                   </>
                 )}

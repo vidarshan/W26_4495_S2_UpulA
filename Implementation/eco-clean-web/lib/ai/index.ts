@@ -7,9 +7,6 @@ import { buildPayComparisonPrompt } from "./prompts/payComparison";
 import { mapToPayComparison } from "./transformers/paycomparison";
 import { TaskAssistantResponseSchema } from "./schemas";
 
-
-
-
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
@@ -113,3 +110,10 @@ export async function runPayComparisonFeature(a: any, b: any) {
 
   return mapToPayComparison(aiRaw);
 }
+
+export {
+  getCachedAppointmentInsight,
+  getTaskAssistantInsightType,
+  runTaskAssistantFeature,
+  saveAppointmentInsight,
+} from "@/lib/ai/appointments";

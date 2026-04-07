@@ -1,7 +1,5 @@
-import { PaginatedResponse } from "@/app/types/api";
+import { PaginatedResponse, Staff, StaffRole, User } from "@/types";
 import { apiClient } from "./client";
-import { Staff } from "@/app/types/staff";
-import { User } from "@/types";
 
 export function getStaff(params?: {
   q?: string;
@@ -63,6 +61,20 @@ export async function getAvailableStaff({
 }) {
   if (!date || !startTime || !endTime) return [];
 
+  const [startHour, startMinute] = startTime.split(":").map(Number);
+  const [endHour, endMinute] = endTime.split(":").map(Number);
+
+  const startTotalMinutes = startHour * 60 + startMinute;
+  const endTotalMinutes = endHour * 60 + endMinute;
+
+  if (
+    Number.isNaN(startTotalMinutes) ||
+    Number.isNaN(endTotalMinutes) ||
+    endTotalMinutes <= startTotalMinutes
+  ) {
+    return [];
+  }
+
   const params = new URLSearchParams({
     date,
     startTime,
@@ -94,7 +106,7 @@ type UserPayload = {
   password?: string;
 };
 
-type Role = "ADMIN" | "STAFF";
+type Role = StaffRole;
 
 export function editUser(
   id: string,

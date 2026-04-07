@@ -1,26 +1,35 @@
-'use client';
+"use client";
 
 import {
-  ActionIcon,
+  Alert,
   Box,
   Button,
+  Card,
+  Center,
   Container,
+  Divider,
   Group,
+  Loader,
   Modal,
   Paper,
+  SegmentedControl,
   Select,
+  SimpleGrid,
   Stack,
   Table,
   Text,
-  Title,
-  Loader,
-  Center,
   TextInput,
-  Divider,
-  Alert,
-} from '@mantine/core';
-import { useMemo, useState, useEffect } from 'react';
-import { IoClipboardOutline, IoChevronDown } from 'react-icons/io5';
+  ThemeIcon,
+  Title,
+} from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  IoCalendarOutline,
+  IoChevronDown,
+  IoClipboardOutline,
+  IoTimeOutline,
+} from "react-icons/io5";
 
 type Week = 1 | 2;
 
@@ -50,31 +59,32 @@ type DaySession = {
 
 function toDateKey(date: Date) {
   const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
 }
 
 function formatMinutesToHHMM(totalMinutes: number) {
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
-  return `${hours}:${String(minutes).padStart(2, '0')}`;
+  return `${hours}:${String(minutes).padStart(2, "0")}`;
 }
 
 function toLocalDateTimeInputValue(dateString: string | null) {
-  if (!dateString) return '';
+  if (!dateString) return "";
   const d = new Date(dateString);
 
   const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  const hours = String(d.getHours()).padStart(2, '0');
-  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  const hours = String(d.getHours()).padStart(2, "0");
+  const minutes = String(d.getMinutes()).padStart(2, "0");
 
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
 export default function EnterTimePage() {
+  const isMobile = useMediaQuery("(max-width: 48em)");
   const [allPeriods, setAllPeriods] = useState<PayPeriod[]>([]);
   const [payPeriodOptions, setPayPeriodOptions] = useState<
     { value: string; label: string }[]
@@ -94,8 +104,8 @@ export default function EnterTimePage() {
   );
 
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
-  const [editStartedAt, setEditStartedAt] = useState('');
-  const [editEndedAt, setEditEndedAt] = useState('');
+  const [editStartedAt, setEditStartedAt] = useState("");
+  const [editEndedAt, setEditEndedAt] = useState("");
   const [savingSession, setSavingSession] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
 
@@ -104,7 +114,7 @@ export default function EnterTimePage() {
   useEffect(() => {
     async function fetchRelevantPeriods() {
       try {
-        const res = await fetch('/api/timesheet-periods');
+        const res = await fetch("/api/timesheet-periods");
         const fetched: PayPeriod[] = await res.json();
         setAllPeriods(fetched);
 
@@ -122,9 +132,9 @@ export default function EnterTimePage() {
 
           const options = filtered.map((p) => ({
             value: p.id,
-            label: `${new Date(p.startDate).toLocaleDateString('en-GB')} to ${new Date(
+            label: `${new Date(p.startDate).toLocaleDateString("en-GB")} to ${new Date(
               p.endDate,
-            ).toLocaleDateString('en-GB')}`,
+            ).toLocaleDateString("en-GB")}`,
           }));
 
           setPayPeriodOptions(options);
@@ -134,15 +144,15 @@ export default function EnterTimePage() {
         } else {
           const options = fetched.map((p) => ({
             value: p.id,
-            label: `${new Date(p.startDate).toLocaleDateString('en-GB')} to ${new Date(
+            label: `${new Date(p.startDate).toLocaleDateString("en-GB")} to ${new Date(
               p.endDate,
-            ).toLocaleDateString('en-GB')}`,
+            ).toLocaleDateString("en-GB")}`,
           }));
           setPayPeriodOptions(options);
           setPayPeriodId(options[0]?.value ?? null);
         }
       } catch (error) {
-        console.error('Failed to load periods:', error);
+        console.error("Failed to load periods:", error);
       } finally {
         setLoadingPeriods(false);
       }
@@ -157,10 +167,10 @@ export default function EnterTimePage() {
     try {
       setSubmitting(true);
 
-      const res = await fetch('/api/staff/time-sheet/submit', {
-        method: 'POST',
+      const res = await fetch("/api/staff/time-sheet/submit", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           periodId: payPeriodId,
@@ -170,21 +180,20 @@ export default function EnterTimePage() {
       const result = await res.json();
 
       if (!res.ok) {
-        console.error(result.error);
-        alert(result.error ?? 'Failed to submit timesheet');
+        alert(result.error ?? "Failed to submit timesheet");
         return;
       }
 
-      alert('Timesheet submitted successfully');
+      alert("Timesheet submitted successfully");
     } catch (error) {
       console.error(error);
-      alert('Failed to submit timesheet');
+      alert("Failed to submit timesheet");
     } finally {
       setSubmitting(false);
     }
   }
 
-  async function fetchTimesheetEntries(selectedPeriodId: string | null) {
+  const fetchTimesheetEntries = useCallback(async (selectedPeriodId: string | null) => {
     const selected = allPeriods.find((p) => p.id === selectedPeriodId);
 
     if (!selected) {
@@ -205,7 +214,7 @@ export default function EnterTimePage() {
       const result = await res.json();
 
       if (!res.ok) {
-        console.error('Failed to load timesheet entries:', result.error);
+        console.error("Failed to load timesheet entries:", result.error);
         setDayMinutes({});
         setDaySessions({});
         return;
@@ -214,19 +223,19 @@ export default function EnterTimePage() {
       setDayMinutes(result.dailyTotals ?? {});
       setDaySessions(result.dailySessions ?? {});
     } catch (error) {
-      console.error('Failed to load timesheet entries:', error);
+      console.error("Failed to load timesheet entries:", error);
       setDayMinutes({});
       setDaySessions({});
     } finally {
       setLoadingEntries(false);
     }
-  }
+  }, [allPeriods]);
 
   useEffect(() => {
     if (payPeriodId && allPeriods.length > 0) {
       fetchTimesheetEntries(payPeriodId);
     }
-  }, [payPeriodId, allPeriods]);
+  }, [payPeriodId, allPeriods, fetchTimesheetEntries]);
 
   const days = useMemo(() => {
     const selected = allPeriods.find((p) => p.id === payPeriodId);
@@ -250,10 +259,10 @@ export default function EnterTimePage() {
         const minutes = dayMinutes[key] ?? 0;
 
         weekDays.push({
-          dow: d.toLocaleDateString('en-US', { weekday: 'short' }),
+          dow: d.toLocaleDateString("en-US", { weekday: "short" }),
           dateLabel: isToday
-            ? 'Today'
-            : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+            ? "Today"
+            : d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
           fullDate: d,
           isToday,
           hours: formatMinutesToHHMM(minutes),
@@ -276,6 +285,15 @@ export default function EnterTimePage() {
     ? (daySessions[selectedDayKey] ?? [])
     : [];
 
+  const totalWeekMinutes = useMemo(
+    () =>
+      activeDays.reduce((sum, day) => {
+        const [hours, minutes] = day.hours.split(":").map(Number);
+        return sum + hours * 60 + minutes;
+      }, 0),
+    [activeDays],
+  );
+
   function beginEdit(session: DaySession) {
     setModalError(null);
     setEditingSessionId(session.id);
@@ -285,8 +303,8 @@ export default function EnterTimePage() {
 
   function cancelEdit() {
     setEditingSessionId(null);
-    setEditStartedAt('');
-    setEditEndedAt('');
+    setEditStartedAt("");
+    setEditEndedAt("");
     setModalError(null);
   }
 
@@ -297,10 +315,10 @@ export default function EnterTimePage() {
       setSavingSession(true);
       setModalError(null);
 
-      const res = await fetch('/api/staff/time-sheet', {
-        method: 'PATCH',
+      const res = await fetch("/api/staff/time-sheet", {
+        method: "PATCH",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           sessionId: editingSessionId,
@@ -312,15 +330,15 @@ export default function EnterTimePage() {
       const result = await res.json();
 
       if (!res.ok) {
-        setModalError(result.error ?? 'Failed to save changes');
+        setModalError(result.error ?? "Failed to save changes");
         return;
       }
 
       await fetchTimesheetEntries(payPeriodId);
       cancelEdit();
     } catch (error) {
-      console.error('Failed to update session:', error);
-      setModalError('Failed to save changes');
+      console.error("Failed to update session:", error);
+      setModalError("Failed to save changes");
     } finally {
       setSavingSession(false);
     }
@@ -328,167 +346,191 @@ export default function EnterTimePage() {
 
   if (loadingPeriods) {
     return (
-      <Center h="80vh">
-        <Loader size="xl" color="green" />
-      </Center>
+      <Container p={0} className="staff-app-page">
+        <Center mih="70vh">
+          <Loader size="lg" color="lime" />
+        </Center>
+      </Container>
     );
   }
 
   return (
-    <Container size="lg" py="xl">
-      <Stack gap="xl">
-        <Group justify="center" gap="xl">
-          <Text fw={600}>Pay Period</Text>
-          <Box w={420}>
-            <Select
-              value={payPeriodId}
-              onChange={setPayPeriodId}
-              data={payPeriodOptions}
-              rightSection={<IoChevronDown size={18} />}
-              styles={{
-                input: { height: 52, fontWeight: 700, textAlign: 'center' },
-              }}
+    <Container p={0} className="staff-app-page">
+      <Stack gap="md" p="md">
+        <Card
+          radius="lg"
+          withBorder
+          p="lg"
+          className="staff-app-surface staff-app-surface--hero"
+        >
+          <Stack gap="xs">
+            <Title order={3}>Enter Time</Title>
+            <Text size="sm" c="dimmed">
+              Review daily work sessions, verify totals, and submit your timesheet.
+            </Text>
+          </Stack>
+
+          <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md" mt="md">
+            <SummaryStat label="Current Week" value={`Week ${week}`} icon={IoCalendarOutline} />
+            <SummaryStat
+              label="Week Total"
+              value={formatMinutesToHHMM(totalWeekMinutes)}
+              icon={IoTimeOutline}
             />
-          </Box>
-        </Group>
+            <SummaryStat
+              label="Sessions"
+              value={String(activeDays.reduce((sum, d) => sum + (daySessions[toDateKey(d.fullDate)]?.length ?? 0), 0))}
+              icon={IoClipboardOutline}
+            />
+          </SimpleGrid>
+        </Card>
 
-        <Group justify="center" gap="md">
-          <Button
-            size="lg"
-            radius="md"
-            color={week === 1 ? 'green' : 'gray'}
-            onClick={() => setWeek(1)}
-            styles={{ root: { width: 240, height: 56, fontWeight: 700 } }}
-          >
-            Week 1
-          </Button>
-          <Button
-            size="lg"
-            radius="md"
-            color={week === 2 ? 'green' : 'gray'}
-            onClick={() => setWeek(2)}
-            styles={{ root: { width: 240, height: 56, fontWeight: 700 } }}
-          >
-            Week 2
-          </Button>
-        </Group>
-
-        <Paper withBorder radius="md" p="xl">
-          <Group justify="space-between" mb="lg">
-            <Title order={3}>My hours for this week</Title>
-            {loadingEntries && <Loader size="sm" color="green" />}
-          </Group>
-
-          <Box style={{ overflowX: 'auto' }}>
-            <Table
-              withRowBorders
-              withColumnBorders={false}
-              verticalSpacing="md"
-              horizontalSpacing="md"
-              style={{ minWidth: 860 }}
-            >
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th />
-                  {activeDays.map((d, i) => (
-                    <Table.Th key={i} style={{ textAlign: 'center' }}>
-                      <Text size="sm" c="dimmed">
-                        {d.dow}
-                      </Text>
-                      <Text fw={800} c={d.isToday ? 'blue' : undefined}>
-                        {d.dateLabel}
-                      </Text>
-                    </Table.Th>
-                  ))}
-                </Table.Tr>
-              </Table.Thead>
-
-              <Table.Tbody>
-                <Table.Tr>
-                  <Table.Td>
-                    <Text fw={700}>General</Text>
-                  </Table.Td>
-                  {activeDays.map((d, i) => (
-                    <Table.Td key={i} style={{ textAlign: 'center' }}>
-                      <Text fw={700}>{d.hours}</Text>
-                    </Table.Td>
-                  ))}
-                </Table.Tr>
-
-                <Table.Tr>
-                  <Table.Td>
-                    <Text fw={700}>Total Hours:</Text>
-                  </Table.Td>
-                  {activeDays.map((d, i) => (
-                    <Table.Td key={i} style={{ textAlign: 'center' }}>
-                      <Text fw={700}>{d.hours}</Text>
-                    </Table.Td>
-                  ))}
-                </Table.Tr>
-              </Table.Tbody>
-            </Table>
-          </Box>
-
-          <Group
-            justify="space-between"
-            mt="lg"
-            px="sm"
-            style={{ minWidth: 860 }}
-          >
-            {activeDays.map((_, i) => (
-              <Box
-                key={i}
-                w={100}
-                style={{ display: 'flex', justifyContent: 'center' }}
-              >
-                <ActionIcon
-                  variant="subtle"
-                  size={56}
-                  onClick={() => {
-                    setModalError(null);
-                    setOpenDay({ week, idx: i });
-                    cancelEdit();
-                  }}
-                >
-                  <IoClipboardOutline size={40} />
-                </ActionIcon>
+        <Card radius="lg" withBorder p="lg" className="staff-app-surface">
+          <Stack gap="md">
+            <Group justify="space-between" align="end" wrap="wrap">
+              <Box style={{ flex: 1, minWidth: isMobile ? "100%" : 260, maxWidth: 420 }}>
+                <Text size="sm" fw={700} mb={6}>
+                  Pay Period
+                </Text>
+                <Select
+                  value={payPeriodId}
+                  onChange={setPayPeriodId}
+                  data={payPeriodOptions}
+                  rightSection={<IoChevronDown size={18} />}
+                  placeholder="Select pay period"
+                  w="100%"
+                />
               </Box>
-            ))}
-          </Group>
-        </Paper>
 
-        <Group justify="flex-end" gap="lg">
+              <SegmentedControl
+                fullWidth={isMobile}
+                value={String(week)}
+                onChange={(value) => setWeek(Number(value) as Week)}
+                color="lime"
+                radius="xl"
+                data={[
+                  { label: "Week 1", value: "1" },
+                  { label: "Week 2", value: "2" },
+                ]}
+              />
+            </Group>
+
+            <Divider />
+
+            {loadingEntries ? (
+              <Group gap="xs">
+                <Loader size="sm" />
+                <Text size="sm" c="dimmed">
+                  Refreshing timesheet entries...
+                </Text>
+              </Group>
+            ) : null}
+
+            <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="sm">
+              {activeDays.map((day, index) => (
+                <Paper key={index} withBorder radius="lg" p="md">
+                  <Stack gap="xs">
+                    <Group justify="space-between" align="start">
+                      <Box>
+                        <Text size="xs" fw={700} c="dimmed">
+                          {day.dow}
+                        </Text>
+                        <Text fw={800} c={day.isToday ? "lime.8" : undefined}>
+                          {day.dateLabel}
+                        </Text>
+                      </Box>
+                      <ThemeIcon radius="lg" variant="light" color="lime">
+                        <IoClipboardOutline size={16} />
+                      </ThemeIcon>
+                    </Group>
+
+                    <Text size="xs" c="dimmed">
+                      Logged hours
+                    </Text>
+                    <Text size="xl" fw={800}>
+                      {day.hours}
+                    </Text>
+
+                    <Button
+                      variant="light"
+                      color="lime"
+                      radius="md"
+                      onClick={() => {
+                        setModalError(null);
+                        setOpenDay({ week, idx: index });
+                        cancelEdit();
+                      }}
+                    >
+                      View details
+                    </Button>
+                  </Stack>
+                </Paper>
+              ))}
+            </SimpleGrid>
+          </Stack>
+        </Card>
+
+        <Card radius="lg" withBorder p="lg" className="staff-app-surface">
+          <Stack gap="sm">
+            <Text fw={700}>Week summary</Text>
+            {isMobile ? (
+              <Stack gap="xs">
+                {activeDays.map((day) => (
+                  <Paper key={toDateKey(day.fullDate)} withBorder radius="lg" p="sm">
+                    <Group justify="space-between" wrap="nowrap">
+                      <Box>
+                        <Text fw={700}>{day.dow}</Text>
+                        <Text size="sm" c="dimmed">
+                          {day.dateLabel}
+                        </Text>
+                      </Box>
+                      <Text fw={800}>{day.hours}</Text>
+                    </Group>
+                  </Paper>
+                ))}
+              </Stack>
+            ) : (
+              <Table>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>Day</Table.Th>
+                    <Table.Th>Date</Table.Th>
+                    <Table.Th ta="right">Hours</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {activeDays.map((day) => (
+                    <Table.Tr key={toDateKey(day.fullDate)}>
+                      <Table.Td>{day.dow}</Table.Td>
+                      <Table.Td>{day.dateLabel}</Table.Td>
+                      <Table.Td ta="right">
+                        <Text fw={700}>{day.hours}</Text>
+                      </Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            )}
+          </Stack>
+        </Card>
+
+        <Group justify="flex-end" grow={isMobile}>
           {week === 1 ? (
-            <Button
-              size="xl"
-              radius="md"
-              color="green"
-              onClick={() => setWeek(2)}
-              styles={{ root: { width: 260, height: 64, fontWeight: 800 } }}
-            >
-              Next
+            <Button radius="md" color="lime" onClick={() => setWeek(2)}>
+              Next Week
             </Button>
           ) : (
             <>
-              <Button
-                size="xl"
-                radius="md"
-                color="green"
-                variant="filled"
-                onClick={() => setWeek(1)}
-                styles={{ root: { width: 260, height: 64, fontWeight: 800 } }}
-              >
-                Previous
+              <Button radius="md" variant="subtle" color="gray" onClick={() => setWeek(1)}>
+                Previous Week
               </Button>
               <Button
-                size="xl"
                 radius="md"
-                color="dark"
+                color="lime"
                 onClick={handleSubmitTimesheet}
                 loading={submitting}
-                styles={{ root: { width: 260, height: 64, fontWeight: 800 } }}
               >
-                Submit
+                Submit Timesheet
               </Button>
             </>
           )}
@@ -507,23 +549,23 @@ export default function EnterTimePage() {
       >
         {selectedDay && (
           <Stack gap="md">
-            <Text>
-              <b>Date:</b> {selectedDay.fullDate.toLocaleDateString()}
-            </Text>
-            <Text>
-              <b>Day:</b> {selectedDay.dow}
-            </Text>
-            <Text>
-              <b>Total Hours:</b> {selectedDay.hours}
-            </Text>
+            <Paper withBorder radius="lg" p="md">
+              <Group justify="space-between" align="start">
+                <Box>
+                  <Text fw={700}>{selectedDay.fullDate.toLocaleDateString()}</Text>
+                  <Text size="sm" c="dimmed">
+                    {selectedDay.dow}
+                  </Text>
+                </Box>
+                <Text fw={800}>{selectedDay.hours}</Text>
+              </Group>
+            </Paper>
 
-            <Divider />
-
-            {modalError && (
+            {modalError ? (
               <Alert color="red" title="Error">
                 {modalError}
               </Alert>
-            )}
+            ) : null}
 
             {selectedDaySessions.length === 0 ? (
               <Text c="dimmed" size="sm">
@@ -535,36 +577,31 @@ export default function EnterTimePage() {
                   const isEditing = editingSessionId === session.id;
 
                   return (
-                    <Paper key={session.id} withBorder p="md" radius="md">
+                    <Paper key={session.id} withBorder p="md" radius="lg">
                       <Stack gap="xs">
                         <Text fw={700}>{session.jobTitle}</Text>
                         <Text size="sm" c="dimmed">
                           Client: {session.clientName}
                         </Text>
                         <Text size="sm">
-                          Hours counted for this day:{' '}
+                          Hours counted for this day:{" "}
                           <b>{formatMinutesToHHMM(session.minutesForDay)}</b>
                         </Text>
 
                         {!isEditing ? (
                           <>
                             <Text size="sm">
-                              Start:{' '}
-                              {new Date(session.startedAt).toLocaleString()}
+                              Start: {new Date(session.startedAt).toLocaleString()}
                             </Text>
                             <Text size="sm">
-                              End:{' '}
+                              End:{" "}
                               {session.endedAt
                                 ? new Date(session.endedAt).toLocaleString()
-                                : 'Still running'}
+                                : "Still running"}
                             </Text>
 
                             <Group mt="xs">
-                              <Button
-                                size="xs"
-                                variant="light"
-                                onClick={() => beginEdit(session)}
-                              >
+                              <Button size="xs" variant="light" color="lime" onClick={() => beginEdit(session)}>
                                 Edit
                               </Button>
                             </Group>
@@ -575,25 +612,21 @@ export default function EnterTimePage() {
                               label="Started At"
                               type="datetime-local"
                               value={editStartedAt}
-                              onChange={(e) =>
-                                setEditStartedAt(e.currentTarget.value)
-                              }
+                              onChange={(e) => setEditStartedAt(e.currentTarget.value)}
                             />
 
                             <TextInput
                               label="Ended At"
                               type="datetime-local"
                               value={editEndedAt}
-                              onChange={(e) =>
-                                setEditEndedAt(e.currentTarget.value)
-                              }
+                              onChange={(e) => setEditEndedAt(e.currentTarget.value)}
                               placeholder="Leave blank if still running"
                             />
 
                             <Group mt="xs">
                               <Button
                                 size="xs"
-                                color="green"
+                                color="lime"
                                 loading={savingSession}
                                 onClick={saveSession}
                               >
@@ -601,7 +634,8 @@ export default function EnterTimePage() {
                               </Button>
                               <Button
                                 size="xs"
-                                variant="default"
+                                variant="subtle"
+                                color="gray"
                                 onClick={cancelEdit}
                                 disabled={savingSession}
                               >
@@ -616,14 +650,37 @@ export default function EnterTimePage() {
                 })}
               </Stack>
             )}
-
-            <Text c="dimmed" size="sm">
-              These values are loaded from AppointmentWorkSession records for
-              the selected pay period.
-            </Text>
           </Stack>
         )}
       </Modal>
     </Container>
+  );
+}
+
+function SummaryStat({
+  label,
+  value,
+  icon: Icon,
+}: {
+  label: string;
+  value: string;
+  icon: typeof IoCalendarOutline;
+}) {
+  return (
+    <Paper withBorder radius="lg" p="md">
+      <Group justify="space-between" align="start" wrap="nowrap">
+        <Box>
+          <Text size="xs" fw={700} c="dimmed">
+            {label}
+          </Text>
+          <Text size="xl" fw={800} mt={6}>
+            {value}
+          </Text>
+        </Box>
+        <ThemeIcon radius="lg" variant="light" color="lime">
+          <Icon size={16} />
+        </ThemeIcon>
+      </Group>
+    </Paper>
   );
 }

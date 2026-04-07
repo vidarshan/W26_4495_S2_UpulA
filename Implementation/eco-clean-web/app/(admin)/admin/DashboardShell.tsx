@@ -1,98 +1,94 @@
 "use client";
 
 import {
-  ActionIcon,
   Alert,
   AppShell,
   Box,
+  Burger,
   Container,
-  Divider,
-  Flex,
-  NavLink,
-  Popover,
+  Group,
+  Paper,
   Stack,
   Text,
-  Tooltip,
+  ThemeIcon,
+  UnstyledButton,
+  alpha,
 } from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
+import Image from "next/image";
 import { signOut } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import React, { useCallback, useEffect, useState } from "react";
-import { FaPlus } from "react-icons/fa";
+
 import {
   IoAlertCircleOutline,
   IoBriefcaseOutline,
-  IoHammerOutline,
+  IoCalendarClearOutline,
   IoHomeOutline,
   IoLogOutOutline,
+  IoCashOutline,
   IoPeopleOutline,
-  IoPersonOutline,
-  IoPersonCircleOutline,
-  IoPeopleSharp
+  IoPeopleSharp,
+  IoTimeOutline,
 } from "react-icons/io5";
 import ClientPropertyModal from "../../components/popups/ClientModal";
 import NewJobModal from "../../components/popups/JobModal";
 import UserUpsertModal from "../../components/popups/UserModal";
 import { useDashboardUI } from "@/stores/store";
 
+const DESKTOP_COLLAPSED_WIDTH = 96;
+const DESKTOP_EXPANDED_WIDTH = 292;
+const MOBILE_NAVBAR_WIDTH = 304;
+const SHELL_RADIUS = 18;
+const ITEM_RADIUS = 16;
+const ICON_RADIUS = 14;
+
+const STAFF_WORKSPACE_PATHS = [
+  "/admin/manage-staff",
+  "/admin/pay-periods",
+  "/admin/timesheets",
+  "/admin/pay/",
+];
+
 export default function DashboardShell({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const isMobile = useMediaQuery("(max-width: 62em)");
   const pathname = usePathname();
   const { selectedInfo } = useDashboardUI();
 
-  const [opened, setOpened] = useState(false);
+  const [mobileOpened, setMobileOpened] = useState(false);
+  const [hovered, setHovered] = useState(false);
   const [clientPopoverOpened, setClientPopoverOpened] = useState(false);
   const [jobPopoverOpened, setJobPopoverOpened] = useState(false);
   const [userOpened, setUserOpened] = useState(false);
-
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const expanded = isMobile || hovered;
+  const isStaffWorkspace = STAFF_WORKSPACE_PATHS.some((path) =>
+    pathname.startsWith(path),
+  );
+
   const closeAllOverlays = useCallback(() => {
-    setOpened(false);
+    setMobileOpened(false);
     setClientPopoverOpened(false);
     setJobPopoverOpened(false);
     setUserOpened(false);
-  }, []);
-
-  const openUserModal = useCallback(() => {
-    setError(null);
-    setUserOpened(true);
   }, []);
 
   const closeUserModal = useCallback(() => {
     setUserOpened(false);
   }, []);
 
-  const handleOpenJob = useCallback(() => {
-    setError(null);
-    setOpened(false);
-    setJobPopoverOpened(true);
-  }, []);
-
-  const handleOpenClient = useCallback(() => {
-    setError(null);
-    setOpened(false);
-    setClientPopoverOpened(true);
-  }, []);
-
-  const handleOpenUser = useCallback(() => {
-    setError(null);
-    setOpened(false);
-    openUserModal();
-  }, [openUserModal]);
-
-  const handleToggleQuickActions = useCallback(() => {
-    setError(null);
-    setOpened((prev) => !prev);
-  }, []);
-
   const handleMainClick = useCallback(() => {
-    if (opened) setOpened(false);
-  }, [opened]);
+    if (mobileOpened) {
+      setMobileOpened(false);
+    }
+  }, [mobileOpened]);
 
   const handleLogout = useCallback(async () => {
     if (isSigningOut) return;
@@ -109,179 +105,433 @@ export default function DashboardShell({
   }, [isSigningOut]);
 
   useEffect(() => {
-    closeAllOverlays();
-    setError(null);
+    const timer = window.setTimeout(() => {
+      closeAllOverlays();
+      setError(null);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [pathname, closeAllOverlays]);
+
+  const navItems = [
+    {
+      href: "/admin",
+      label: "Dashboard",
+      description: "Calendar and operations",
+      icon: <IoHomeOutline size={18} />,
+      active: pathname === "/admin",
+    },
+    {
+      href: "/admin/clients",
+      label: "Clients",
+      description: "Accounts and properties",
+      icon: <IoPeopleOutline size={18} />,
+      active: pathname.startsWith("/admin/clients"),
+    },
+    {
+      href: "/admin/employees",
+      label: "Employees",
+      description: "Payroll and team setup",
+      icon: <IoBriefcaseOutline size={18} />,
+      active: pathname.startsWith("/admin/employees"),
+    },
+    {
+      href: "/admin/manage-staff",
+      label: "Staff Ops",
+      description: "Leave, payroll, and time",
+      icon: <IoPeopleSharp size={18} />,
+      active: isStaffWorkspace,
+    },
+  ];
+
+  const staffWorkspaceItems = [
+    {
+      href: "/admin/manage-staff",
+      label: "Overview",
+      icon: <IoPeopleSharp size={16} />,
+      active: pathname === "/admin/manage-staff",
+    },
+    {
+      href: "/admin/pay-periods",
+      label: "Pay Periods",
+      icon: <IoCashOutline size={16} />,
+      active: pathname.startsWith("/admin/pay-periods"),
+    },
+    {
+      href: "/admin/timesheets",
+      label: "Timesheets",
+      icon: <IoTimeOutline size={16} />,
+      active: pathname.startsWith("/admin/timesheets"),
+    },
+    {
+      href: "/admin/manage-staff/leave-approval",
+      label: "Leave",
+      icon: <IoCalendarClearOutline size={16} />,
+      active: pathname.startsWith("/admin/manage-staff/leave-approval"),
+    },
+  ];
+
+  // <Tooltip label="Manage Staff" position="right" withArrow>
+  //             <NavLink
+  //               onClick={() => setOpened(false)}
+  //               component={Link}
+  //               href="/admin/manage-staff"
+  //               bdrs="md"
+  //               leftSection={<IoPeopleSharp />}
+  //               active={pathname.startsWith("/admin/staff-profile")}
+  //               disabled={isSigningOut}
+  //             />
+  //           </Tooltip>
 
   return (
     <AppShell
-      padding="md"
+      padding={{ base: "sm", md: "md" }}
+      header={{ height: 72, collapsed: !isMobile }}
       navbar={{
-        width: 72,
-        breakpoint: 0,
+        width: isMobile
+          ? MOBILE_NAVBAR_WIDTH
+          : expanded
+            ? DESKTOP_EXPANDED_WIDTH
+            : DESKTOP_COLLAPSED_WIDTH,
+        breakpoint: "md",
+        collapsed: { mobile: !mobileOpened, desktop: false },
       }}
+      className="app-shell-chrome"
     >
-      <AppShell.Navbar p="md">
-        <Stack h="100%" justify="space-between">
-          <Stack gap="xs">
-            <Flex justify="center" />
+      <AppShell.Header withBorder={false} bg="transparent">
+        <Box px="sm" pt="sm">
+          <Paper
+            radius={SHELL_RADIUS}
+            px="sm"
+            py="xs"
+            shadow="xs"
+            style={(theme) => ({
+              background: alpha(theme.white, 0.94),
+              border: `1px solid ${alpha(theme.colors.gray[3], 0.9)}`,
+              backdropFilter: "blur(14px)",
+            })}
+          >
+            <Group justify="space-between" wrap="nowrap">
+              <Group gap="sm" wrap="nowrap">
+                <ThemeIcon
+                  size={38}
+                  radius={ICON_RADIUS}
+                  variant="light"
+                  color="lime"
+                >
+                  <Image
+                    src="/logo.png"
+                    alt="Eco Clean"
+                    width={22}
+                    height={22}
+                  />
+                </ThemeIcon>
+                <Box>
+                  <Text fw={800} size="sm" c="dark.9">
+                    Eco Clean
+                  </Text>
+                  <Text size="xs" c="dimmed">
+                    Admin workspace
+                  </Text>
+                </Box>
+              </Group>
 
-            <Flex align="center" justify="center">
-              <Popover
-                radius="xl"
-                opened={opened}
-                position="right"
-                withArrow
-                shadow="md"
-                onChange={setOpened}
-              >
-                <Popover.Target>
-                  <ActionIcon
-                    variant="filled"
-                    mb="sm"
-                    size="xl"
-                    radius="xl"
-                    onClick={handleToggleQuickActions}
-                    aria-label="Open quick actions"
-                    disabled={isSigningOut}
-                    loading={false}
+              <Burger
+                opened={mobileOpened}
+                onClick={() => setMobileOpened((current) => !current)}
+                aria-label="Toggle navigation"
+                size="sm"
+              />
+            </Group>
+          </Paper>
+        </Box>
+      </AppShell.Header>
+
+      <AppShell.Navbar
+        p={{ base: "sm", md: "md" }}
+        withBorder={false}
+        onMouseEnter={() => {
+          if (!isMobile) setHovered(true);
+        }}
+        onMouseLeave={() => {
+          if (!isMobile) setHovered(false);
+        }}
+        style={(theme) => ({
+          background: alpha(theme.white, 0.95),
+          borderRight: `1px solid ${alpha(theme.colors.gray[3], 0.82)}`,
+          boxShadow: `10px 0 30px ${alpha(theme.black, 0.04)}`,
+          overflow: "hidden",
+          transition: "width 220ms ease, padding 220ms ease",
+          backdropFilter: "blur(14px)",
+        })}
+      >
+        <AppShell.Section>
+          <Paper
+            radius={SHELL_RADIUS}
+            p={expanded ? "md" : "xs"}
+            style={(theme) => ({
+              border: `1px solid ${alpha(theme.colors.gray[3], 0.9)}`,
+              transition: "padding 220ms ease",
+            })}
+          >
+            <Group
+              justify={expanded ? "space-between" : "center"}
+              wrap="nowrap"
+            >
+              <Group gap="sm" wrap="nowrap">
+                <ThemeIcon
+                  size="lg"
+                  radius={ICON_RADIUS}
+                  variant="light"
+                  color="lime"
+                >
+                  <Image
+                    src="/logo.png"
+                    alt="Eco Clean"
+                    width={26}
+                    height={26}
+                  />
+                </ThemeIcon>
+                {expanded && (
+                  <Box
+                    style={{
+                      maxWidth: 160,
+                      opacity: expanded ? 1 : 0,
+                      overflow: "hidden",
+                      transform: `translateX(${expanded ? "0" : "-8px"})`,
+                      transition:
+                        "max-width 180ms ease, opacity 140ms ease, transform 180ms ease",
+                      whiteSpace: "nowrap",
+                    }}
                   >
-                    <FaPlus
-                      size={20}
-                      style={{
-                        transform: opened ? "rotate(405deg)" : "rotate(0deg)",
-                        transition: "transform 0.35s ease",
-                      }}
-                    />
-                  </ActionIcon>
-                </Popover.Target>
+                    <Text fw={800} size="md" c="dark.9">
+                      Eco Clean
+                    </Text>
+                  </Box>
+                )}
+              </Group>
+            </Group>
+          </Paper>
+        </AppShell.Section>
 
-                <Popover.Dropdown p="xs">
-                  <Flex direction="column" gap="md">
-                    <Flex direction="column" align="center">
-                      <ActionIcon
-                        variant="light"
-                        size="xl"
-                        radius="xl"
-                        onClick={handleOpenJob}
-                        aria-label="Create job"
-                        disabled={isSigningOut}
-                      >
-                        <IoHammerOutline />
-                      </ActionIcon>
-                      <Text mt="xs" size="xs" fw={600} c="green">
-                        Job
-                      </Text>
-                    </Flex>
-
-                    <Divider />
-
-                    <Flex direction="column" align="center">
-                      <ActionIcon
-                        variant="light"
-                        color="orange"
-                        radius="xl"
-                        size="xl"
-                        onClick={handleOpenClient}
-                        aria-label="Create client"
-                        disabled={isSigningOut}
-                      >
-                        <IoPersonOutline />
-                      </ActionIcon>
-                      <Text mt="xs" size="xs" fw={600} c="orange">
-                        Client
-                      </Text>
-                    </Flex>
-
-                    <Divider />
-
-                    <Flex direction="column" align="center">
-                      <ActionIcon
-                        variant="light"
-                        radius="xl"
-                        color="violet"
-                        size="xl"
-                        onClick={handleOpenUser}
-                        aria-label="Create user"
-                        disabled={isSigningOut}
-                      >
-                        <IoBriefcaseOutline />
-                      </ActionIcon>
-                      <Text mt="xs" size="xs" fw={600} c="violet">
-                        User
-                      </Text>
-                    </Flex>
-                  </Flex>
-                </Popover.Dropdown>
-              </Popover>
-            </Flex>
-
-            <Tooltip label="Dashboard" position="right" withArrow>
-              <NavLink
-                onClick={() => setOpened(false)}
+        <AppShell.Section grow mt="lg">
+          <Stack gap="xs">
+            {navItems.map((item) => (
+              <UnstyledButton
+                key={item.href}
                 component={Link}
-                href="/admin"
-                bdrs="md"
-                leftSection={<IoHomeOutline />}
-                active={pathname === "/admin"}
-                disabled={isSigningOut}
-              />
-            </Tooltip>
+                href={item.href}
+                onClick={() => setMobileOpened(false)}
+                style={(theme) => ({
+                  display: "block",
+                  width: "100%",
+                  borderRadius: ITEM_RADIUS,
+                  padding: expanded ? "12px 14px" : "10px",
 
-            <Tooltip label="Clients" position="right" withArrow>
-              <NavLink
-                onClick={() => setOpened(false)}
-                component={Link}
-                href="/admin/clients"
-                bdrs="md"
-                leftSection={<IoPeopleOutline />}
-                active={pathname.startsWith("/admin/clients")}
-                disabled={isSigningOut}
-              />
-            </Tooltip>
+                  border: `1px solid ${
+                    item.active
+                      ? alpha(theme.colors.lime[4], 0.32)
+                      : "transparent"
+                  }`,
+                  transition:
+                    "background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease, padding 220ms ease",
+                  opacity: isSigningOut ? 0.6 : 1,
+                  pointerEvents: isSigningOut ? "none" : "auto",
+                })}
+              >
+                <Group
+                  gap={expanded ? "sm" : 0}
+                  justify={expanded ? "flex-start" : "center"}
+                  wrap="nowrap"
+                >
+                  <ThemeIcon
+                    size={38}
+                    radius={ICON_RADIUS}
+                    variant={item.active ? "filled" : "light"}
+                    color={item.active ? "lime" : "gray"}
+                  >
+                    {item.icon}
+                  </ThemeIcon>
 
-            <Tooltip label="Employees" position="right" withArrow>
-              <NavLink
-                onClick={() => setOpened(false)}
-                component={Link}
-                href="/admin/employees"
-                bdrs="md"
-                leftSection={<IoBriefcaseOutline />}
-                active={pathname.startsWith("/admin/employees")}
-                disabled={isSigningOut}
-              />
-            </Tooltip>
-
-            <Tooltip label="Manage Staff" position="right" withArrow>
-              <NavLink
-                onClick={() => setOpened(false)}
-                component={Link}
-                href="/admin/manage-staff"
-                bdrs="md"
-                leftSection={<IoPeopleSharp />}
-                active={pathname.startsWith("/admin/staff-profile")}
-                disabled={isSigningOut}
-              />
-            </Tooltip>
-
-            <Box>
-              <Divider mb="xs" />
-              <NavLink
-                component="button"
-                leftSection={<IoLogOutOutline size={18} />}
-                color="red"
-                bdrs="md"
-                onClick={handleLogout}
-                disabled={isSigningOut}
-                label={isSigningOut ? "Signing out..." : undefined}
-              />
-            </Box>
+                  <Box
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      maxWidth: expanded ? 180 : 0,
+                      opacity: expanded ? 1 : 0,
+                      overflow: "hidden",
+                      transform: `translateX(${expanded ? "0" : "-8px"})`,
+                      transition:
+                        "max-width 180ms ease, opacity 140ms ease, transform 180ms ease",
+                    }}
+                  >
+                    <Text fw={700} size="sm" c="dark.9" truncate>
+                      {item.label}
+                    </Text>
+                    <Text size="xs" c="dimmed" truncate>
+                      {item.description}
+                    </Text>
+                  </Box>
+                </Group>
+              </UnstyledButton>
+            ))}
           </Stack>
-        </Stack>
+
+          {isStaffWorkspace ? (
+            <Paper
+              radius={SHELL_RADIUS}
+              p={expanded ? "md" : "xs"}
+              mt="md"
+              className="staff-workspace-panel"
+              style={(theme) => ({
+                border: `1px solid ${alpha(theme.colors.teal[2], 0.55)}`,
+                transition: "padding 220ms ease",
+              })}
+            >
+              <Stack gap="xs">
+                <Box
+                  style={{
+                    maxHeight: expanded ? 72 : 0,
+                    opacity: expanded ? 1 : 0,
+                    overflow: "hidden",
+                    transition: "max-height 180ms ease, opacity 140ms ease",
+                  }}
+                >
+                  <Text size="xs" fw={800} tt="uppercase" c="teal.8">
+                    Staff Workspace
+                  </Text>
+                  <Text size="xs" c="dimmed" mt={4}>
+                    Payroll and time administration
+                  </Text>
+                </Box>
+
+                {staffWorkspaceItems.map((item) => (
+                  <UnstyledButton
+                    key={item.href}
+                    component={Link}
+                    href={item.href}
+                    onClick={() => setMobileOpened(false)}
+                    className="staff-workspace-panel__item"
+                    style={(theme) => ({
+                      display: "block",
+                      width: "100%",
+                      borderRadius: 14,
+                      padding: expanded ? "10px 12px" : "10px",
+                      background: item.active
+                        ? alpha(theme.colors.teal[0], 0.9)
+                        : "transparent",
+                      border: `1px solid ${
+                        item.active
+                          ? alpha(theme.colors.teal[3], 0.45)
+                          : "transparent"
+                      }`,
+                      transition:
+                        "background-color 150ms ease, border-color 150ms ease, padding 220ms ease",
+                    })}
+                  >
+                    <Group
+                      gap={expanded ? "sm" : 0}
+                      justify={expanded ? "flex-start" : "center"}
+                      wrap="nowrap"
+                    >
+                      <ThemeIcon
+                        size={34}
+                        radius="md"
+                        variant={item.active ? "filled" : "light"}
+                        color={item.active ? "teal" : "gray"}
+                      >
+                        {item.icon}
+                      </ThemeIcon>
+
+                      <Box
+                        style={{
+                          minWidth: 0,
+                          maxWidth: expanded ? 160 : 0,
+                          opacity: expanded ? 1 : 0,
+                          overflow: "hidden",
+                          transform: `translateX(${expanded ? "0" : "-8px"})`,
+                          transition:
+                            "max-width 180ms ease, opacity 140ms ease, transform 180ms ease",
+                        }}
+                      >
+                        <Text fw={700} size="sm" c="dark.9" truncate>
+                          {item.label}
+                        </Text>
+                      </Box>
+                    </Group>
+                  </UnstyledButton>
+                ))}
+              </Stack>
+            </Paper>
+          ) : null}
+        </AppShell.Section>
+
+        <AppShell.Section>
+          <Paper
+            radius={SHELL_RADIUS}
+            p={expanded ? "xs" : 0}
+            bg="transparent"
+            style={{ transition: "padding 220ms ease" }}
+          >
+            <UnstyledButton
+              type="button"
+              onClick={handleLogout}
+              disabled={isSigningOut}
+              style={(theme) => ({
+                display: "block",
+                width: "100%",
+                borderRadius: ITEM_RADIUS,
+                padding: expanded ? "12px 14px" : "10px",
+                background: alpha(theme.colors.red[0], 0.75),
+                border: `1px solid ${alpha(theme.colors.red[2], 0.55)}`,
+                transition:
+                  "background-color 150ms ease, border-color 150ms ease, padding 220ms ease",
+                opacity: isSigningOut ? 0.7 : 1,
+                pointerEvents: isSigningOut ? "none" : "auto",
+              })}
+            >
+              <Group
+                gap={expanded ? "sm" : 0}
+                justify={expanded ? "flex-start" : "center"}
+                wrap="nowrap"
+              >
+                <ThemeIcon
+                  size={38}
+                  radius={ICON_RADIUS}
+                  variant="light"
+                  color="red"
+                >
+                  <IoLogOutOutline size={18} />
+                </ThemeIcon>
+
+                <Box
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    maxWidth: expanded ? 180 : 0,
+                    opacity: expanded ? 1 : 0,
+                    overflow: "hidden",
+                    transform: `translateX(${expanded ? "0" : "-8px"})`,
+                    transition:
+                      "max-width 180ms ease, opacity 140ms ease, transform 180ms ease",
+                  }}
+                >
+                  <Text fw={700} size="sm" c="red.8" truncate>
+                    {isSigningOut ? "Signing out..." : "Sign out"}
+                  </Text>
+                </Box>
+              </Group>
+            </UnstyledButton>
+          </Paper>
+        </AppShell.Section>
       </AppShell.Navbar>
 
-      <AppShell.Main>
-        <Container fluid onClick={handleMainClick}>
+      <AppShell.Main className="app-shell-main">
+        <Container
+          fluid
+          onClick={handleMainClick}
+          className="app-shell-main__inner"
+        >
           {error && (
             <Alert
               mb="md"

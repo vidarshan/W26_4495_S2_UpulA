@@ -6,7 +6,7 @@ declare module "next-pwa" {
     disable?: boolean;
     register?: boolean;
     skipWaiting?: boolean;
-    runtimeCaching?: any;
+    runtimeCaching?: Array<Record<string, unknown>>;
     fallbacks?: {
       document?: string;
       image?: string;
@@ -26,6 +26,6 @@ declare module "next-pwa" {
 }
 
 declare module "next-pwa/cache" {
-  const runtimeCaching: any;
+  const runtimeCaching: Array<Record<string, unknown>>;
   export default runtimeCaching;
 }

@@ -19,3 +19,37 @@ export const TaskAssistantResponseSchema = z.object({
 });
 
 export type TaskAssistantResponse = z.infer<typeof TaskAssistantResponseSchema>;
+
+export const StaffRecommendationResponseSchema = z.object({
+  brief: z.string(),
+  topPick: z
+    .object({
+      staffId: z.string(),
+      name: z.string(),
+      reason: z.string(),
+    })
+    .nullable(),
+  alternates: z
+    .array(
+      z.object({
+        staffId: z.string(),
+        name: z.string(),
+        reason: z.string(),
+      }),
+    )
+    .default([]),
+  unavailable: z
+    .array(
+      z.object({
+        staffId: z.string(),
+        name: z.string(),
+        reason: z.string(),
+      }),
+    )
+    .default([]),
+  cautions: z.array(z.string()).default([]),
+});
+
+export type StaffRecommendationResponse = z.infer<
+  typeof StaffRecommendationResponseSchema
+>;

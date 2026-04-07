@@ -60,7 +60,7 @@ export function buildUtcWindowFromLocal(
   const startStr = isAnytime ? "09:00" : startTime || "09:00";
   const [sh, sm] = startStr.split(":").map(Number);
 
-  let startLocal = base.set({
+  const startLocal = base.set({
     hour: sh,
     minute: sm,
     second: 0,

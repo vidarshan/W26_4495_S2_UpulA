@@ -21,8 +21,9 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { IoPeopleOutline, IoTextOutline } from "react-icons/io5";
 import AdminStaffDetailsModal from "@/app/components/popups/AdminStaffDetailsModal";
+import { StaffRole } from "@/types";
 type Mode = "create" | "edit";
-type Role = "ADMIN" | "STAFF";
+type Role = StaffRole;
 
 type UserLite = {
   id: string;
@@ -252,6 +253,12 @@ export default function UserUpsertModal({
       closeOnClickOutside={!isBusy}
       closeOnEscape={!isBusy}
       withCloseButton={!isBusy}
+      classNames={{
+        content: "app-modal__content",
+        header: "app-modal__header",
+        title: "app-modal__title",
+        body: "app-modal__body",
+      }}
     >
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Stack gap="sm">

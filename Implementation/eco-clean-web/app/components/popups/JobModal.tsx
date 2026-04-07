@@ -28,19 +28,31 @@ import { DatePickerInput, TimeInput } from "@mantine/dates";
 import { Dropzone } from "@mantine/dropzone";
 import { useDebouncedValue } from "@mantine/hooks";
 import { useForm } from "@mantine/form";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { IoAddOutline, IoCloseOutline, IoImageOutline } from "react-icons/io5";
 import { createJob, CreateJobPayload, JobFormValues } from "@/lib/api/jobs";
 import { getClientAddresses, getClients } from "@/lib/api/client";
 import { getStaff } from "@/lib/api/users";
-import { Staff } from "@/app/types/staff";
-import { Client } from "../tables/ClientTable";
-import { CalendarSelection } from "@/types";
+import { runStaffRecommendationPreview } from "@/lib/api/appointments";
+import {
+  CalendarSelection,
+  CandidateResponse,
+  CandidateRecommendation,
+  CandidateStaff,
+  Client,
+  Staff,
+} from "@/types";
 import { DateTime } from "luxon";
 import { APP_TZ } from "@/lib/dateTime";
 import { useUploadThing } from "@/lib/uploadthing";
 import { notifications } from "@mantine/notifications";
+import AIStaffSuggestionCard from "../cards/AIStaffSuggestionCard";
 import { getAvailableStaff } from "@/lib/api/users";
 
 interface Props {
@@ -132,6 +144,59 @@ function jsDateToHHmm(d: Date) {
   return dt.isValid ? dt.toFormat("HH:mm") : "";
 }
 
+function buildAppointmentWindow(
+  appointment: AppointmentForm,
+  isAnytime: boolean,
+) {
+  if (!appointment.startDate || isAnytime) return null;
+  if (!appointment.startTime.trim() || !appointment.endTime.trim()) return null;
+
+  const start = DateTime.fromFormat(
+    `${appointment.startDate} ${appointment.startTime.trim()}`,
+    "yyyy-LL-dd HH:mm",
+    { zone: APP_TZ },
+  );
+  const end = DateTime.fromFormat(
+    `${appointment.startDate} ${appointment.endTime.trim()}`,
+    "yyyy-LL-dd HH:mm",
+    { zone: APP_TZ },
+  );
+
+  if (!start.isValid || !end.isValid || end <= start) return null;
+
+  return {
+    appointmentStart: start.toUTC().toISO(),
+    appointmentEnd: end.toUTC().toISO(),
+  };
+}
+
+async function getAssignmentCandidates(
+  addressId: string,
+  appointmentStart: string,
+  appointmentEnd: string,
+): Promise<CandidateResponse> {
+  const params = new URLSearchParams({
+    appointmentStart,
+    appointmentEnd,
+  });
+
+  const res = await fetch(
+    `/api/assignment/candidate/${addressId}?${params.toString()}`,
+    {
+      method: "GET",
+      cache: "no-store",
+    },
+  );
+
+  const data = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    throw new Error(data?.error || "Failed to fetch assignment candidates");
+  }
+
+  return data as CandidateResponse;
+}
+
 export function toYMD(d: string | null) {
   if (!d) return "";
 
@@ -154,9 +219,9 @@ const mapAppt = (appt: AppointmentForm): AppointmentApiPayload => {
     note: appt.notes?.trim() ? appt.notes.trim() : null,
     images: appt.uploadedImages?.length
       ? appt.uploadedImages.map((img) => ({
-        url: img.url,
-        fileKey: img.fileKey ?? null,
-      }))
+          url: img.url,
+          fileKey: img.fileKey ?? null,
+        }))
       : undefined,
   };
 };
@@ -223,8 +288,8 @@ function buildInitialValues(
         ...blankAppointment(),
         startDate: selectedInfo?.start
           ? DateTime.fromJSDate(selectedInfo.start, { zone: APP_TZ }).toFormat(
-            "yyyy-LL-dd",
-          )
+              "yyyy-LL-dd",
+            )
           : null,
         startTime: selectedInfo?.start ? jsDateToHHmm(selectedInfo.start) : "",
         endTime: selectedInfo?.end ? jsDateToHHmm(selectedInfo.end) : "",
@@ -311,14 +376,14 @@ export default function NewJobModal({
             : null,
         endsAfter: (v, values) =>
           values.jobType === "RECURRING" &&
-            values.recurrence.endType === "after" &&
-            (!v || v < 1)
+          values.recurrence.endType === "after" &&
+          (!v || v < 1)
             ? "Must be at least 1"
             : null,
         endsOn: (v, values) =>
           values.jobType === "RECURRING" &&
-            values.recurrence.endType === "on" &&
-            !v
+          values.recurrence.endType === "on" &&
+          !v
             ? "End date is required"
             : null,
       },
@@ -341,7 +406,87 @@ export default function NewJobModal({
     enabled: opened,
   });
 
+  const {
+    data: staffData,
+    isLoading: staffLoading,
+    isFetching: staffFetching,
+    isError: staffError,
+  } = useQuery({
+    queryKey: [
+      "staff",
+      { q: debouncedSearchAssignees, paginate: false },
+    ] as const,
+    queryFn: () => getStaff(),
+    staleTime: 60_000,
+    enabled: opened,
+  });
 
+  const appointmentCandidateQueries = useQueries({
+    queries: form.values.appointments.map((appointment) => {
+      const window = buildAppointmentWindow(appointment, form.values.isAnytime);
+      const enabled =
+        opened &&
+        !!form.values.addressId &&
+        !!window?.appointmentStart &&
+        !!window?.appointmentEnd;
+
+      return {
+        queryKey: [
+          "assignment-candidates",
+          form.values.addressId,
+          appointment.id,
+          window?.appointmentStart ?? null,
+          window?.appointmentEnd ?? null,
+        ],
+        queryFn: () =>
+          getAssignmentCandidates(
+            form.values.addressId,
+            window!.appointmentStart!,
+            window!.appointmentEnd!,
+          ),
+        enabled,
+        staleTime: 60_000,
+      };
+    }),
+  });
+
+  const appointmentStaffRecommendationQueries = useQueries({
+    queries: form.values.appointments.map((appointment) => {
+      const window = buildAppointmentWindow(appointment, form.values.isAnytime);
+      const candidateQuery = appointmentCandidateQueries.find(
+        (query, index) =>
+          form.values.appointments[index]?.id === appointment.id,
+      );
+      const candidateData = candidateQuery?.data?.data;
+      const enabled =
+        opened &&
+        !!candidateData &&
+        !!window?.appointmentStart &&
+        !!window?.appointmentEnd;
+
+      return {
+        queryKey: [
+          "staff-recommendation-preview",
+          appointment.id,
+          window?.appointmentStart ?? null,
+          window?.appointmentEnd ?? null,
+          form.values.title,
+          candidateData?.recommendedMembers?.length ?? 0,
+          candidateData?.staffMembers?.length ?? 0,
+        ],
+        queryFn: () =>
+          runStaffRecommendationPreview({
+            appointmentStart: window!.appointmentStart!,
+            appointmentEnd: window!.appointmentEnd!,
+            jobTitle: form.values.title.trim() || "Draft job",
+            candidateData: candidateData!,
+          }),
+        enabled,
+        staleTime: 60_000,
+        retry: 1,
+      };
+    }),
+  });
 
   const {
     data: addressesData,
@@ -445,8 +590,6 @@ export default function NewJobModal({
     onClose();
   };
 
-  const startStr = selectedInfo?.startStr || "";
-  const endStr = selectedInfo?.endStr || "";
   const allDay = !!selectedInfo?.allDay;
 
   useEffect(() => {
@@ -456,25 +599,28 @@ export default function NewJobModal({
   }, [opened, selectedInfo]);
 
   useEffect(() => {
-    if (!opened || !startStr) return;
+    if (!opened || !selectedInfo?.start) return;
 
-    const startDT = DateTime.fromISO(startStr, { zone: APP_TZ });
-    const endDT = endStr ? DateTime.fromISO(endStr, { zone: APP_TZ }) : null;
+    const startDT = DateTime.fromJSDate(selectedInfo.start, { zone: APP_TZ });
+    const endDT = selectedInfo.end
+      ? DateTime.fromJSDate(selectedInfo.end, { zone: APP_TZ })
+      : null;
+
     if (!startDT.isValid) return;
 
     const startDate = startDT.toFormat("yyyy-LL-dd");
-    form.setFieldValue("appointments.0.startDate", startDate);
     const startTime = allDay ? "09:00" : startDT.toFormat("HH:mm");
-    const endTime = allDay
+    const computedEndTime = allDay
       ? "11:00"
-      : endDT && endDT.isValid
+      : endDT && endDT.isValid && endDT > startDT
         ? endDT.toFormat("HH:mm")
-        : "";
+        : startDT.plus({ minutes: 30 }).toFormat("HH:mm");
 
+    form.setFieldValue("appointments.0.startDate", startDate);
     form.setFieldValue("appointments.0.startTime", startTime);
-    form.setFieldValue("appointments.0.endTime", endTime);
+    form.setFieldValue("appointments.0.endTime", computedEndTime);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [opened, startStr, endStr, allDay]);
+  }, [opened, selectedInfo, allDay]);
 
   useEffect(() => {
     if (form.values.jobType !== "RECURRING") return;
@@ -572,22 +718,22 @@ export default function NewJobModal({
       })),
       ...(values.jobType === "RECURRING"
         ? {
-          recurrence: {
-            frequency: values.recurrence.frequency,
-            interval: values.recurrence.interval,
-            endType: values.recurrence.endType,
-            endsAfter:
-              values.recurrence.endType === "after"
-                ? values.recurrence.endsAfter
-                : null,
-            endsOn:
-              values.recurrence.endType === "on" && values.recurrence.endsOn
-                ? DateTime.fromJSDate(values.recurrence.endsOn, {
-                  zone: APP_TZ,
-                }).toFormat("yyyy-LL-dd")
-                : null,
-          },
-        }
+            recurrence: {
+              frequency: values.recurrence.frequency,
+              interval: values.recurrence.interval,
+              endType: values.recurrence.endType,
+              endsAfter:
+                values.recurrence.endType === "after"
+                  ? values.recurrence.endsAfter
+                  : null,
+              endsOn:
+                values.recurrence.endType === "on" && values.recurrence.endsOn
+                  ? DateTime.fromJSDate(values.recurrence.endsOn, {
+                      zone: APP_TZ,
+                    }).toFormat("yyyy-LL-dd")
+                  : null,
+            },
+          }
         : {}),
       appointments,
     };
@@ -764,7 +910,8 @@ export default function NewJobModal({
         opened &&
         !!appt.startDate &&
         !!appt.startTime &&
-        !!appt.endTime;
+        !!appt.endTime &&
+        appt.endTime > appt.startTime;
 
       const {
         data: staffData,
@@ -786,7 +933,7 @@ export default function NewJobModal({
             endTime: appt.endTime || "",
             q: debouncedSearchAssignees,
           }),
-        enabled: opened,
+        enabled: shouldFetch,
         staleTime: 30_000,
       });
 
@@ -855,6 +1002,12 @@ export default function NewJobModal({
       closeOnClickOutside={!isBusy}
       closeOnEscape={!isBusy}
       withCloseButton={!isBusy}
+      classNames={{
+        content: "app-modal__content",
+        header: "app-modal__header",
+        title: "app-modal__title",
+        body: "app-modal__body",
+      }}
     >
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Stack gap="sm">
