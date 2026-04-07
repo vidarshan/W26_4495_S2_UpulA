@@ -34,7 +34,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { IoAddOutline, IoCloseOutline, IoImageOutline } from "react-icons/io5";
 import { createJob, CreateJobPayload, JobFormValues } from "@/lib/api/jobs";
 import { getClientAddresses, getClients } from "@/lib/api/client";
@@ -265,6 +265,22 @@ function blankAppointment(): AppointmentForm {
 function buildInitialValues(
   selectedInfo: CalendarSelection | null,
 ): JobFormValuesWithRecurrence {
+  const startDate = selectedInfo?.start
+    ? DateTime.fromJSDate(selectedInfo.start, { zone: APP_TZ }).toFormat(
+        "yyyy-LL-dd",
+      )
+    : null;
+  const startTime = selectedInfo?.start
+    ? selectedInfo.allDay
+      ? "09:00"
+      : jsDateToHHmm(selectedInfo.start)
+    : "";
+  const endTime = selectedInfo?.end
+    ? selectedInfo.allDay
+      ? "11:00"
+      : jsDateToHHmm(selectedInfo.end)
+    : "";
+
   return {
     title: "",
     clientId: "",
@@ -286,13 +302,9 @@ function buildInitialValues(
     appointments: [
       {
         ...blankAppointment(),
-        startDate: selectedInfo?.start
-          ? DateTime.fromJSDate(selectedInfo.start, { zone: APP_TZ }).toFormat(
-              "yyyy-LL-dd",
-            )
-          : null,
-        startTime: selectedInfo?.start ? jsDateToHHmm(selectedInfo.start) : "",
-        endTime: selectedInfo?.end ? jsDateToHHmm(selectedInfo.end) : "",
+        startDate,
+        startTime,
+        endTime,
       },
     ],
     recurrence: {
@@ -314,6 +326,7 @@ export default function NewJobModal({
 }: Props) {
   const queryClient = useQueryClient();
   const { startUpload, isUploading } = useUploadThing("appointmentImages");
+  const initializedSelectionKeyRef = useRef<string | null>(null);
 
   const initialValues = useMemo(
     () => buildInitialValues(selectedInfo),
@@ -1003,10 +1016,8 @@ export default function NewJobModal({
       closeOnEscape={!isBusy}
       withCloseButton={!isBusy}
       classNames={{
-        content: "app-modal__content",
         header: "app-modal__header",
         title: "app-modal__title",
-        body: "app-modal__body",
       }}
     >
       <form onSubmit={form.onSubmit(handleSubmit)}>
@@ -1027,7 +1038,7 @@ export default function NewJobModal({
           <Paper>
             <SegmentedControl
               mt="sm"
-              color="green"
+              color="lime"
               value={form.values.jobType}
               disabled={isBusy}
               onChange={(value) =>

@@ -1,4 +1,17 @@
 
+.jobActionCard {
+  background:
+    radial-gradient(circle at top right, rgba(132, 204, 22, 0.14), transparent 34%),
+    linear-gradient(135deg, rgba(248, 250, 252, 0.98), rgba(241, 245, 249, 0.95));
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.jobActionIcon {
+  background: linear-gradient(135deg, #65a30d, #0f766e);
+  box-shadow: 0 10px 24px rgba(101, 163, 13, 0.18);
+  flex-shrink: 0;
+}
 
 .thumbnailCard {
   position: relative;

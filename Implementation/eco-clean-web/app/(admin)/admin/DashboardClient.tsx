@@ -47,12 +47,14 @@ import {
 } from "react-icons/io5";
 import AppointmentInfoModal from "../../components/popups/AppointmentInfoModal";
 import ConfirmCancellationModal from "../../components/popups/ConfirmCancellationModal";
+import JobEditModal from "../../components/popups/JobEditModal";
 import NewJobModal from "../../components/popups/JobModal";
 import { useStaff } from "@/hooks/useStaff";
 import { rescheduleAppointment } from "@/lib/api/appointments";
 import { APP_TZ } from "@/lib/dateTime";
 import { useCalendarStore, useDashboardUI } from "@/stores/store";
 import { Staff } from "@/types";
+import { DateTime } from "luxon";
 
 
 export default function DashboardClient() {
@@ -146,6 +148,17 @@ export default function DashboardClient() {
       allDay: selectInfo.allDay,
     });
   };
+
+  const handleSelectAllow = useCallback((selectInfo: DateSelectArg) => {
+    const start = DateTime.fromJSDate(selectInfo.start, { zone: "utc" }).setZone(
+      APP_TZ,
+    );
+    const end = DateTime.fromJSDate(selectInfo.end, { zone: "utc" })
+      .setZone(APP_TZ)
+      .minus({ millisecond: 1 });
+
+    return start.hasSame(end, "day");
+  }, []);
 
   const handleDateResize = async (info: EventResizeDoneArg) => {
     const { id } = info.event;
@@ -328,6 +341,7 @@ export default function DashboardClient() {
         onSuccess={refreshCalendar}
       />
 
+      <JobEditModal onSuccess={refreshCalendar} />
       {appointmentOpen && <AppointmentInfoModal onSuccess={refreshCalendar} />}
       {confirmCancelOpen && (
         <ConfirmCancellationModal onSuccess={refreshCalendar} />
@@ -568,6 +582,7 @@ export default function DashboardClient() {
               }}
               loading={setCalendarLoading}
               events={loadEvents}
+              selectAllow={handleSelectAllow}
               select={handleDateSelect}
               eventDrop={handleDateDrop}
               eventResize={handleDateResize}

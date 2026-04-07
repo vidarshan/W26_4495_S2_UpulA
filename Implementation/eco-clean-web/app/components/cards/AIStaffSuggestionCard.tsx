@@ -83,7 +83,7 @@ const AIStaffSuggestionCard = ({
       <Stack gap="md" style={{ position: "relative", zIndex: 1 }}>
         <Group justify="space-between" align="flex-start">
           <Group gap="sm" align="center">
-            <ActionIcon radius="md" size="lg">
+            <ActionIcon radius="xl" variant="light" color="pink" size="lg">
               <IoSparklesOutline />
             </ActionIcon>
 

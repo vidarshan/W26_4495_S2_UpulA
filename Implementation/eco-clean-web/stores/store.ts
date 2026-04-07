@@ -39,6 +39,7 @@ interface DashboardUIState {
 
   // modals
   newJobOpen: boolean;
+  editJobOpen: boolean;
   appointmentOpen: boolean;
   confirmCancelOpen: boolean;
 
@@ -47,7 +48,8 @@ interface DashboardUIState {
   // actions
   openNewJobWithSelection: (arg: CalendarSelection) => void;
   closeNewJob: () => void;
-
+  openEditJob: () => void;
+  closeEditJob: () => void;
   openAppointment: (jobId: string, apptId: string) => void;
   closeAppointment: () => void;
 
@@ -63,6 +65,7 @@ export const useDashboardUI = create<DashboardUIState>((set) => ({
   selectedInfo: null,
 
   newJobOpen: false,
+  editJobOpen: false,
   appointmentOpen: false,
   confirmCancelOpen: false,
 
@@ -79,6 +82,15 @@ export const useDashboardUI = create<DashboardUIState>((set) => ({
       newJobOpen: false,
     }),
 
+  openEditJob: () =>
+    set({
+      editJobOpen: true,
+    }),
+
+  closeEditJob: () =>
+    set({
+      editJobOpen: false,
+    }),
   openAppointment: (jobId, apptId) =>
     set({
       selectedJobId: jobId,
