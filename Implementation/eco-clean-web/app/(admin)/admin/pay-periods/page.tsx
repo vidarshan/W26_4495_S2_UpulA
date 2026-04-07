@@ -3,6 +3,7 @@
 import {
   Box,
   Button,
+  Group,
   Card,
   Container,
   NumberInput,
@@ -16,6 +17,10 @@ import {
 import { useMediaQuery } from '@mantine/hooks';
 import { useEffect, useMemo, useState } from 'react';
 import { calculateQuebecPayrollEstimate } from '@/lib/payroll/deductions';
+import * as XLSX from "xlsx";
+import { IoDownloadOutline, IoDocumentTextOutline } from "react-icons/io5";
+
+
 
 const PAY_PERIODS_PER_YEAR = 26;
 const DEFAULT_FEDERAL_CLAIM = 16452;
@@ -275,6 +280,38 @@ export default function ManagePayPeriodsPage() {
     );
   }, [rows]);
 
+  function exportToExcel() {
+    const data = rows.map((r) => ({
+      "Staff ID": r.staffId,
+      "Staff Name": r.staffName,
+      "Regular Hours": r.regularHours,
+      "Regular Rate": r.regularRate,
+      "Regular Amount": r.regularAmount,
+      "OT Hours": r.otHours,
+      "OT Rate": r.otRate,
+      "OT Amount": r.otAmount,
+      Transport: r.transportAllowance,
+      Federal: r.federalTax,
+      Quebec: r.quebecTax,
+      EI: r.ei,
+      QPP: r.qpp,
+      QPP2: r.qpp2,
+      QPIP: r.qpip,
+      Health: r.health,
+      Other: r.other,
+      Deductions: r.deductions,
+      Gross: r.grossEarnings,
+      Net: r.netEarnings,
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(wb, ws, "Payroll");
+
+    XLSX.writeFile(wb, `payroll_${periodStart || "data"}.xlsx`);
+  }
+
   return (
     <Container fluid px="md" py="xl">
       <Title order={2} ta="center" mb="xl">
@@ -388,10 +425,13 @@ export default function ManagePayPeriodsPage() {
           </Table.ScrollContainer>
         </ScrollArea>
       </Card>
-
-      <Button mt="xl" onClick={handleSubmit} loading={loading}>
+      <Group mt="xl" gap="md"><Button mt="xl" leftSection={<IoDocumentTextOutline size={16} />} onClick={handleSubmit} loading={loading}>
         Generate Pay Statements
       </Button>
+        <Button mt="xl" leftSection={<IoDownloadOutline size={16} />} onClick={exportToExcel} loading={loading}>
+          Download Excel
+        </Button></Group>
+
     </Container>
   );
 }

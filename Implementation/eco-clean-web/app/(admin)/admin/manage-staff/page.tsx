@@ -94,6 +94,14 @@ export default function ManageStaffPage() {
                   Edit pay periods, review statements, and manage
                   payroll-related records.
                 </Text>
+                <Button
+                  component={Link}
+                  href="/admin/pay-periods"
+                  variant="light"
+                  rightSection={<IoArrowForwardOutline size={16} />}
+                >
+                  Go to Payroll Admin Panel
+                </Button>
               </Accordion.Panel>
             </Accordion.Item>
           </Accordion>
@@ -163,28 +171,33 @@ export default function ManageStaffPage() {
   const navItems = (
     <Stack gap="xs">
       <NavLink
-        label="Time & Time-Off"
-        component={Link}
-        href="/admin/manage-staff/leave-approval"
-        leftSection={<IoTimeOutline size={18} />}
-        active={pathname.startsWith('/admin/leave-approval')}
-        onClick={close}
+        label="Leave Management"
+        leftSection={<IoCalendarClearOutline size={18} />}
+        active={activeSection === "leave"}
+        onClick={() => {
+          setActiveSection("leave");
+          close();
+        }}
       />
 
       <NavLink
         label="Payroll Management"
-        component={Link}
-        href="/admin/manage-staff/payroll"
         leftSection={<IoCashOutline size={18} />}
-        active={pathname.startsWith('/admin/manage-staff/payroll')}
-        onClick={close}
+        active={activeSection === "payroll"}
+        onClick={() => {
+          setActiveSection("payroll");
+          close();
+        }}
       />
 
       <NavLink
-        label="Time & Time-Off"
+        label="Timesheets"
         leftSection={<IoTimeOutline size={18} />}
-        active={pathname.startsWith('/admin/manage-staff/leave-approval')}
-        onClick={close}
+        active={activeSection === "time"}
+        onClick={() => {
+          setActiveSection("time");
+          close();
+        }}
       />
     </Stack>
   );
