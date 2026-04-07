@@ -4,19 +4,25 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Badge,
-  Card,
-  Container,
+  Button,
   Divider,
   Group,
   Loader,
+  Paper,
   Select,
   SimpleGrid,
   Stack,
   Table,
   Text,
-  Title,
-  Button
 } from "@mantine/core";
+import {
+  IoCalendarOutline,
+  IoCheckmarkDoneOutline,
+  IoPeopleOutline,
+  IoTimeOutline,
+} from "react-icons/io5";
+import AdminPageFrame from "@/app/components/admin/AdminPageFrame";
+import AdminStaffWorkspaceNav from "@/app/components/admin/AdminStaffWorkspaceNav";
 
 type TimesheetPeriod = {
   id: string;
@@ -100,8 +106,9 @@ function formatDateTime(value: string | null | undefined) {
 }
 
 function formatMinutes(minutes: number) {
-  const hrs = Math.floor(minutes / 60);
-  const mins = minutes % 60;
+  const absoluteMinutes = Math.abs(minutes);
+  const hrs = Math.floor(absoluteMinutes / 60);
+  const mins = absoluteMinutes % 60;
   return `${hrs}h ${mins}m`;
 }
 
@@ -125,8 +132,6 @@ function statusColor(status: string | null) {
       return "gray";
   }
 }
-
-
 
 export default function AdminTimesheetOverviewPage() {
   const [periods, setPeriods] = useState<TimesheetPeriod[]>([]);
@@ -167,7 +172,7 @@ export default function AdminTimesheetOverviewPage() {
       }
     }
 
-    loadPeriods();
+    void loadPeriods();
   }, []);
 
   useEffect(() => {
@@ -180,7 +185,7 @@ export default function AdminTimesheetOverviewPage() {
 
         const res = await fetch(
           `/api/admin/timesheets/periods/${selectedPeriodId}/overview`,
-          { cache: "no-store" }
+          { cache: "no-store" },
         );
 
         if (!res.ok) {
@@ -198,17 +203,16 @@ export default function AdminTimesheetOverviewPage() {
       }
     }
 
-    loadOverview();
+    void loadOverview();
   }, [selectedPeriodId]);
 
   async function handleApprove(timesheetId: string) {
     setApprovingId(timesheetId);
 
     try {
-      const res = await fetch(
-        `/api/admin/timesheets/${timesheetId}/approve`,
-        { method: "POST" }
-      );
+      const res = await fetch(`/api/admin/timesheets/${timesheetId}/approve`, {
+        method: "POST",
+      });
 
       const data = await res.json();
 
@@ -217,16 +221,16 @@ export default function AdminTimesheetOverviewPage() {
         return;
       }
 
-      // reload overview
       if (selectedPeriodId) {
-        const res = await fetch(
+        const refresh = await fetch(
           `/api/admin/timesheets/periods/${selectedPeriodId}/overview`,
-          { cache: "no-store" }
+          { cache: "no-store" },
         );
-        const data = await res.json();
-        setOverview(data);
+        const refreshedData = await refresh.json();
+        setOverview(refreshedData);
       }
     } catch (err) {
+      console.error(err);
       alert("Something went wrong");
     } finally {
       setApprovingId(null);
@@ -239,7 +243,7 @@ export default function AdminTimesheetOverviewPage() {
         value: period.id,
         label: `${formatDate(period.startDate)} → ${formatDate(period.endDate)} (${period.status})`,
       })),
-    [periods]
+    [periods],
   );
 
   const summary = useMemo(() => {
@@ -249,139 +253,171 @@ export default function AdminTimesheetOverviewPage() {
         totalPlannedMinutes: 0,
         totalActualMinutes: 0,
         totalVarianceMinutes: 0,
+        submittedCount: 0,
       };
     }
 
     const totalPlannedMinutes = overview.employees.reduce(
-      (sum, emp) => sum + emp.totals.plannedMinutes,
-      0
+      (sum, employee) => sum + employee.totals.plannedMinutes,
+      0,
     );
-
     const totalActualMinutes = overview.employees.reduce(
-      (sum, emp) => sum + emp.totals.actualMinutes,
-      0
+      (sum, employee) => sum + employee.totals.actualMinutes,
+      0,
     );
+    const submittedCount = overview.employees.filter(
+      (employee) => employee.timesheetStatus === "SUBMITTED",
+    ).length;
 
     return {
       employeeCount: overview.employees.length,
       totalPlannedMinutes,
       totalActualMinutes,
       totalVarianceMinutes: totalActualMinutes - totalPlannedMinutes,
+      submittedCount,
     };
   }, [overview]);
 
   return (
-    <Container size="xl" py="xl">
+    <AdminPageFrame
+      eyebrow="Time tracking"
+      title="Timesheets"
+      description="Compare planned work against submitted time, then approve ready timesheets from a more readable admin review flow."
+      stats={[
+        { label: "Employees", value: String(summary.employeeCount), icon: IoPeopleOutline },
+        { label: "Awaiting approval", value: String(summary.submittedCount), icon: IoCheckmarkDoneOutline },
+        { label: "Period variance", value: formatMinutes(summary.totalVarianceMinutes), icon: IoTimeOutline },
+      ]}
+    >
       <Stack gap="lg">
-        <div>
-          <Title order={2}>Admin Timesheet Overview</Title>
-          <Text c="dimmed" mt={4}>
-            Compare submitted timesheet days against planned assignment time for a selected period.
-          </Text>
-        </div>
+        <AdminStaffWorkspaceNav />
 
-        {error && (
-          <Alert color="red" title="Something went wrong">
-            {error}
-          </Alert>
-        )}
+        <Stack gap="lg">
+          {error ? (
+            <Alert color="red" title="Something went wrong">
+              {error}
+            </Alert>
+          ) : null}
 
-        <Card withBorder radius="md" p="lg">
-          <Stack gap="md">
-            <Select
-              label="Timesheet period"
-              placeholder={loadingPeriods ? "Loading periods..." : "Select a period"}
-              data={periodOptions}
-              value={selectedPeriodId}
-              onChange={setSelectedPeriodId}
-              searchable
-              disabled={loadingPeriods || periodOptions.length === 0}
-            />
+          <Paper withBorder radius="lg" p="md" className="admin-page-frame__stat">
+            <Stack gap="md">
+              <Group justify="space-between" align="flex-end" gap="md">
+                <div>
+                  <Text fw={700} c="#0f172a">
+                    Timesheet period
+                  </Text>
+                  <Text size="sm" c="dimmed" mt={4}>
+                    Review one payroll period at a time and inspect staff-level day details below.
+                  </Text>
+                </div>
 
-            {overview?.period && (
-              <Group gap="sm">
-                <Badge color={overview.period.status === "LOCKED" ? "grape" : "green"}>
-                  {overview.period.status}
-                </Badge>
-                <Text size="sm">
-                  {formatDate(overview.period.startDate)} → {formatDate(overview.period.endDate)}
-                </Text>
+                {overview?.period ? (
+                  <Group gap="sm">
+                    <Badge color={overview.period.status === "LOCKED" ? "grape" : "green"}>
+                      {overview.period.status}
+                    </Badge>
+                    <Badge variant="light" color="gray">
+                      <IoCalendarOutline size={14} style={{ marginRight: 6 }} />
+                      {formatDate(overview.period.startDate)} → {formatDate(overview.period.endDate)}
+                    </Badge>
+                  </Group>
+                ) : null}
+              </Group>
+
+              <Select
+                placeholder={loadingPeriods ? "Loading periods..." : "Select a period"}
+                data={periodOptions}
+                value={selectedPeriodId}
+                onChange={setSelectedPeriodId}
+                searchable
+                disabled={loadingPeriods || periodOptions.length === 0}
+              />
+
+              {overview?.period ? (
                 <Text size="sm" c="dimmed">
                   Locked at: {formatDateTime(overview.period.lockedAt)}
                 </Text>
-              </Group>
-            )}
-          </Stack>
-        </Card>
+              ) : null}
+            </Stack>
+          </Paper>
 
-        {loadingOverview ? (
-          <Group justify="center" py="xl">
-            <Loader />
-          </Group>
-        ) : overview ? (
-          <>
-            <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }}>
-              <Card withBorder radius="md" p="lg">
-                <Text size="sm" c="dimmed">
-                  Employees
-                </Text>
-                <Title order={3}>{summary.employeeCount}</Title>
-              </Card>
-
-              <Card withBorder radius="md" p="lg">
-                <Text size="sm" c="dimmed">
-                  Planned
-                </Text>
-                <Title order={3}>{formatMinutes(summary.totalPlannedMinutes)}</Title>
-              </Card>
-
-              <Card withBorder radius="md" p="lg">
-                <Text size="sm" c="dimmed">
-                  Actual
-                </Text>
-                <Title order={3}>{formatMinutes(summary.totalActualMinutes)}</Title>
-              </Card>
-
-              <Card withBorder radius="md" p="lg">
-                <Text size="sm" c="dimmed">
-                  Variance
-                </Text>
-                <Title order={3} c={`${varianceColor(summary.totalVarianceMinutes)}.6`}>
-                  {summary.totalVarianceMinutes > 0 ? "+" : ""}
-                  {formatMinutes(summary.totalVarianceMinutes)}
-                </Title>
-              </Card>
-            </SimpleGrid>
-
+          {loadingOverview ? (
+            <Group justify="center" py="xl">
+              <Loader />
+            </Group>
+          ) : overview ? (
             <Stack gap="lg">
-              {overview.employees.map((employee) => (
-                <Card key={employee.staffId} withBorder radius="md" p="lg">
-                  <Stack gap="md">
+              <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md">
+                <Paper withBorder radius="lg" p="md" className="admin-page-frame__stat">
+                  <Text size="sm" c="dimmed">
+                    Employees
+                  </Text>
+                  <Text size="xl" fw={700} c="#0f172a" mt={6}>
+                    {summary.employeeCount}
+                  </Text>
+                </Paper>
+                <Paper withBorder radius="lg" p="md" className="admin-page-frame__stat">
+                  <Text size="sm" c="dimmed">
+                    Planned
+                  </Text>
+                  <Text size="xl" fw={700} c="#0f172a" mt={6}>
+                    {formatMinutes(summary.totalPlannedMinutes)}
+                  </Text>
+                </Paper>
+                <Paper withBorder radius="lg" p="md" className="admin-page-frame__stat">
+                  <Text size="sm" c="dimmed">
+                    Actual
+                  </Text>
+                  <Text size="xl" fw={700} c="#0f172a" mt={6}>
+                    {formatMinutes(summary.totalActualMinutes)}
+                  </Text>
+                </Paper>
+                <Paper withBorder radius="lg" p="md" className="admin-page-frame__stat">
+                  <Text size="sm" c="dimmed">
+                    Variance
+                  </Text>
+                  <Text size="xl" fw={700} c={`${varianceColor(summary.totalVarianceMinutes)}.6`} mt={6}>
+                    {summary.totalVarianceMinutes > 0 ? "+" : summary.totalVarianceMinutes < 0 ? "-" : ""}
+                    {formatMinutes(summary.totalVarianceMinutes)}
+                  </Text>
+                </Paper>
+              </SimpleGrid>
 
-                    
-                    
-                    <Group justify="space-between" align="flex-start">
-                      <div>
-                        <Title order={4}>{employee.name}</Title>
-                        <Text size="sm" c="dimmed">
-                          {employee.email}
-                        </Text>
-                        <Text size="sm" c="dimmed">
-                          Staff ID: {employee.staffCode || "—"} | Position: {employee.position || "—"}
-                        </Text>
-                      </div>
+              {overview.employees.map((employee) => {
+                const isCollapsed = collapsed[employee.staffId];
 
-                      <Group gap="xs">
-                        <Badge color={statusColor(employee.timesheetStatus)}>
-                          {employee.timesheetStatus || "NO TIMESHEET"}
-                        </Badge>
-                        {employee.submittedAt && (
-                          <Badge variant="light" color="blue">
-                            Submitted: {formatDate(employee.submittedAt)}
+                return (
+                  <Paper
+                    key={employee.staffId}
+                    withBorder
+                    radius="lg"
+                    p="lg"
+                    className="admin-page-frame__surface"
+                  >
+                    <Stack gap="md">
+                      <Group justify="space-between" align="flex-start" gap="md">
+                        <div>
+                          <Text size="lg" fw={700} c="#0f172a">
+                            {employee.name}
+                          </Text>
+                          <Text size="sm" c="dimmed">
+                            {employee.email}
+                          </Text>
+                          <Text size="sm" c="dimmed">
+                            Staff ID: {employee.staffCode || "—"} | Position: {employee.position || "—"}
+                          </Text>
+                        </div>
+
+                        <Group gap="xs">
+                          <Badge color={statusColor(employee.timesheetStatus)}>
+                            {employee.timesheetStatus || "NO TIMESHEET"}
                           </Badge>
-                        )}
-                        {employee.timesheetId &&
-                          employee.timesheetStatus === "SUBMITTED" && (
+                          {employee.submittedAt ? (
+                            <Badge variant="light" color="blue">
+                              Submitted: {formatDate(employee.submittedAt)}
+                            </Badge>
+                          ) : null}
+                          {employee.timesheetId && employee.timesheetStatus === "SUBMITTED" ? (
                             <Button
                               size="xs"
                               color="green"
@@ -390,168 +426,173 @@ export default function AdminTimesheetOverviewPage() {
                             >
                               Approve
                             </Button>
-
-                          )}
-                        <Button
-                          size="xs"
-                          variant="light"
-                          onClick={() =>
-                            setCollapsed((prev) => ({
-                              ...prev,
-                              [employee.staffId]: !prev[employee.staffId],
-                            }))
-                          }
-                        >
-                          {collapsed[employee.staffId] ? "Expand" : "Collapse"}
-                        </Button>
-
-
+                          ) : null}
+                          <Button
+                            size="xs"
+                            variant="light"
+                            onClick={() =>
+                              setCollapsed((prev) => ({
+                                ...prev,
+                                [employee.staffId]: !prev[employee.staffId],
+                              }))
+                            }
+                          >
+                            {isCollapsed ? "Expand" : "Collapse"}
+                          </Button>
+                        </Group>
                       </Group>
-                    </Group>
 
-                    <SimpleGrid cols={{ base: 1, sm: 3 }}>
-                      <Card withBorder radius="md" p="md">
-                        <Text size="sm" c="dimmed">
-                          Planned
-                        </Text>
-                        <Text fw={700}>{formatMinutes(employee.totals.plannedMinutes)}</Text>
-                      </Card>
+                      <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
+                        <Paper withBorder radius="lg" p="md" className="admin-page-frame__stat">
+                          <Text size="sm" c="dimmed">
+                            Planned
+                          </Text>
+                          <Text fw={700} mt={6}>
+                            {formatMinutes(employee.totals.plannedMinutes)}
+                          </Text>
+                        </Paper>
+                        <Paper withBorder radius="lg" p="md" className="admin-page-frame__stat">
+                          <Text size="sm" c="dimmed">
+                            Actual
+                          </Text>
+                          <Text fw={700} mt={6}>
+                            {formatMinutes(employee.totals.actualMinutes)}
+                          </Text>
+                        </Paper>
+                        <Paper withBorder radius="lg" p="md" className="admin-page-frame__stat">
+                          <Text size="sm" c="dimmed">
+                            Variance
+                          </Text>
+                          <Text fw={700} c={`${varianceColor(employee.totals.varianceMinutes)}.6`} mt={6}>
+                            {employee.totals.varianceMinutes > 0 ? "+" : employee.totals.varianceMinutes < 0 ? "-" : ""}
+                            {formatMinutes(employee.totals.varianceMinutes)}
+                          </Text>
+                        </Paper>
+                      </SimpleGrid>
 
-                      <Card withBorder radius="md" p="md">
-                        <Text size="sm" c="dimmed">
-                          Actual
-                        </Text>
-                        <Text fw={700}>{formatMinutes(employee.totals.actualMinutes)}</Text>
-                      </Card>
+                      {employee.notes ? (
+                        <Alert color="gray" title="Timesheet notes">
+                          {employee.notes}
+                        </Alert>
+                      ) : null}
 
-                      <Card withBorder radius="md" p="md">
-                        <Text size="sm" c="dimmed">
-                          Variance
-                        </Text>
-                        <Text fw={700} c={`${varianceColor(employee.totals.varianceMinutes)}.6`}>
-                          {employee.totals.varianceMinutes > 0 ? "+" : ""}
-                          {formatMinutes(employee.totals.varianceMinutes)}
-                        </Text>
-                      </Card>
-                    </SimpleGrid>
+                      {!isCollapsed ? (
+                        <>
+                          <Divider />
 
-                    {employee.notes && (
-                      <Alert color="gray" title="Timesheet notes">
-                        {employee.notes}
-                      </Alert>
-                    )}
-
-                    <Divider />
-
-                    <Table.ScrollContainer minWidth={1100}>
-                      <Table striped highlightOnHover withTableBorder>
-                        <Table.Thead>
-                          <Table.Tr>
-                            <Table.Th>Date</Table.Th>
-                            <Table.Th>Planned</Table.Th>
-                            <Table.Th>Actual</Table.Th>
-                            <Table.Th>Variance</Table.Th>
-                            <Table.Th>Hourly Rate</Table.Th>
-                            <Table.Th>Timesheet Note</Table.Th>
-                            <Table.Th>Assignment Details</Table.Th>
-                          </Table.Tr>
-                        </Table.Thead>
-
-                        <Table.Tbody>
-                          {employee.days.length === 0 ? (
-                            <Table.Tr>
-                              <Table.Td colSpan={7}>
-                                <Text c="dimmed">No data for this employee in the selected period.</Text>
-                              </Table.Td>
-                            </Table.Tr>
-                          ) : (
-                            employee.days.map((day) => (
-                              <Table.Tr key={`${employee.staffId}-${day.date}`}>
-                                <Table.Td>{day.date}</Table.Td>
-                                <Table.Td>{formatMinutes(day.plannedMinutes)}</Table.Td>
-                                <Table.Td>{formatMinutes(day.actualMinutes)}</Table.Td>
-                                <Table.Td>
-                                  <Text c={`${varianceColor(day.varianceMinutes)}.6`} fw={600}>
-                                    {day.varianceMinutes > 0 ? "+" : ""}
-                                    {formatMinutes(day.varianceMinutes)}
-                                  </Text>
-                                </Table.Td>
-                                <Table.Td>
-                                  {day.hourlyRate != null ? `$${day.hourlyRate.toFixed(2)}` : "—"}
-                                </Table.Td>
-                                <Table.Td>{day.notes || "—"}</Table.Td>
-                                <Table.Td>
-                                  {day.assignments.length === 0 ? (
-                                    <Text size="sm" c="dimmed">
-                                      No planned assignments
-                                    </Text>
-                                  ) : (
-                                    <Stack gap={8}>
-                                      {day.assignments.map((assignment) => (
-                                        <Card key={assignment.id} withBorder radius="md" p="sm">
-                                          <Group justify="space-between" align="flex-start">
-                                            <div>
-                                              <Text fw={600}>{assignment.jobTitle}</Text>
-                                              <Text size="sm" c="dimmed">
-                                                {assignment.clientName}
-                                              </Text>
-                                              <Text size="sm" c="dimmed">
-                                                {assignment.addressLine || "No address"}
-                                              </Text>
-                                            </div>
-                                            <Badge variant="light">{assignment.status}</Badge>
-                                          </Group>
-
-                                          <Text size="sm" mt={8}>
-                                            Planned: {formatDateTime(assignment.plannedStart)} →{" "}
-                                            {formatDateTime(assignment.plannedEnd)}
+                          <Table.ScrollContainer minWidth={1100}>
+                            <Table striped highlightOnHover withTableBorder>
+                              <Table.Thead>
+                                <Table.Tr>
+                                  <Table.Th>Date</Table.Th>
+                                  <Table.Th>Planned</Table.Th>
+                                  <Table.Th>Actual</Table.Th>
+                                  <Table.Th>Variance</Table.Th>
+                                  <Table.Th>Hourly rate</Table.Th>
+                                  <Table.Th>Timesheet note</Table.Th>
+                                  <Table.Th>Assignment details</Table.Th>
+                                </Table.Tr>
+                              </Table.Thead>
+                              <Table.Tbody>
+                                {employee.days.length === 0 ? (
+                                  <Table.Tr>
+                                    <Table.Td colSpan={7}>
+                                      <Text c="dimmed">
+                                        No data for this employee in the selected period.
+                                      </Text>
+                                    </Table.Td>
+                                  </Table.Tr>
+                                ) : (
+                                  employee.days.map((day) => (
+                                    <Table.Tr key={`${employee.staffId}-${day.date}`}>
+                                      <Table.Td>{day.date}</Table.Td>
+                                      <Table.Td>{formatMinutes(day.plannedMinutes)}</Table.Td>
+                                      <Table.Td>{formatMinutes(day.actualMinutes)}</Table.Td>
+                                      <Table.Td>
+                                        <Text c={`${varianceColor(day.varianceMinutes)}.6`} fw={600}>
+                                          {day.varianceMinutes > 0 ? "+" : day.varianceMinutes < 0 ? "-" : ""}
+                                          {formatMinutes(day.varianceMinutes)}
+                                        </Text>
+                                      </Table.Td>
+                                      <Table.Td>
+                                        {day.hourlyRate != null ? `$${day.hourlyRate.toFixed(2)}` : "—"}
+                                      </Table.Td>
+                                      <Table.Td>{day.notes || "—"}</Table.Td>
+                                      <Table.Td>
+                                        {day.assignments.length === 0 ? (
+                                          <Text size="sm" c="dimmed">
+                                            No planned assignments
                                           </Text>
-                                          <Text size="sm">
-                                            Planned minutes: {formatMinutes(assignment.plannedMinutes)}
-                                          </Text>
-                                          <Text size="sm">
-                                            Break: {assignment.breakMinutes} min
-                                          </Text>
-                                          <Text size="sm">
-                                            Assignment rate: {assignment.hourlyRateAtTime != null
-                                              ? `$${assignment.hourlyRateAtTime.toFixed(2)}`
-                                              : "—"}
-                                          </Text>
+                                        ) : (
+                                          <Stack gap="xs">
+                                            {day.assignments.map((assignment) => (
+                                              <Paper
+                                                key={assignment.id}
+                                                withBorder
+                                                radius="lg"
+                                                p="sm"
+                                                className="admin-page-frame__stat"
+                                              >
+                                                <Group justify="space-between" align="flex-start">
+                                                  <div>
+                                                    <Text fw={600}>{assignment.jobTitle}</Text>
+                                                    <Text size="sm" c="dimmed">
+                                                      {assignment.clientName}
+                                                    </Text>
+                                                    <Text size="sm" c="dimmed">
+                                                      {assignment.addressLine || "No address"}
+                                                    </Text>
+                                                  </div>
+                                                  <Badge variant="light">{assignment.status}</Badge>
+                                                </Group>
 
-                                          {assignment.notes && (
-                                            <Text size="sm" mt={6} c="dimmed">
-                                              Note: {assignment.notes}
-                                            </Text>
-                                          )}
-                                        </Card>
-                                      ))}
-                                    </Stack>
-                                  )}
-                                </Table.Td>
-                              </Table.Tr>
-                            ))
-                          )}
-                        </Table.Tbody>
-                      </Table>
-                    </Table.ScrollContainer>
-                  </Stack>
-                </Card>
-              ))}
+                                                <Text size="sm" mt={8}>
+                                                  Planned: {formatDateTime(assignment.plannedStart)} →{" "}
+                                                  {formatDateTime(assignment.plannedEnd)}
+                                                </Text>
+                                                <Text size="sm">
+                                                  Planned minutes: {formatMinutes(assignment.plannedMinutes)}
+                                                </Text>
+                                                <Text size="sm">Break: {assignment.breakMinutes} min</Text>
+                                                <Text size="sm">
+                                                  Assignment rate:{" "}
+                                                  {assignment.hourlyRateAtTime != null
+                                                    ? `$${assignment.hourlyRateAtTime.toFixed(2)}`
+                                                    : "—"}
+                                                </Text>
+
+                                                {assignment.notes ? (
+                                                  <Text size="sm" mt={6} c="dimmed">
+                                                    Note: {assignment.notes}
+                                                  </Text>
+                                                ) : null}
+                                              </Paper>
+                                            ))}
+                                          </Stack>
+                                        )}
+                                      </Table.Td>
+                                    </Table.Tr>
+                                  ))
+                                )}
+                              </Table.Tbody>
+                            </Table>
+                          </Table.ScrollContainer>
+                        </>
+                      ) : null}
+                    </Stack>
+                  </Paper>
+                );
+              })}
             </Stack>
-          </>
-        ) : (
-          !loadingPeriods && (
-            <Alert color="gray" title="No data">
-              No period selected or no overview available.
-            </Alert>
-          )
-        )}
+          ) : (
+            !loadingPeriods && (
+              <Alert color="gray" title="No data">
+                No period selected or no overview available.
+              </Alert>
+            )
+          )}
+        </Stack>
       </Stack>
-    </Container>
+    </AdminPageFrame>
   );
-
-
-
 }
-
-

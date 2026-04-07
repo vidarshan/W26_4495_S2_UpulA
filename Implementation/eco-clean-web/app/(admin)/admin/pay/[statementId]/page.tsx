@@ -1,21 +1,36 @@
 "use client";
 
-import { Box, Button, Container, Group, Text, Title, Loader, Center, Alert } from "@mantine/core";
-import { useMediaQuery } from "@mantine/hooks";
+import {
+  Alert,
+  Box,
+  Button,
+  Center,
+  Divider,
+  Grid,
+  Group,
+  Loader,
+  Paper,
+  Stack,
+  Table,
+  Text,
+} from "@mantine/core";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
-import { useRef, useEffect, useState } from "react";
-import { useParams } from "next/navigation";
-import { IoDownloadOutline } from "react-icons/io5";
 import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
+import {
+  IoArrowBackOutline,
+  IoCalendarOutline,
+  IoCashOutline,
+  IoDownloadOutline,
+  IoDocumentTextOutline,
+  IoPersonOutline,
+} from "react-icons/io5";
+import AdminPageFrame from "@/app/components/admin/AdminPageFrame";
+import AdminStaffWorkspaceNav from "@/app/components/admin/AdminStaffWorkspaceNav";
 
-type PayStatementSummary = {
-  gross: number;
-  totalDeductions: number;
-  net: number;
-};
-
-type PayStatementDetails = {
+type PayBreakdown = {
   regularRate?: number | null;
   regularHours?: number | null;
   regularAmount?: number | null;
@@ -24,66 +39,100 @@ type PayStatementDetails = {
   otAmount?: number | null;
   transportAllowance?: number | null;
   federalTax?: number | null;
+  quebecTax?: number | null;
   ei?: number | null;
-  cpp?: number | null;
+  qpp?: number | null;
+  qpp2?: number | null;
+  qpip?: number | null;
   health?: number | null;
   other?: number | null;
 };
 
-type PayStatementPeriod = {
-  start: string;
-  end: string;
-  payDate: string;
-};
-
-type PayStatementUi = {
+type PayStatementDetails = {
   id: string;
-  summary: PayStatementSummary;
-  details?: PayStatementDetails | null;
-  period: PayStatementPeriod;
+  employeeName: string;
+  employeeId: string;
+  payDate: string;
+  payPeriodStart: string;
+  payPeriodEnd: string;
+  grossEarnings: number;
+  totalDeductions: number;
+  netEarnings: number;
+  breakdown?: PayBreakdown | null;
+  ytd?: {
+    gross: number;
+    deductions: number;
+    net: number;
+  };
 };
 
-type MoneyRowProps = {
-  label: string;
-  rate: number | null | undefined;
-  units: number | null | undefined;
-  amount: number | null | undefined;
-  yearToDate: number | null | undefined;
+type PageProps = {
+  params: Promise<{ statementId: string }>;
 };
 
-type DeductionRowProps = {
-  label: string;
-  amount: number;
-};
+function formatMoney(value: number | null | undefined) {
+  return new Intl.NumberFormat("en-CA", {
+    style: "currency",
+    currency: "CAD",
+  }).format(value || 0);
+}
 
-type TotalRowProps = {
-  label: string;
-  value: number | null;
-};
+function formatDate(value: string | null | undefined) {
+  if (!value) return "—";
+
+  return new Date(value).toLocaleDateString("en-CA", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Failed to load statement.";
 }
 
-export default function PayStubPage() {
-  const isNarrow = useMediaQuery("(max-width: 62em)");
-  const params = useParams();
-  const statementId = params.statementId as string;
+export default function AdminPayStubPage({ params }: PageProps) {
   const pdfRef = useRef<HTMLDivElement>(null);
 
-  const [data, setData] = useState<PayStatementUi | null>(null);
+  const [statementId, setStatementId] = useState<string | null>(null);
+  const [data, setData] = useState<PayStatementDetails | null>(null);
   const [loading, setLoading] = useState(true);
+  const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 1. Fetch data from your route.ts
   useEffect(() => {
+    let mounted = true;
+
+    async function resolveParams() {
+      const resolved = await params;
+      if (mounted) {
+        setStatementId(resolved.statementId);
+      }
+    }
+
+    void resolveParams();
+
+    return () => {
+      mounted = false;
+    };
+  }, [params]);
+
+  useEffect(() => {
+    if (!statementId) return;
+
     async function fetchPayData() {
       try {
-        // Using hardcoded ID for now or session.user.id
-        const staffId = "3b32d468-9f20-4808-9f25-bffabed6a9cb";
-        const response = await fetch(`/api/staff/${staffId}/pay-statements/${statementId}`);
-        if (!response.ok) throw new Error("Statement not found.");
-        const result = await response.json();
+        setLoading(true);
+        const response = await fetch(`/api/admin/pay-statements/${statementId}`, {
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          throw new Error(payload.error || "Statement not found.");
+        }
+
+        const result = (await response.json()) as PayStatementDetails;
         setData(result);
       } catch (err: unknown) {
         setError(getErrorMessage(err));
@@ -91,157 +140,323 @@ export default function PayStubPage() {
         setLoading(false);
       }
     }
-    if (statementId) fetchPayData();
+
+    void fetchPayData();
   }, [statementId]);
 
   const handleDownloadPdf = async () => {
-    if (!pdfRef.current) return;
-    const canvas = await html2canvas(pdfRef.current, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
-    const imgData = canvas.toDataURL('image/png');
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const imgWidth = pageWidth - 20;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-    pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
-    pdf.save(`pay-stub-${data?.period?.payDate}.pdf`);
+    if (!pdfRef.current || !data) return;
+
+    try {
+      setDownloading(true);
+      const canvas = await html2canvas(pdfRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+      });
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const imgWidth = pageWidth - 20;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      pdf.addImage(imgData, "PNG", 10, 10, imgWidth, imgHeight);
+      pdf.save(`pay-statement-${data.employeeId}-${data.id}.pdf`);
+    } finally {
+      setDownloading(false);
+    }
   };
 
-  if (loading) return <Center h="80vh"><Loader size="xl" color="#125f82" /></Center>;
-  if (error) return <Container py="xl"><Alert color="red">{error}</Alert></Container>;
-  if (!data) {
+  if (loading) {
     return (
-      <Container py="xl">
-        <Alert color="yellow">No pay statement found.</Alert>
-      </Container>
+      <Center mih="70vh">
+        <Loader size="lg" color="lime" />
+      </Center>
     );
   }
 
-  // 2. Map Database JSON to your UI structure
+  if (error) {
+    return (
+      <Box py="xl">
+        <Alert color="red">{error}</Alert>
+      </Box>
+    );
+  }
+
+  if (!data) {
+    return (
+      <Box py="xl">
+        <Alert color="yellow">No pay statement found.</Alert>
+      </Box>
+    );
+  }
+
   const earnings = [
-    { label: 'Regular', rate: data.details?.regularRate, units: data.details?.regularHours, amount: data.details?.regularAmount, yearToDate: data.details?.regularAmount },
-    { label: 'Overtime', rate: data.details?.otRate, units: data.details?.otHours, amount: data.details?.otAmount, yearToDate: data.details?.otAmount },
-    { label: 'Transport Allowance', rate: null, units: null, amount: data.details?.transportAllowance || 0, yearToDate: null },
+    {
+      label: "Regular",
+      rate: data.breakdown?.regularRate,
+      units: data.breakdown?.regularHours,
+      amount: data.breakdown?.regularAmount,
+    },
+    {
+      label: "Overtime",
+      rate: data.breakdown?.otRate,
+      units: data.breakdown?.otHours,
+      amount: data.breakdown?.otAmount,
+    },
+    {
+      label: "Transport allowance",
+      rate: null,
+      units: null,
+      amount: data.breakdown?.transportAllowance,
+    },
   ];
 
   const deductions = [
-    { label: 'Federal Tax', amount: -(data.details?.federalTax || 0) },
-    { label: 'EI', amount: -(data.details?.ei || 0) },
-    { label: 'CPP', amount: -(data.details?.cpp || 0) },
-    { label: 'Health', amount: -(data.details?.health || 0) },
-    { label: 'Other', amount: -(data.details?.other || 0) },
-  ];
+    { label: "Federal tax", amount: data.breakdown?.federalTax || 0 },
+    { label: "Quebec tax", amount: data.breakdown?.quebecTax || 0 },
+    { label: "EI", amount: data.breakdown?.ei || 0 },
+    { label: "QPP", amount: data.breakdown?.qpp || 0 },
+    { label: "QPP2", amount: data.breakdown?.qpp2 || 0 },
+    { label: "QPIP", amount: data.breakdown?.qpip || 0 },
+    { label: "Health", amount: data.breakdown?.health || 0 },
+    { label: "Other", amount: data.breakdown?.other || 0 },
+  ].filter((item) => item.amount > 0);
 
   return (
-    <Container size="lg" py="xl">
-      <Group justify={isNarrow ? "stretch" : "flex-end"} mb="md">
-        <Button leftSection={<IoDownloadOutline size={18} />} onClick={handleDownloadPdf} fullWidth={isNarrow}>
-          Download PDF
-        </Button>
-      </Group>
-
-      <Box style={{ overflowX: "auto" }}>
-        <Box ref={pdfRef} bg="white" p={isNarrow ? "md" : "xl"} style={{ border: '1px solid #ddd', maxWidth: 900, minWidth: isNarrow ? 680 : undefined, margin: '0 auto' }}>
-        <Group justify="space-between" align="flex-start" mb="lg" wrap="nowrap">
-          <Box>
-            <Box style={{ width: 90, height: 90, border: '2px solid #7cb342', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Image src="/logo.png" alt="Company Logo" width={80} height={80} />
-            </Box>
-          </Box>
-
-          <Box ta="center">
-            <Title order={3}>Eco-Clean Services</Title>
-            <Text size="sm">Surrey, British Columbia, CA</Text>
-            <Text fw={800} mt="md" size="lg" c="#2e7d32">STATEMENT OF EARNINGS AND DEDUCTIONS</Text>
-
-            <Group justify="center" mt="md" gap="xs">
-              <Text fw={700} size="sm">Pay Period :</Text>
-              <Box px="md" py={4} style={{ border: '2px solid #355c7d', borderRadius: 8, fontSize: '14px' }}>
-                {new Date(data.period.start).toLocaleDateString()}
-              </Box>
-              <Text fw={700} size="sm">to</Text>
-              <Box px="md" py={4} style={{ border: '2px solid #355c7d', borderRadius: 8, fontSize: '14px' }}>
-                {new Date(data.period.end).toLocaleDateString()}
-              </Box>
-            </Group>
-          </Box>
-          <Box w={90} />
+    <AdminPageFrame
+      eyebrow="Payroll statement"
+      title="Pay Statement"
+      description="Review a generated statement in the newer admin layout and export a PDF when needed."
+      action={
+        <Group gap="sm">
+          <Button
+            component={Link}
+            href="/admin/pay-periods"
+            variant="default"
+            leftSection={<IoArrowBackOutline size={16} />}
+          >
+            Back to pay periods
+          </Button>
+          <Button
+            leftSection={<IoDownloadOutline size={16} />}
+            onClick={handleDownloadPdf}
+            loading={downloading}
+          >
+            Download PDF
+          </Button>
         </Group>
+      }
+      stats={[
+        { label: "Employee", value: data.employeeId || "N/A", icon: IoPersonOutline },
+        { label: "Pay date", value: formatDate(data.payDate), icon: IoCalendarOutline },
+        { label: "Net earnings", value: formatMoney(data.netEarnings), icon: IoCashOutline },
+      ]}
+    >
+      <Stack gap="lg">
+        <AdminStaffWorkspaceNav />
 
-        <SectionHeader title="Earnings" />
-        <GridHeader />
-        {earnings.map((row) => (
-          <Row key={row.label} label={row.label} rate={row.rate} units={row.units} amount={row.amount} yearToDate={row.yearToDate} />
-        ))}
-        <TotalRow label="Gross Earnings" value={data.summary.gross} />
+        <Stack gap="lg">
+          <Paper withBorder radius="lg" p="lg" className="admin-page-frame__stat">
+            <Grid gutter="md">
+              <Grid.Col span={{ base: 12, md: 4 }}>
+                <Text size="sm" c="dimmed">
+                  Employee
+                </Text>
+                <Text fw={700} mt={6}>
+                  {data.employeeName}
+                </Text>
+                <Text size="sm" c="dimmed">
+                  Staff ID: {data.employeeId}
+                </Text>
+              </Grid.Col>
+              <Grid.Col span={{ base: 12, md: 4 }}>
+                <Text size="sm" c="dimmed">
+                  Period
+                </Text>
+                <Text fw={700} mt={6}>
+                  {formatDate(data.payPeriodStart)} → {formatDate(data.payPeriodEnd)}
+                </Text>
+              </Grid.Col>
+              <Grid.Col span={{ base: 12, md: 4 }}>
+                <Text size="sm" c="dimmed">
+                  Year to date net
+                </Text>
+                <Text fw={700} mt={6}>
+                  {formatMoney(data.ytd?.net)}
+                </Text>
+              </Grid.Col>
+            </Grid>
+          </Paper>
 
-        <SectionHeader title="Deductions" mt="lg" />
-        {deductions.map((row) => (
-          <DeductionRow key={row.label} label={row.label} amount={row.amount} />
-        ))}
+          <Paper
+            ref={pdfRef}
+            withBorder
+            radius="lg"
+            p={{ base: "md", md: "xl" }}
+            className="admin-page-frame__surface"
+          >
+            <Stack gap="xl">
+              <Group justify="space-between" align="flex-start" wrap="nowrap">
+                <Group gap="md" wrap="nowrap">
+                  <Box
+                    style={{
+                      width: 72,
+                      height: 72,
+                      borderRadius: 20,
+                      background:
+                        "linear-gradient(180deg, rgba(236, 253, 245, 0.98), rgba(240, 249, 255, 0.98))",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      border: "1px solid rgba(16, 185, 129, 0.2)",
+                    }}
+                  >
+                    <Image src="/logo.png" alt="Eco Clean" width={44} height={44} />
+                  </Box>
 
-        <Box mt="md" px="md" py="sm" style={{ backgroundColor: '#8bcf6c', borderTop: '2px solid black', borderBottom: '2px solid black' }}>
-          <Group justify="space-between">
-            <Text fw={800} size="xl">Net Earnings</Text>
-            <Text fw={800} size="xl">${data.summary.net.toFixed(2)}</Text>
-          </Group>
-        </Box>
-        </Box>
-      </Box>
-    </Container>
-  );
-}
+                  <div>
+                    <Text fw={800} size="xl" c="#0f172a">
+                      Eco-Clean Services
+                    </Text>
+                    <Text size="sm" c="dimmed">
+                      Statement of earnings and deductions
+                    </Text>
+                  </div>
+                </Group>
 
-// --- Helper Components (SectionHeader, GridHeader, Row, etc. remain the same as your code) ---
-function SectionHeader({ title, mt }: { title: string; mt?: string | number }) {
-  return (
-    <Box mt={mt} px="md" py="xs" style={{ backgroundColor: '#d9ead3', borderTop: '2px solid black', borderBottom: '2px solid black' }}>
-      <Text fw={800} size="lg">{title}</Text>
-    </Box>
-  );
-}
+                <Paper withBorder radius="lg" p="sm" className="admin-page-frame__stat">
+                  <Text size="xs" tt="uppercase" fw={700} c="#64748b">
+                    Pay Date
+                  </Text>
+                  <Text fw={700} mt={4}>
+                    {formatDate(data.payDate)}
+                  </Text>
+                </Paper>
+              </Group>
 
-function GridHeader() {
-  return (
-    <Group px="md" py="xs" justify="space-between" style={{ borderBottom: '2px solid #999' }}>
-      <Text fw={700} w="30%">Description</Text>
-      <Text fw={700} w="10%" ta="right">Rate</Text>
-      <Text fw={700} w="10%" ta="right">Units</Text>
-      <Text fw={700} w="20%" ta="right">Amount</Text>
-      <Text fw={700} w="20%" ta="right">YTD</Text>
-    </Group>
-  );
-}
+              <Grid gutter="md">
+                <Grid.Col span={{ base: 12, sm: 6 }}>
+                  <Paper withBorder radius="lg" p="md" className="admin-page-frame__stat">
+                    <Text size="xs" tt="uppercase" fw={700} c="#64748b">
+                      Employee
+                    </Text>
+                    <Text fw={700} mt={6}>
+                      {data.employeeName}
+                    </Text>
+                    <Text size="sm" c="dimmed">
+                      Staff ID: {data.employeeId}
+                    </Text>
+                  </Paper>
+                </Grid.Col>
+                <Grid.Col span={{ base: 12, sm: 6 }}>
+                  <Paper withBorder radius="lg" p="md" className="admin-page-frame__stat">
+                    <Text size="xs" tt="uppercase" fw={700} c="#64748b">
+                      Pay Period
+                    </Text>
+                    <Text fw={700} mt={6}>
+                      {formatDate(data.payPeriodStart)} → {formatDate(data.payPeriodEnd)}
+                    </Text>
+                  </Paper>
+                </Grid.Col>
+              </Grid>
 
-function Row({ label, rate, units, amount, yearToDate }: MoneyRowProps) {
-  return (
-    <Group px="md" py={6} justify="space-between" style={{ background: '#f9f9f9' }}>
-      <Text w="30%">{label}</Text>
-      <Text w="10%" ta="right">{rate ?? '-'}</Text>
-      <Text w="10%" ta="right">{units ?? '-'}</Text>
-      <Text w="20%" ta="right">${amount?.toFixed(2)}</Text>
-      <Text w="20%" ta="right">${yearToDate?.toFixed(2) ?? '-'}</Text>
-    </Group>
-  );
-}
+              <Stack gap="sm">
+                <Group gap="xs">
+                  <IoDocumentTextOutline size={18} color="#0f172a" />
+                  <Text fw={700} c="#0f172a">
+                    Earnings
+                  </Text>
+                </Group>
 
-function DeductionRow({ label, amount }: DeductionRowProps) {
-  return (
-    <Group px="md" py={6} justify="space-between" style={{ background: '#f9f9f9', marginTop: 2 }}>
-      <Text w="30%">{label}</Text>
-      <Text w="40%" ta="right" c="red">{amount?.toFixed(2)}</Text>
-      <Text w="20%" />
-    </Group>
-  );
-}
+                <Table withTableBorder highlightOnHover>
+                  <Table.Thead>
+                    <Table.Tr>
+                      <Table.Th>Description</Table.Th>
+                      <Table.Th ta="right">Rate</Table.Th>
+                      <Table.Th ta="right">Units</Table.Th>
+                      <Table.Th ta="right">Amount</Table.Th>
+                    </Table.Tr>
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {earnings.map((row) => (
+                      <Table.Tr key={row.label}>
+                        <Table.Td>{row.label}</Table.Td>
+                        <Table.Td ta="right">
+                          {row.rate != null ? formatMoney(row.rate) : "—"}
+                        </Table.Td>
+                        <Table.Td ta="right">{row.units != null ? row.units : "—"}</Table.Td>
+                        <Table.Td ta="right">{formatMoney(row.amount)}</Table.Td>
+                      </Table.Tr>
+                    ))}
+                    <Table.Tr>
+                      <Table.Td colSpan={3}>
+                        <Text fw={700}>Gross earnings</Text>
+                      </Table.Td>
+                      <Table.Td ta="right">
+                        <Text fw={700}>{formatMoney(data.grossEarnings)}</Text>
+                      </Table.Td>
+                    </Table.Tr>
+                  </Table.Tbody>
+                </Table>
+              </Stack>
 
-function TotalRow({ label, value }: TotalRowProps) {
-  return (
-    <Box px="md" py="xs" style={{ borderTop: '2px solid black', borderBottom: '2px solid black', marginTop: 4 }}>
-      <Group justify="space-between">
-        <Text w="30%" fw={700}>{label}</Text>
-        <Text w="40%" ta="right" fw={700}>${value?.toFixed(2)}</Text>
-        <Text w="20%" />
-      </Group>
-    </Box>
+              <Stack gap="sm">
+                <Group gap="xs">
+                  <IoCashOutline size={18} color="#0f172a" />
+                  <Text fw={700} c="#0f172a">
+                    Deductions
+                  </Text>
+                </Group>
+
+                <Table withTableBorder highlightOnHover>
+                  <Table.Thead>
+                    <Table.Tr>
+                      <Table.Th>Description</Table.Th>
+                      <Table.Th ta="right">Amount</Table.Th>
+                    </Table.Tr>
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {deductions.length ? (
+                      deductions.map((row) => (
+                        <Table.Tr key={row.label}>
+                          <Table.Td>{row.label}</Table.Td>
+                          <Table.Td ta="right">{formatMoney(row.amount)}</Table.Td>
+                        </Table.Tr>
+                      ))
+                    ) : (
+                      <Table.Tr>
+                        <Table.Td colSpan={2}>
+                          <Text c="dimmed">No deductions recorded for this statement.</Text>
+                        </Table.Td>
+                      </Table.Tr>
+                    )}
+                    <Table.Tr>
+                      <Table.Td>
+                        <Text fw={700}>Total deductions</Text>
+                      </Table.Td>
+                      <Table.Td ta="right">
+                        <Text fw={700}>{formatMoney(data.totalDeductions)}</Text>
+                      </Table.Td>
+                    </Table.Tr>
+                  </Table.Tbody>
+                </Table>
+              </Stack>
+
+              <Divider />
+
+              <Group justify="space-between" align="center">
+                <Text fw={800} size="lg" c="#0f172a">
+                  Net earnings
+                </Text>
+                <Text fw={800} size="1.6rem" c="#0f766e">
+                  {formatMoney(data.netEarnings)}
+                </Text>
+              </Group>
+            </Stack>
+          </Paper>
+        </Stack>
+      </Stack>
+    </AdminPageFrame>
   );
 }

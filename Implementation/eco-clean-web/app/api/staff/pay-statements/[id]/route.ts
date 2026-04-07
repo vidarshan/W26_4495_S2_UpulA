@@ -5,14 +5,14 @@ import { PayBreakdown } from "@/types";
 
 export async function GET(
   req: NextRequest,
-  context: { params: Promise<{ id: string }> },
+  context: { params: Promise<{ id: string }> }
 ) {
   console.log("PAY STATEMENT ROUTE HIT");
 
   try {
     const token = await getToken({ req });
 
-    if (!token) {
+    if (!token || !token.sub) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -36,11 +36,7 @@ export async function GET(
       },
     });
 
-    console.log("🔍 STATEMENT:", statement);
-    console.log("👤 USER:", statement?.user);
-    console.log("🪪 STAFF PROFILE:", statement?.user?.staffProfile);
-
-    if (!statement || statement.userId !== token.id) {
+    if (!statement || statement.userId !== token.sub) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
@@ -51,7 +47,7 @@ export async function GET(
 
     const ytdStatements = await prisma.payStatement.findMany({
       where: {
-        userId: token.id,
+        userId: token.sub, // ✅ FIXED
         payPeriodStart: {
           gte: yearStart,
           lte: statement.payPeriodStart,
@@ -59,8 +55,6 @@ export async function GET(
       },
       orderBy: { payPeriodStart: "asc" },
     });
-
-    console.log("📊 YTD COUNT:", ytdStatements.length);
 
     const ytd = ytdStatements.reduce(
       (acc, s) => {
@@ -98,8 +92,6 @@ export async function GET(
         qpip: 0,
       },
     );
-
-    console.log("💰 YTD RESULT:", ytd);
 
     return NextResponse.json({
       ...statement,
