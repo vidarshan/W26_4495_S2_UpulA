@@ -1,22 +1,18 @@
 'use client';
 
 import {
-  Accordion,
-  Burger,
+  Box,
   Button,
   Divider,
-  Drawer,
   Group,
-  NavLink,
   Paper,
+  SimpleGrid,
   Stack,
   Text,
-  Title,
+  ThemeIcon,
 } from '@mantine/core';
-import { useDisclosure } from '@mantine/hooks';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   IoArrowForwardOutline,
   IoCalendarClearOutline,
@@ -24,203 +20,226 @@ import {
   IoPeopleOutline,
   IoTimeOutline,
 } from 'react-icons/io5';
-import DashboardShell from '../DashboardShell';
+import AdminPageFrame from '@/app/components/admin/AdminPageFrame';
+import AdminStaffWorkspaceNav from '@/app/components/admin/AdminStaffWorkspaceNav';
+
+type StaffSectionKey = 'leave' | 'payroll' | 'time';
+
+type StaffSection = {
+  key: StaffSectionKey;
+  label: string;
+  title: string;
+  description: string;
+  icon: typeof IoPeopleOutline;
+  links: { label: string; href: string; description: string }[];
+};
+
+const SECTIONS: StaffSection[] = [
+  {
+    key: 'leave',
+    label: 'Leave',
+    title: 'Leave management',
+    description:
+      'Review requests, monitor balances, and move approvals through the same cleaner admin layout used across the newer workspace.',
+    icon: IoCalendarClearOutline,
+    links: [
+      {
+        label: 'Pending approvals',
+        href: '/admin/manage-staff/leave-approval',
+        description: 'Review and decide current leave requests.',
+      },
+    ],
+  },
+  {
+    key: 'payroll',
+    label: 'Payroll',
+    title: 'Payroll operations',
+    description:
+      'Move between payroll generation, period review, and statement workflows without the older accordion-heavy UI.',
+    icon: IoCashOutline,
+    links: [
+      {
+        label: 'Payroll admin',
+        href: '/admin/pay-periods',
+        description: 'Generate statements and adjust payroll inputs.',
+      },
+      {
+        label: 'Payroll periods',
+        href: '/admin/manage-staff/payroll',
+        description: 'Review staff payroll period records.',
+      },
+    ],
+  },
+  {
+    key: 'time',
+    label: 'Timesheets',
+    title: 'Time and attendance',
+    description:
+      'Compare planned time against submitted entries and approve staff timesheets from a more structured overview.',
+    icon: IoTimeOutline,
+    links: [
+      {
+        label: 'Timesheet overview',
+        href: '/admin/timesheets',
+        description: 'Inspect and approve submitted timesheets.',
+      },
+    ],
+  },
+];
 
 export default function ManageStaffPage() {
-  const [opened, { toggle, close }] = useDisclosure(false);
-  const [activeSection, setActiveSection] = useState('leave');
-  const pathname = usePathname();
+  const [activeSection, setActiveSection] = useState<StaffSectionKey>('leave');
 
-  const renderSectionContent = () => {
-    switch (activeSection) {
-      case 'leave':
-        return (
-          <Accordion defaultValue="leave-overview" variant="separated">
-            <Accordion.Item value="leave-overview">
-              <Accordion.Control>
-                <Text fw={600}>Leave Management</Text>
-              </Accordion.Control>
-              <Accordion.Panel>
-                <Text size="sm">
-                  Manage leave requests, approvals, balances, and leave history
-                  for staff members.
-                </Text>
-              </Accordion.Panel>
-            </Accordion.Item>
-
-            <Accordion.Item value="leave-actions">
-              <Accordion.Control>
-                <Text fw={600}>Available Actions</Text>
-              </Accordion.Control>
-              <Accordion.Panel>
-                <Text size="sm">
-                  View pending requests, approve or reject leave, and monitor
-                  employee leave records.
-                </Text>
-              </Accordion.Panel>
-            </Accordion.Item>
-          </Accordion>
-        );
-
-      case 'payroll':
-        return (
-          <Accordion defaultValue="payroll-overview" variant="separated">
-            <Accordion.Item value="payroll-overview">
-              <Accordion.Control>
-                <Text fw={600}>Payroll Management</Text>
-              </Accordion.Control>
-              <Accordion.Panel>
-                <Text size="sm">
-                  Review pay periods, payroll summaries, deductions, and staff
-                  payment details.
-                </Text>
-              </Accordion.Panel>
-            </Accordion.Item>
-
-            <Accordion.Item value="payroll-actions">
-              <Accordion.Control>
-                <Text fw={600}>Available Actions</Text>
-              </Accordion.Control>
-              <Accordion.Panel>
-                <Text size="sm">
-                  Edit pay periods, review statements, and manage
-                  payroll-related records.
-                </Text>
-              </Accordion.Panel>
-            </Accordion.Item>
-          </Accordion>
-        );
-
-      case 'time':
-        return (
-          <Accordion defaultValue="time-overview" variant="separated">
-            <Accordion.Item value="time-overview">
-              <Accordion.Control>
-                <Text fw={600}>Time & Time-Off</Text>
-              </Accordion.Control>
-              <Accordion.Panel>
-                <Text size="sm" mb="md">
-                  Track work hours, monitor submitted timesheets, and manage
-                  time-off related staff activities.
-                </Text>
-
-                <Button
-                  component={Link}
-                  href="/admin/timesheets"
-                  rightSection={<IoArrowForwardOutline size={16} />}
-                >
-                  Open Timesheet Overview
-                </Button>
-              </Accordion.Panel>
-            </Accordion.Item>
-
-            <Accordion.Item value="time-actions">
-              <Accordion.Control>
-                <Text fw={600}>Available Actions</Text>
-              </Accordion.Control>
-              <Accordion.Panel>
-                <Text size="sm" mb="md">
-                  Review timesheets, update attendance-related data, and manage
-                  time-off entries.
-                </Text>
-
-                <Button
-                  component={Link}
-                  href="/admin/timesheets"
-                  variant="light"
-                  rightSection={<IoArrowForwardOutline size={16} />}
-                >
-                  Go to Timesheet Admin Panel
-                </Button>
-              </Accordion.Panel>
-            </Accordion.Item>
-          </Accordion>
-        );
-
-      default:
-        return null;
-    }
-  };
-
-  const navItems = (
-    <Stack gap="xs">
-      <NavLink
-        label="Leave Management"
-        leftSection={<IoCalendarClearOutline size={18} />}
-        active={activeSection === 'leave'}
-        onClick={() => {
-          setActiveSection('leave');
-          close();
-        }}
-      />
-
-      <NavLink
-        label="Payroll Management"
-        component={Link}
-        href="/admin/manage-staff/payroll"
-        leftSection={<IoCashOutline size={18} />}
-        active={pathname.startsWith('/admin/manage-staff/payroll')}
-        onClick={close}
-      />
-
-      <NavLink
-        label="Time & Time-Off"
-        leftSection={<IoTimeOutline size={18} />}
-        active={activeSection === 'time'}
-        onClick={() => {
-          setActiveSection('time');
-          close();
-        }}
-      />
-    </Stack>
+  const selectedSection = useMemo(
+    () => SECTIONS.find((section) => section.key === activeSection) ?? SECTIONS[0],
+    [activeSection],
   );
 
   return (
-    <DashboardShell>
-      <Drawer
-        opened={opened}
-        onClose={close}
-        title="Manage Staff"
-        padding="md"
-        size="xs"
-        hiddenFrom="sm"
-      >
-        {navItems}
-      </Drawer>
+    <AdminPageFrame
+      eyebrow="Admin tools"
+      title="Manage Staff"
+      description="Bring leave, payroll, and timesheet workflows into the same modern admin workspace used by the dashboard and newer app screens."
+      stats={[
+        {
+          label: 'Workstreams',
+          value: String(SECTIONS.length),
+          icon: IoPeopleOutline,
+        },
+        {
+          label: 'Active section',
+          value: selectedSection.label,
+          icon: selectedSection.icon,
+        },
+        {
+          label: 'Quick actions',
+          value: String(selectedSection.links.length),
+          icon: IoArrowForwardOutline,
+        },
+      ]}
+    >
+      <Stack gap="lg">
+        <AdminStaffWorkspaceNav />
 
-      <Stack gap="md">
-        <Group justify="space-between">
-          <Group>
-            <Burger
-              opened={opened}
-              onClick={toggle}
-              hiddenFrom="sm"
-              size="sm"
-            />
-            <IoPeopleOutline size={22} />
-            <Title order={2}>Manage Staff</Title>
-          </Group>
-        </Group>
+        <SimpleGrid cols={{ base: 1, lg: 3 }} spacing="lg">
+          <Paper
+            withBorder
+            radius="lg"
+            p="md"
+            className="admin-page-frame__stat"
+          >
+            <Stack gap="xs">
+              <Text size="sm" fw={700} c="#0f172a">
+                Staff functions
+              </Text>
+              <Text size="sm" c="dimmed">
+                Pick a workspace to reveal focused actions and context.
+              </Text>
+            </Stack>
 
-        <Text c="dimmed" size="sm">
-          Select a section to manage staff-related functions.
-        </Text>
+            <Stack gap="sm" mt="lg">
+              {SECTIONS.map((section) => {
+                const active = section.key === activeSection;
 
-        <Divider />
-
-        <Group align="flex-start" wrap="nowrap">
-          <Paper withBorder radius="md" p="md" visibleFrom="sm" miw={260}>
-            <Text fw={700} mb="md">
-              Staff Functions
-            </Text>
-            {navItems}
+                return (
+                  <Paper
+                    key={section.key}
+                    withBorder
+                    radius="lg"
+                    p="md"
+                    className="quick-action-card"
+                    onClick={() => setActiveSection(section.key)}
+                    style={{
+                      cursor: 'pointer',
+                      borderColor: active ? 'rgba(14, 116, 144, 0.32)' : undefined,
+                      background: active
+                        ? 'linear-gradient(180deg, rgba(240, 249, 255, 0.96), rgba(236, 253, 245, 0.92))'
+                        : undefined,
+                    }}
+                  >
+                    <Group justify="space-between" wrap="nowrap">
+                      <Group gap="sm" wrap="nowrap">
+                        <ThemeIcon radius="lg" size={40} variant="light" color="teal">
+                          <section.icon size={18} />
+                        </ThemeIcon>
+                        <Box>
+                          <Text fw={700} c="#0f172a">
+                            {section.title}
+                          </Text>
+                          <Text size="sm" c="dimmed">
+                            {section.links.length} action
+                            {section.links.length === 1 ? '' : 's'}
+                          </Text>
+                        </Box>
+                      </Group>
+                      <IoArrowForwardOutline size={18} color="#0f172a" />
+                    </Group>
+                  </Paper>
+                );
+              })}
+            </Stack>
           </Paper>
 
-          <Paper withBorder radius="md" p="md" style={{ flex: 1 }}>
-            {renderSectionContent()}
+          <Paper
+            withBorder
+            radius="lg"
+            p="lg"
+            className="admin-page-frame__surface"
+            style={{ gridColumn: 'span 2' }}
+          >
+            <Stack gap="lg">
+              <Group justify="space-between" align="flex-start" gap="md">
+                <Box maw={680}>
+                  <Group gap="sm" mb={10}>
+                    <ThemeIcon radius="lg" size={42} variant="light" color="teal">
+                      <selectedSection.icon size={20} />
+                    </ThemeIcon>
+                    <Text size="xl" fw={700} c="#0f172a">
+                      {selectedSection.title}
+                    </Text>
+                  </Group>
+                  <Text c="#475569">{selectedSection.description}</Text>
+                </Box>
+              </Group>
+
+              <Divider />
+
+              <SimpleGrid cols={{ base: 1, md: selectedSection.links.length > 1 ? 2 : 1 }} spacing="md">
+                {selectedSection.links.map((link) => (
+                  <Paper
+                    key={link.href}
+                    withBorder
+                    radius="lg"
+                    p="lg"
+                    className="quick-action-card"
+                  >
+                    <Stack gap="sm" h="100%" justify="space-between">
+                      <div>
+                        <Text fw={700} c="#0f172a">
+                          {link.label}
+                        </Text>
+                        <Text size="sm" c="dimmed" mt={6}>
+                          {link.description}
+                        </Text>
+                      </div>
+
+                      <Button
+                        component={Link}
+                        href={link.href}
+                        variant="light"
+                        color="teal"
+                        rightSection={<IoArrowForwardOutline size={16} />}
+                      >
+                        Open workspace
+                      </Button>
+                    </Stack>
+                  </Paper>
+                ))}
+              </SimpleGrid>
+            </Stack>
           </Paper>
-        </Group>
+        </SimpleGrid>
       </Stack>
-    </DashboardShell>
+    </AdminPageFrame>
   );
 }

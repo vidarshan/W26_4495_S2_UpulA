@@ -8,6 +8,7 @@ import {
   JobNoteCategory,
   AssignmentStatus,
   LeaveType,
+  LeaveStatus,
   TimesheetStatus,
   TimesheetPeriodStatus,
 } from "@prisma/client";
@@ -143,6 +144,57 @@ function fakeLeadSource() {
   ]);
 }
 
+function fakePosition() {
+  return pick([
+    "Cleaner",
+    "Senior Cleaner",
+    "Team Lead",
+    "Field Technician",
+    "Operations Support",
+  ]);
+}
+
+function fakeRelationship() {
+  return pick([
+    "Spouse",
+    "Parent",
+    "Sibling",
+    "Friend",
+    "Partner",
+  ]);
+}
+
+function fakeBankName() {
+  return pick([
+    "RBC",
+    "TD Canada Trust",
+    "Scotiabank",
+    "BMO",
+    "CIBC",
+  ]);
+}
+
+function fakeDigits(length: number) {
+  return faker.string.numeric(length);
+}
+
+function fakeStaffLocation() {
+  return {
+    street1: faker.location.streetAddress(),
+    city: pick([
+      "Vancouver",
+      "Burnaby",
+      "Surrey",
+      "Richmond",
+      "Coquitlam",
+      "New Westminster",
+    ]),
+    province: "BC",
+    postalCode: fakePostalCode(),
+    country: "Canada",
+  };
+}
+
 function fakeJobTitle(type: JobType) {
   const recurring = [
     "Weekly Home Cleaning",
@@ -254,6 +306,7 @@ function computeReminderFlags(startTime: Date, status: AppointmentStatus) {
 
     return {
       reminder5dSent: daysUntil < 5 ? maybe(0.25) : false,
+      reminder3dSent: daysUntil < 3 ? maybe(0.25) : false,
       reminder1dSent: daysUntil < 1 ? maybe(0.25) : false,
       completionSent: false,
     };
@@ -261,6 +314,7 @@ function computeReminderFlags(startTime: Date, status: AppointmentStatus) {
 
   return {
     reminder5dSent: maybe(0.85),
+    reminder3dSent: maybe(0.88),
     reminder1dSent: maybe(0.9),
     completionSent: status === AppointmentStatus.COMPLETED ? maybe(0.8) : false,
   };
@@ -314,6 +368,8 @@ async function resetDatabase() {
   await prisma.leave.deleteMany();
   await prisma.staffAvailability.deleteMany();
   await prisma.assignment.deleteMany();
+  await prisma.bankDetails.deleteMany();
+  await prisma.tD1.deleteMany();
   await prisma.emergencyContact.deleteMany();
   await prisma.staffAddress.deleteMany();
   await prisma.staffProfile.deleteMany();
@@ -380,6 +436,125 @@ async function createUsers() {
     admins: allUsers.filter((u) => u.role === Role.ADMIN),
     staff: allUsers.filter((u) => u.role === Role.STAFF),
     clientUsers: allUsers.filter((u) => u.role === Role.CLIENT),
+  };
+}
+
+async function createStaffProfiles(staff: { id: string; name: string }[]) {
+  let profilesCreated = 0;
+  let availabilityRowsCreated = 0;
+  let financialRecordsCreated = 0;
+
+  for (let i = 0; i < staff.length; i++) {
+    const member = staff[i];
+    const homeLocation = fakeStaffLocation();
+
+    const profile = await prisma.staffProfile.create({
+      data: {
+        userId: member.id,
+        staffId: `EC-${String(i + 1).padStart(4, "0")}`,
+        position: fakePosition(),
+        hourlyRate: faker.number.float({
+          min: 22,
+          max: 36,
+          fractionDigits: 2,
+        }),
+        phoneNumber: fakePhone(),
+      },
+      select: { id: true },
+    });
+
+    profilesCreated++;
+
+    await prisma.staffAddress.create({
+      data: {
+        staffProfileId: profile.id,
+        ...homeLocation,
+      },
+    });
+
+    await prisma.emergencyContact.create({
+      data: {
+        staffProfileId: profile.id,
+        name: faker.person.fullName(),
+        phoneNumber: fakePhone(),
+        relationship: fakeRelationship(),
+      },
+    });
+
+    await prisma.bankDetails.create({
+      data: {
+        staffProfileId: profile.id,
+        bankName: fakeBankName(),
+        accountHolder: member.name,
+        institutionNo: fakeDigits(3),
+        transitNo: fakeDigits(5),
+        accountNo: fakeDigits(10),
+      },
+    });
+
+    await prisma.tD1.create({
+      data: {
+        staffProfileId: profile.id,
+        sin: fakeDigits(9),
+        federalClaimAmount: pick([15705, 16452, 17298]),
+        quebecClaimAmount: 0,
+        additionalFederalTaxPerPay: maybe(0.25)
+          ? pick([0, 15, 25, 40])
+          : 0,
+        additionalQuebecTaxPerPay: 0,
+        isExempt: maybe(0.05),
+      },
+    });
+
+    financialRecordsCreated += 2;
+
+    const availabilityRows = Array.from({ length: maybe(0.3) ? 2 : 1 }).map(
+      (_, index) => {
+        const worksWeekend = maybe(0.35);
+
+        return {
+          staffProfileId: profile.id,
+          effectiveFrom: addDays(new Date(), -randInt(15 + index * 45, 180)),
+          monActive: true,
+          monS1: true,
+          monS2: maybe(0.8),
+          tueActive: true,
+          tueS1: true,
+          tueS2: maybe(0.8),
+          wedActive: true,
+          wedS1: true,
+          wedS2: maybe(0.8),
+          thuActive: true,
+          thuS1: true,
+          thuS2: maybe(0.8),
+          friActive: true,
+          friS1: true,
+          friS2: maybe(0.65),
+          satActive: worksWeekend,
+          satS1: worksWeekend,
+          satS2: worksWeekend && maybe(0.5),
+          sunActive: worksWeekend && maybe(0.5),
+          sunS1: worksWeekend && maybe(0.5),
+          sunS2: false,
+        };
+      },
+    );
+
+    await prisma.staffAvailability.createMany({ data: availabilityRows });
+    availabilityRowsCreated += availabilityRows.length;
+
+    await prisma.user.update({
+      where: { id: member.id },
+      data: {
+        lastKnownJobLocation: homeLocation,
+      },
+    });
+  }
+
+  return {
+    profilesCreated,
+    availabilityRowsCreated,
+    financialRecordsCreated,
   };
 }
 
@@ -626,6 +801,7 @@ async function createJobsForClients(
             completedAt,
             completionSent: reminderFlags.completionSent,
             reminder1dSent: reminderFlags.reminder1dSent,
+            reminder3dSent: reminderFlags.reminder3dSent,
             reminder5dSent: reminderFlags.reminder5dSent,
             assignments: {
               create: assignedStaff.map((staffId) => ({
@@ -750,6 +926,12 @@ async function createLeaves(staff: { id: string }[]) {
         startAt,
         endAt,
         reason: maybe(0.7) ? faker.lorem.sentence() : null,
+        status: pick([
+          LeaveStatus.PENDING,
+          LeaveStatus.APPROVED,
+          LeaveStatus.APPROVED,
+          LeaveStatus.REJECTED,
+        ]),
         createdAt: faker.date.between({
           from: addDays(startAt, -14),
           to: startAt,
@@ -842,6 +1024,36 @@ async function createTimesheetsAndPayroll(
           ? TimesheetStatus.SUBMITTED
           : TimesheetStatus.OPEN;
 
+      const totalMinutes = days.reduce((sum, day) => sum + day.minutesWorked, 0);
+      const totalPay = fmtMoney(
+        days.reduce((sum, day) => {
+          const rate = day.hourlyRate ?? hourlyRate;
+          return sum + (day.minutesWorked / 60) * rate;
+        }, 0),
+      );
+
+      const snapshot =
+        status === TimesheetStatus.APPROVED
+          ? {
+              staffId: member.id,
+              periodId: period.id,
+              approvedAt: addDays(period.endDate, 2),
+              totalMinutes,
+              totalHours: fmtMoney(totalMinutes / 60),
+              totalPay,
+              days: days.map((day) => ({
+                date: day.workDate,
+                minutes: day.minutesWorked,
+                rate: day.hourlyRate ?? hourlyRate,
+                pay: fmtMoney(
+                  (day.minutesWorked / 60) * (day.hourlyRate ?? hourlyRate),
+                ),
+                notes: day.notes ?? null,
+              })),
+              source: "seed",
+            }
+          : null;
+
       const timesheet = await prisma.timesheet.create({
         data: {
           periodId: period.id,
@@ -854,7 +1066,11 @@ async function createTimesheetsAndPayroll(
               : null,
           approvedAt: isLocked ? addDays(period.endDate, 2) : null,
           approvedById: isLocked ? approverId : null,
+          isLocked,
           notes: maybe(0.2) ? faker.lorem.sentence() : null,
+          snapshot,
+          totalMinutes,
+          totalPay,
           days: {
             create: days,
           },
@@ -1064,6 +1280,7 @@ async function createGuaranteedReminderTestAppointments(
         endTime: template.endTime,
         status: AppointmentStatus.SCHEDULED,
         reminder5dSent: false,
+        reminder3dSent: false,
         reminder1dSent: false,
         completionSent: false,
         assignments: assignedStaffId
@@ -1092,6 +1309,7 @@ async function main() {
   await resetDatabase();
 
   const users = await createUsers();
+  const staffProfileCounts = await createStaffProfiles(users.staff);
   const clients = await createClients();
   const counts = await createJobsForClients(clients, users.staff);
   const leaveCount = await createLeaves(users.staff);
@@ -1107,6 +1325,9 @@ async function main() {
     mode,
     admins: users.admins.length,
     staff: users.staff.length,
+    staffProfiles: staffProfileCounts.profilesCreated,
+    staffAvailabilities: staffProfileCounts.availabilityRowsCreated,
+    staffFinancialRecords: staffProfileCounts.financialRecordsCreated,
     clientUsers: users.clientUsers.length,
     clients: clients.length,
     jobs: counts.jobsCreated + guaranteedReminderAppointments,

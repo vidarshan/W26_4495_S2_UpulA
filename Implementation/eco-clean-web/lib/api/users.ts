@@ -22,9 +22,9 @@ export function getStaff(params?: {
   }
 
   return apiClient<any>(`/api/users?${sp.toString()}`).then((res) => {
-    const users = res?.data ?? res;
+    const raw = res?.data ?? res;
 
-    return (users || [])
+    const filtered = (raw.data ?? raw)
       .filter((u: any) => u.role === "STAFF")
       .map(
         (u: any): Staff => ({
@@ -35,7 +35,61 @@ export function getStaff(params?: {
           createdAt: u.createdAt ?? new Date().toISOString(),
         })
       );
+
+    return {
+      data: filtered, // ✅ FIX
+      meta: raw.meta ?? {
+        page: 1,
+        limit: filtered.length,
+        total: filtered.length,
+        totalPages: 1,
+      },
+    };
   });
+}
+
+export async function getAvailableStaff({
+  date,
+  startTime,
+  endTime,
+  q,
+}: {
+  date: string | null;
+  startTime: string;
+  endTime: string;
+  q?: string;
+}) {
+  if (!date || !startTime || !endTime) return [];
+
+  const [startHour, startMinute] = startTime.split(":").map(Number);
+  const [endHour, endMinute] = endTime.split(":").map(Number);
+
+  const startTotalMinutes = startHour * 60 + startMinute;
+  const endTotalMinutes = endHour * 60 + endMinute;
+
+  if (
+    Number.isNaN(startTotalMinutes) ||
+    Number.isNaN(endTotalMinutes) ||
+    endTotalMinutes <= startTotalMinutes
+  ) {
+    return [];
+  }
+
+  const params = new URLSearchParams({
+    date,
+    startTime,
+    endTime,
+  });
+
+  if (q) params.append("q", q);
+
+  const res = await fetch(`/api/staff/available?${params.toString()}`);
+
+  if (!res.ok) {
+    throw new Error("Failed to fetch available staff");
+  }
+
+  return res.json();
 }
 
 export function createUser(name: string, role: string, email: string) {

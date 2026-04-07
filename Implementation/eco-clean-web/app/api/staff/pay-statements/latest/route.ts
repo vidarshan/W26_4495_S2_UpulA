@@ -13,9 +13,10 @@ export async function GET(req: NextRequest) {
     }
 
     // ✅ GET latest WITH relations
-    const latest = await prisma.payStatement.findFirst({
-      where: { userId: token.id },
+    const statements = await prisma.payStatement.findMany({
+      where: { userId: token.sub }, // ✅ fix token
       orderBy: { payPeriodStart: "desc" },
+      take: 3, // 🔥 get last 3
       include: {
         user: {
           include: {
@@ -24,6 +25,9 @@ export async function GET(req: NextRequest) {
         },
       },
     });
+
+    const latest = statements[0];
+    const previous = statements[1] || null;
 
     console.log("📄 LATEST:", latest);
 
@@ -100,13 +104,17 @@ export async function GET(req: NextRequest) {
 
     // ✅ FINAL RESPONSE (MATCH UI EXPECTATION)
     return NextResponse.json({
-      ...latest,
+      latest: {
+        ...latest,
+        breakdown: latest.breakdown || {},
+      },
 
-      breakdown: latest.breakdown || {},
+      previous,
+
+      all: statements, // 🔥 for dropdown
 
       ytd,
 
-      // 🔥 EMPLOYEE INFO
       employeeName: latest.user?.name || "N/A",
       employeeId: latest.user?.staffProfile?.staffId || "N/A",
     });

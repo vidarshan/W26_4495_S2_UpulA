@@ -3,7 +3,6 @@
 import {
   Alert,
   AppShell,
-  Badge,
   Box,
   Burger,
   Container,
@@ -25,9 +24,13 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   IoAlertCircleOutline,
   IoBriefcaseOutline,
+  IoCalendarClearOutline,
   IoHomeOutline,
   IoLogOutOutline,
+  IoCashOutline,
   IoPeopleOutline,
+  IoPeopleSharp,
+  IoTimeOutline,
 } from "react-icons/io5";
 import ClientPropertyModal from "../../components/popups/ClientModal";
 import NewJobModal from "../../components/popups/JobModal";
@@ -40,6 +43,13 @@ const MOBILE_NAVBAR_WIDTH = 304;
 const SHELL_RADIUS = 18;
 const ITEM_RADIUS = 16;
 const ICON_RADIUS = 14;
+
+const STAFF_WORKSPACE_PATHS = [
+  "/admin/manage-staff",
+  "/admin/pay-periods",
+  "/admin/timesheets",
+  "/admin/pay/",
+];
 
 export default function DashboardShell({
   children,
@@ -59,6 +69,9 @@ export default function DashboardShell({
   const [error, setError] = useState<string | null>(null);
 
   const expanded = isMobile || hovered;
+  const isStaffWorkspace = STAFF_WORKSPACE_PATHS.some((path) =>
+    pathname.startsWith(path),
+  );
 
   const closeAllOverlays = useCallback(() => {
     setMobileOpened(false);
@@ -122,7 +135,53 @@ export default function DashboardShell({
       icon: <IoBriefcaseOutline size={18} />,
       active: pathname.startsWith("/admin/employees"),
     },
+    {
+      href: "/admin/manage-staff",
+      label: "Staff Ops",
+      description: "Leave, payroll, and time",
+      icon: <IoPeopleSharp size={18} />,
+      active: isStaffWorkspace,
+    },
   ];
+
+  const staffWorkspaceItems = [
+    {
+      href: "/admin/manage-staff",
+      label: "Overview",
+      icon: <IoPeopleSharp size={16} />,
+      active: pathname === "/admin/manage-staff",
+    },
+    {
+      href: "/admin/pay-periods",
+      label: "Pay Periods",
+      icon: <IoCashOutline size={16} />,
+      active: pathname.startsWith("/admin/pay-periods"),
+    },
+    {
+      href: "/admin/timesheets",
+      label: "Timesheets",
+      icon: <IoTimeOutline size={16} />,
+      active: pathname.startsWith("/admin/timesheets"),
+    },
+    {
+      href: "/admin/manage-staff/leave-approval",
+      label: "Leave",
+      icon: <IoCalendarClearOutline size={16} />,
+      active: pathname.startsWith("/admin/manage-staff/leave-approval"),
+    },
+  ];
+
+  // <Tooltip label="Manage Staff" position="right" withArrow>
+  //             <NavLink
+  //               onClick={() => setOpened(false)}
+  //               component={Link}
+  //               href="/admin/manage-staff"
+  //               bdrs="md"
+  //               leftSection={<IoPeopleSharp />}
+  //               active={pathname.startsWith("/admin/staff-profile")}
+  //               disabled={isSigningOut}
+  //             />
+  //           </Tooltip>
 
   return (
     <AppShell
@@ -317,6 +376,94 @@ export default function DashboardShell({
               </UnstyledButton>
             ))}
           </Stack>
+
+          {isStaffWorkspace ? (
+            <Paper
+              radius={SHELL_RADIUS}
+              p={expanded ? "md" : "xs"}
+              mt="md"
+              className="staff-workspace-panel"
+              style={(theme) => ({
+                border: `1px solid ${alpha(theme.colors.teal[2], 0.55)}`,
+                transition: "padding 220ms ease",
+              })}
+            >
+              <Stack gap="xs">
+                <Box
+                  style={{
+                    maxHeight: expanded ? 72 : 0,
+                    opacity: expanded ? 1 : 0,
+                    overflow: "hidden",
+                    transition: "max-height 180ms ease, opacity 140ms ease",
+                  }}
+                >
+                  <Text size="xs" fw={800} tt="uppercase" c="teal.8">
+                    Staff Workspace
+                  </Text>
+                  <Text size="xs" c="dimmed" mt={4}>
+                    Payroll and time administration
+                  </Text>
+                </Box>
+
+                {staffWorkspaceItems.map((item) => (
+                  <UnstyledButton
+                    key={item.href}
+                    component={Link}
+                    href={item.href}
+                    onClick={() => setMobileOpened(false)}
+                    className="staff-workspace-panel__item"
+                    style={(theme) => ({
+                      display: "block",
+                      width: "100%",
+                      borderRadius: 14,
+                      padding: expanded ? "10px 12px" : "10px",
+                      background: item.active
+                        ? alpha(theme.colors.teal[0], 0.9)
+                        : "transparent",
+                      border: `1px solid ${
+                        item.active
+                          ? alpha(theme.colors.teal[3], 0.45)
+                          : "transparent"
+                      }`,
+                      transition:
+                        "background-color 150ms ease, border-color 150ms ease, padding 220ms ease",
+                    })}
+                  >
+                    <Group
+                      gap={expanded ? "sm" : 0}
+                      justify={expanded ? "flex-start" : "center"}
+                      wrap="nowrap"
+                    >
+                      <ThemeIcon
+                        size={34}
+                        radius="md"
+                        variant={item.active ? "filled" : "light"}
+                        color={item.active ? "teal" : "gray"}
+                      >
+                        {item.icon}
+                      </ThemeIcon>
+
+                      <Box
+                        style={{
+                          minWidth: 0,
+                          maxWidth: expanded ? 160 : 0,
+                          opacity: expanded ? 1 : 0,
+                          overflow: "hidden",
+                          transform: `translateX(${expanded ? "0" : "-8px"})`,
+                          transition:
+                            "max-width 180ms ease, opacity 140ms ease, transform 180ms ease",
+                        }}
+                      >
+                        <Text fw={700} size="sm" c="dark.9" truncate>
+                          {item.label}
+                        </Text>
+                      </Box>
+                    </Group>
+                  </UnstyledButton>
+                ))}
+              </Stack>
+            </Paper>
+          ) : null}
         </AppShell.Section>
 
         <AppShell.Section>

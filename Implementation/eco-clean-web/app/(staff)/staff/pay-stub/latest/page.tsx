@@ -18,6 +18,10 @@ import Image from 'next/image';
 export default function PayStubPage() {
   const pdfRef = useRef<HTMLDivElement>(null);
   const [statement, setStatement] = useState<any>(null);
+  const latest = statement?.latest || {};
+const employeeName = statement?.employeeName || "N/A";
+const employeeId = statement?.employeeId || "N/A";
+
 
   useEffect(() => {
     async function load() {
@@ -39,13 +43,12 @@ export default function PayStubPage() {
     const height = (canvas.height * width) / canvas.width;
 
     pdf.addImage(imgData, 'PNG', 10, 10, width, height);
-    pdf.save('pay-stub.pdf');
-  };
+pdf.save(`pay-stub-${latest.payDate}.pdf`);  };
 
   if (!statement) return <Text>Loading...</Text>;
 
-  const b = statement.breakdown || {};
-  const ytd = statement.ytd || {};
+ const b = latest.breakdown || {};
+const ytd = statement.ytd || {};
 
   const rows = [
     {
@@ -102,8 +105,8 @@ export default function PayStubPage() {
           <Grid.Col span={9}>
             <Title order={3}>STATEMENT OF EARNINGS</Title>
             <Text size="sm">
-              Pay Period: {new Date(statement.payPeriodStart).toLocaleDateString()} -{' '}
-              {new Date(statement.payPeriodEnd).toLocaleDateString()}
+              Pay Period: {new Date(latest.payPeriodStart).toLocaleDateString()} -{' '}
+              {new Date(latest.payPeriodEnd).toLocaleDateString()}
             </Text>
           </Grid.Col>
         </Grid>
@@ -112,12 +115,12 @@ export default function PayStubPage() {
         <Box mb="md" p="sm" style={{ border: '1px solid black' }}>
           <Grid>
             <Grid.Col span={6}>
-              <Text><b>Employee:</b> {statement.employeeName}</Text>
-              <Text><b>Employee ID:</b> {statement.employeeId}</Text>
+              <Text><b>Employee:</b> {employeeName}</Text>
+              <Text><b>Employee ID:</b> {employeeId}</Text>
             </Grid.Col>
 
             <Grid.Col span={6}>
-              <Text><b>Pay Date:</b> {new Date(statement.payDate).toLocaleDateString()}</Text>
+              <Text><b>Pay Date:</b> {new Date(latest.payDate).toLocaleDateString()}</Text>
               <Text><b>Department:</b> Cleaning Services</Text>
             </Grid.Col>
           </Grid>
@@ -132,7 +135,7 @@ export default function PayStubPage() {
 
         <TableTotal
           label="Gross Earnings"
-          amount={statement.grossEarnings}
+          amount={latest.grossEarnings}
           ytd={ytd.gross}
         />
 
@@ -145,7 +148,7 @@ export default function PayStubPage() {
 
         <TableTotal
           label="Total Deductions"
-          amount={statement.totalDeductions}
+          amount={latest.totalDeductions}
           ytd={ytd.deductions}
         />
 
@@ -156,7 +159,7 @@ export default function PayStubPage() {
               <Text fw={700}>Net Earnings</Text>
             </Grid.Col>
             <Grid.Col span={3}>
-              <Text ta="right">{statement.netEarnings.toFixed(2)}</Text>
+              <Text ta="right">{latest.netEarnings.toFixed(2)}</Text>
             </Grid.Col>
             <Grid.Col span={3}>
               <Text ta="right">{ytd.net?.toFixed(2)}</Text>

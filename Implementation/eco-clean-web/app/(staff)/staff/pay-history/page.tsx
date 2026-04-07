@@ -117,7 +117,7 @@ export default function PayHistoryPage() {
                       color="blue"
                       fullWidth
                       component={Link}
-                      href={`/staff/pay-stub?id=${s.id}`}                    >
+                      href={`/staff/pay-stub/${s.id}`}                    >
                       Details
                     </Button>
                   </Stack>
@@ -179,7 +179,7 @@ export default function PayHistoryPage() {
                             color="blue"
                             size="xs"
                             component={Link}
-href={`/staff/pay-stub?id=${s.id}`}                          >
+                            href={`/staff/pay-stub/${s.id}`}                          >
                             Details
                           </Button>
                         </Group>

@@ -18,20 +18,27 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { id: staffProfileId } = await params;
+    const { id: userId } = await params;
+
+    const staffProfile = await prisma.staffProfile.findUnique({
+      where: { userId },
+    });
+
+    if (!staffProfile) {
+      return NextResponse.json([], { status: 200 });
+    }
 
     const availabilities = await prisma.staffAvailability.findMany({
-      where: { staffProfileId },
-      // Order by the most recent effective date
-      orderBy: { effectiveFrom: 'desc' },
+      where: { staffProfileId: staffProfile.id },
+      orderBy: { effectiveFrom: "desc" },
     });
 
     return NextResponse.json(availabilities);
   } catch (error) {
-    console.error('GET Availability failed:', error);
+    console.error("GET Availability failed:", error);
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 },
+      { error: "Internal server error" },
+      { status: 500 }
     );
   }
 }
@@ -39,51 +46,74 @@ export async function GET(
 /**
  * POST: Create a new weekly availability record.
  */
+import { getAuthSession } from "@/lib/session";
+
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  // const { id: staffProfileId } = await params;
-
-  const staffProfileId = '43642b1b-9daa-44c8-990f-15b3cf7e26b6';
-
   try {
-    const body = await req.json();
+    const session = await getAuthSession();
 
-    // 1. Validation: We only need the effective date now
-    if (!body.effectiveFrom) {
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const userId = session.user.id;
+
+    // 🔥 Step 1: Get staff profile
+    const staffProfile = await prisma.staffProfile.findUnique({
+      where: { userId },
+    });
+
+    if (!staffProfile) {
       return NextResponse.json(
-        { error: 'Effective date is required' },
-        { status: 400 },
+        { error: "Staff profile not found" },
+        { status: 404 }
       );
     }
 
-    // 2. Database Operation
-    // We spread the body (...body) because it now contains the
-    // boolean fields (monActive, monS1, etc.) instead of 'dayOfWeek'
+    const staffProfileId = staffProfile.id;
+
+    const body = await req.json();
+
+    if (!body.effectiveFrom) {
+      return NextResponse.json(
+        { error: "Effective date is required" },
+        { status: 400 }
+      );
+    }
+
+    // 🔥 Step 2: Create availability
     const newAvailability = await prisma.staffAvailability.create({
       data: {
-        staffProfileId: staffProfileId,
+        staffProfileId,
         effectiveFrom: new Date(body.effectiveFrom),
-        // These fields must match your NEW schema exactly
+
         monActive: body.monActive ?? false,
         monS1: body.monS1 ?? false,
         monS2: body.monS2 ?? false,
+
         tueActive: body.tueActive ?? false,
         tueS1: body.tueS1 ?? false,
         tueS2: body.tueS2 ?? false,
+
         wedActive: body.wedActive ?? false,
         wedS1: body.wedS1 ?? false,
         wedS2: body.wedS2 ?? false,
+
         thuActive: body.thuActive ?? false,
         thuS1: body.thuS1 ?? false,
         thuS2: body.thuS2 ?? false,
+
         friActive: body.friActive ?? false,
         friS1: body.friS1 ?? false,
         friS2: body.friS2 ?? false,
+
         satActive: body.satActive ?? false,
         satS1: body.satS1 ?? false,
         satS2: body.satS2 ?? false,
+
         sunActive: body.sunActive ?? false,
         sunS1: body.sunS1 ?? false,
         sunS2: body.sunS2 ?? false,
@@ -91,11 +121,11 @@ export async function POST(
     });
 
     return NextResponse.json(newAvailability, { status: 201 });
-  } catch (error: unknown) {
-    console.error('POST Availability failed:', error);
+  } catch (error) {
+    console.error("POST Availability failed:", error);
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 },
+      { error: "Internal server error" },
+      { status: 500 }
     );
   }
 }

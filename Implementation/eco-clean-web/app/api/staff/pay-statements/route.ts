@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
 
     const statements = await prisma.payStatement.findMany({
       where: {
-        userId: token.id,
+        userId: token.sub
       },
       orderBy: {
         payPeriodStart: "desc",

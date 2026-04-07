@@ -231,11 +231,14 @@ model StaffProfile {
   staffId    String?  @unique
   position   String?
   hourlyRate Float   @default(0)
+  phoneNumber String?
 
   user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   availabilities   StaffAvailability[]
   staffAddress     StaffAddress?
   emergencyContact EmergencyContact?
+  bankDetails BankDetails?
+  td1         TD1?
 }
 
 model StaffAddress {
@@ -331,6 +334,7 @@ model Leave {
   startAt   DateTime
   endAt     DateTime
   reason    String?
+  status    LeaveStatus @default(PENDING)
   createdAt DateTime  @default(now())
 
   staff User @relation(fields: [staffId], references: [id], onDelete: Cascade)
@@ -459,6 +463,36 @@ model AppointmentAiInsight {
   @@index([type])
 }
 
+model TD1 {
+  id              String @id @default(uuid())
+  staffProfileId  String @unique
+
+  sin String
+
+  federalClaimAmount  Float
+  quebecClaimAmount   Float
+
+  additionalFederalTaxPerPay Float @default(0)
+  additionalQuebecTaxPerPay  Float @default(0)
+
+  isExempt Boolean @default(false)
+
+  staffProfile StaffProfile @relation(fields: [staffProfileId], references: [id], onDelete: Cascade)
+}
+
+model BankDetails {
+  id              String @id @default(uuid())
+  staffProfileId  String @unique
+
+  bankName        String
+  accountHolder   String
+  institutionNo   String
+  transitNo       String
+  accountNo       String
+
+  staffProfile StaffProfile @relation(fields: [staffProfileId], references: [id], onDelete: Cascade)
+}
+
 enum JobNoteCategory {
   GENERAL
   ACCESS
@@ -499,6 +533,12 @@ enum LeaveType {
   VACATION
   PERSONAL
   UNPAID_SICK
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum TimesheetStatus {
