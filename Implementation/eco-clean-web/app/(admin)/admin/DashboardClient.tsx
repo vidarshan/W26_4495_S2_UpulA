@@ -47,6 +47,7 @@ import {
 } from "react-icons/io5";
 import AppointmentInfoModal from "../../components/popups/AppointmentInfoModal";
 import ConfirmCancellationModal from "../../components/popups/ConfirmCancellationModal";
+import JobEditModal from "../../components/popups/JobEditModal";
 import NewJobModal from "../../components/popups/JobModal";
 import { useStaff } from "@/hooks/useStaff";
 import { rescheduleAppointment } from "@/lib/api/appointments";
@@ -340,6 +341,7 @@ export default function DashboardClient() {
         onSuccess={refreshCalendar}
       />
 
+      <JobEditModal onSuccess={refreshCalendar} />
       {appointmentOpen && <AppointmentInfoModal onSuccess={refreshCalendar} />}
       {confirmCancelOpen && (
         <ConfirmCancellationModal onSuccess={refreshCalendar} />

@@ -1,4 +1,4 @@
-import { Job, JobType, LineItem as SharedLineItem, ListResponse } from "@/types";
+import { Job, LineItem as SharedLineItem, ListResponse } from "@/types";
 import { apiClient } from "./client";
 
 export type CreateJobPayload = {
@@ -51,6 +51,21 @@ export type CreateJobPayload = {
   }>;
 };
 
+export type UpdateJobPayload = {
+  title: string;
+  clientId: string;
+  addressId: string;
+  isAnytime: boolean;
+  visitInstructions?: string | null;
+  lineItems: Array<{
+    name: string;
+    quantity: number;
+    unitCost?: number | null;
+    unitPrice?: number | null;
+    description?: string | null;
+  }>;
+};
+
 export interface JobFormValues {
   title: string;
   clientId: string;
@@ -99,5 +114,12 @@ export function cancelJob(id: string) {
   return apiClient(`/api/jobs/${id}`, {
     method: "PATCH",
     body: "CANCEL_JOBS",
+  });
+}
+
+export function updateJob(id: string, data: UpdateJobPayload) {
+  return apiClient<Job, UpdateJobPayload>(`/api/jobs/${id}`, {
+    method: "PATCH",
+    body: data,
   });
 }

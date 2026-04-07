@@ -26,6 +26,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { notifications } from "@mantine/notifications";
 import {
   IoCalendarOutline,
+  IoBriefcaseOutline,
   IoCloseOutline,
   IoDocumentTextOutline,
   IoLocationOutline,
@@ -127,9 +128,9 @@ function ReadOnlyItem({
   value: React.ReactNode;
 }) {
   return (
-    <Paper withBorder radius="md" p="sm">
+    <Paper withBorder radius="lg" p="sm">
       <Group align="flex-start" wrap="nowrap">
-        <ThemeIcon variant="light" size="lg" radius="xl">
+        <ThemeIcon variant="filled" size="lg" radius="xl">
           {icon}
         </ThemeIcon>
 
@@ -147,11 +148,12 @@ function ReadOnlyItem({
 }
 
 export default function AppointmentInfoModal({ onSuccess }: Props) {
-  const { appointmentOpen, closeAppointment, selectedApptId } =
+  const { appointmentOpen, closeAppointment, openEditJob, selectedApptId } =
     useDashboardUI();
 
   const { data: appointment, isLoading } = useAppointment(selectedApptId);
   const qc = useQueryClient();
+  console.log(appointment);
 
   const { data: staffData, isLoading: staffLoading } = useQuery<Staff[]>({
     queryKey: ["staff", "all"],
@@ -205,6 +207,13 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     }) ?? [];
 
+  const assignmentIdsKey =
+    appointment?.assignments?.map((assignment) => assignment.staff.id).join(",") ??
+    "";
+  const appointmentNotesKey =
+    appointment?.notes?.map((note) => `${note.id}-${note.createdAt}`).join(",") ??
+    "";
+
   useEffect(() => {
     if (!appointment) return;
 
@@ -224,8 +233,8 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
     appointment?.startTime,
     appointment?.endTime,
     appointment?.status,
-    appointment?.staff?.map((s) => s.id).join(","),
-    appointment?.notes?.map((n) => `${n.id}-${n.createdAt}`).join(","),
+    assignmentIdsKey,
+    appointmentNotesKey,
   ]);
 
   const handleClose = () => {
@@ -312,7 +321,6 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
       centered
       closeOnClickOutside={false}
       classNames={{
-        content: "app-modal__content",
         header: "app-modal__header",
         title: "app-modal__title",
         body: "app-modal__body",
@@ -329,6 +337,41 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
             }}
           >
             <Stack gap="lg">
+              <Paper withBorder radius="lg" p="md">
+                <Group justify="space-between" align="center" wrap="wrap">
+                  <Group gap="sm" wrap="nowrap" align="flex-start">
+                    <Box>
+                      <Text size="xs" fw={700} c="dimmed">
+                        Parent Job
+                      </Text>
+                      <Text fw={700} size="md">
+                        {appointment.job?.title || "Untitled job"}
+                      </Text>
+                      <Text size="sm" c="dimmed">
+                        {buildClientName(appointment.job?.client)}
+                      </Text>
+                      <Text size="sm" c="dimmed" lineClamp={2}>
+                        {buildAddress(appointment.job?.address)}
+                      </Text>
+                    </Box>
+                  </Group>
+
+                  <Button
+                    radius="xl"
+                    variant="filled"
+                    size="sm"
+                    leftSection={<IoBriefcaseOutline />}
+                    onClick={() => {
+                      closeAppointment();
+                      openEditJob();
+                    }}
+                    disabled={!appointment.job?.id}
+                  >
+                    Edit Job
+                  </Button>
+                </Group>
+              </Paper>
+
               <Divider label="Appointment Information" labelPosition="left" />
 
               <SimpleGrid cols={{ base: 1, sm: 2 }}>

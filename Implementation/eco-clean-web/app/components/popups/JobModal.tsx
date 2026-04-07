@@ -34,7 +34,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { IoAddOutline, IoCloseOutline, IoImageOutline } from "react-icons/io5";
 import { createJob, CreateJobPayload, JobFormValues } from "@/lib/api/jobs";
 import { getClientAddresses, getClients } from "@/lib/api/client";
@@ -264,6 +264,22 @@ function blankAppointment(): AppointmentForm {
 function buildInitialValues(
   selectedInfo: CalendarSelection | null,
 ): JobFormValuesWithRecurrence {
+  const startDate = selectedInfo?.start
+    ? DateTime.fromJSDate(selectedInfo.start, { zone: APP_TZ }).toFormat(
+        "yyyy-LL-dd",
+      )
+    : null;
+  const startTime = selectedInfo?.start
+    ? selectedInfo.allDay
+      ? "09:00"
+      : jsDateToHHmm(selectedInfo.start)
+    : "";
+  const endTime = selectedInfo?.end
+    ? selectedInfo.allDay
+      ? "11:00"
+      : jsDateToHHmm(selectedInfo.end)
+    : "";
+
   return {
     title: "",
     clientId: "",
@@ -285,13 +301,9 @@ function buildInitialValues(
     appointments: [
       {
         ...blankAppointment(),
-        startDate: selectedInfo?.start
-          ? DateTime.fromJSDate(selectedInfo.start, { zone: APP_TZ }).toFormat(
-              "yyyy-LL-dd",
-            )
-          : null,
-        startTime: selectedInfo?.start ? jsDateToHHmm(selectedInfo.start) : "",
-        endTime: selectedInfo?.end ? jsDateToHHmm(selectedInfo.end) : "",
+        startDate,
+        startTime,
+        endTime,
       },
     ],
     recurrence: {
@@ -313,6 +325,7 @@ export default function NewJobModal({
 }: Props) {
   const queryClient = useQueryClient();
   const { startUpload, isUploading } = useUploadThing("appointmentImages");
+  const initializedSelectionKeyRef = useRef<string | null>(null);
 
   const initialValues = useMemo(
     () => buildInitialValues(selectedInfo),
@@ -589,36 +602,26 @@ export default function NewJobModal({
     onClose();
   };
 
-  const startStr = selectedInfo?.startStr || "";
-  const endStr = selectedInfo?.endStr || "";
-  const allDay = !!selectedInfo?.allDay;
+  const selectionKey = [
+    selectedInfo?.startStr ?? "",
+    selectedInfo?.endStr ?? "",
+    selectedInfo?.allDay ? "1" : "0",
+  ].join("|");
 
   useEffect(() => {
-    if (!opened) return;
+    if (!opened) {
+      initializedSelectionKeyRef.current = null;
+      return;
+    }
+
+    if (initializedSelectionKeyRef.current === selectionKey) {
+      return;
+    }
+
     resetModalState();
+    initializedSelectionKeyRef.current = selectionKey;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [opened, selectedInfo]);
-
-  useEffect(() => {
-    if (!opened || !startStr) return;
-
-    const startDT = DateTime.fromISO(startStr, { zone: APP_TZ });
-    const endDT = endStr ? DateTime.fromISO(endStr, { zone: APP_TZ }) : null;
-    if (!startDT.isValid) return;
-
-    const startDate = startDT.toFormat("yyyy-LL-dd");
-    form.setFieldValue("appointments.0.startDate", startDate);
-    const startTime = allDay ? "09:00" : startDT.toFormat("HH:mm");
-    const endTime = allDay
-      ? "11:00"
-      : endDT && endDT.isValid
-        ? endDT.toFormat("HH:mm")
-        : "";
-
-    form.setFieldValue("appointments.0.startTime", startTime);
-    form.setFieldValue("appointments.0.endTime", endTime);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [opened, startStr, endStr, allDay]);
+  }, [opened, selectionKey]);
 
   useEffect(() => {
     if (form.values.jobType !== "RECURRING") return;
@@ -1073,10 +1076,8 @@ export default function NewJobModal({
       closeOnEscape={!isBusy}
       withCloseButton={!isBusy}
       classNames={{
-        content: "app-modal__content",
         header: "app-modal__header",
         title: "app-modal__title",
-        body: "app-modal__body",
       }}
     >
       <form onSubmit={form.onSubmit(handleSubmit)}>
