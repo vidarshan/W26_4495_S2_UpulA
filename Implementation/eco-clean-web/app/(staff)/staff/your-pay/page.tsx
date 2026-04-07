@@ -26,23 +26,44 @@ import {
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
+import { Collapse, Select } from "@mantine/core";
+
+
 const COLORS = ["#1f6b8f", "#eb7a2f", "#2e7d32"];
 
 export default function YourPayPage() {
   const { data: session } = useSession();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [opened, setOpened] = useState(false);
+  const [result, setResult] = useState<any>(null);
   const router = useRouter();
+
+  const [periodA, setPeriodA] = useState<any>(null);
+  const [periodB, setPeriodB] = useState<any>(null);
+
+  const [history, setHistory] = useState<any[]>([]);
 
   useEffect(() => {
     async function fetchPayData() {
       try {
         const userId =
-          session?.user?.id || "3b32d468-9f20-4808-9f25-bffabed6a9cb";
+          session?.user?.id;
 
         const res = await fetch(
           `/api/staff/pay-statements/latest`
         );
+
+        const res2 = await fetch("/api/staff/pay-statements/latest");
+        const historyData = await res2.json();
+
+        setHistory(historyData.all || []);
+
+        // ✅ Auto-select defaults
+        if (historyData.all && historyData.all.length >= 2) {
+          setPeriodB(historyData.all[0]); // latest
+          setPeriodA(historyData.all[1]); // previous
+        }
 
         if (!res.ok) throw new Error("Failed to fetch");
 
@@ -77,7 +98,8 @@ export default function YourPayPage() {
   }
 
   // ✅ CORRECT SOURCE
-  const b = data.breakdown || {};
+  const latest = data.latest || {};
+const b = latest.breakdown || {};
   const ytd = data.ytd || {};
 
   const earningsBreakdown = [
@@ -95,9 +117,30 @@ export default function YourPayPage() {
     { label: "Other", value: b.other || 0 },
   ];
 
-  const gross = data.grossEarnings || 0;
-  const deductions = data.totalDeductions || 0;
-  const net = data.netEarnings || 0;
+ const gross = latest.grossEarnings || 0;
+const deductions = latest.totalDeductions || 0;
+const net = latest.netEarnings || 0;
+
+  const historyOptionsB = history
+  .filter((p) => {
+    if (!periodA) return true; // before A is selected, show all
+
+    const selectedA = new Date(periodA.payPeriodStart);
+    const current = new Date(p.payPeriodStart);
+
+    return current > selectedA; // only newer periods
+  })
+  .map((p) => ({
+    value: p.id,
+    label: `${new Date(p.payPeriodStart).toLocaleDateString()} - ${new Date(p.payPeriodEnd).toLocaleDateString()}`,
+    raw: p,
+  }));
+
+const historyOptionsA = history.slice(1).map((p) => ({
+  value: p.id,
+  label: `${new Date(p.payPeriodStart).toLocaleDateString()} - ${new Date(p.payPeriodEnd).toLocaleDateString()}`,
+  raw: p,
+}));
 
   return (
     <Container size="lg" py="xl">
@@ -121,7 +164,7 @@ export default function YourPayPage() {
           <Box>
             <Text fw={700}>Pay Date</Text>
             <Text>
-              {new Date(data.payDate).toLocaleDateString()}
+              {new Date(latest.payDate).toLocaleDateString()}
             </Text>
           </Box>
         </Group>
@@ -202,6 +245,96 @@ export default function YourPayPage() {
           </Stack>
         </Grid.Col>
       </Grid>
+
+      <Card withBorder radius="md" mt="xl">
+        <Group justify="space-between">
+          <Text fw={700}>AI Pay Insights</Text>
+
+          <Button
+            variant="subtle"
+            onClick={() => setOpened((o) => !o)}
+          >
+            {opened ? "Hide" : "Compare Pay Periods"}
+          </Button>
+        </Group>
+
+        <Collapse in={opened}>
+          <Stack mt="md">
+
+            {/* Selectors */}
+            <Group grow>
+              <Select
+                placeholder="Select Period A"
+                data={historyOptionsA}
+                value={periodA?.id}
+                onChange={(value) => {
+                  const selected = historyOptionsA.find((p) => p.value === value);
+                  setPeriodA(selected?.raw);
+                  setPeriodB(null);
+                }}
+              />
+
+              <Select
+                placeholder="Select Period B"
+                data={historyOptionsB}
+                value={periodB?.id}
+                onChange={(value) => {
+                  const selected = historyOptionsB.find((p) => p.value === value);
+                  setPeriodB(selected?.raw);
+                }}
+
+              />
+            </Group>
+
+            <Button
+              onClick={async () => {
+                const res = await fetch("/api/ai/payroll/compare", {
+                  method: "POST",
+                  body: JSON.stringify({
+                    periodA,
+                    periodB,
+                  }),
+                });
+
+                const json = await res.json();
+                setResult(json);
+              }}
+            >
+              Compare
+            </Button>
+
+            {/* Result */}
+            {result && (
+              <Card withBorder mt="md">
+                <Text fw={700}>Summary</Text>
+                <Text mb="sm">{result.summary}</Text>
+
+                <Text fw={700}>Key Drivers</Text>
+                {result.keyDrivers.map((d: string, i: number) => (
+                  <Text key={i}>• {d}</Text>
+                ))}
+
+                <Text fw={700} mt="sm">Increases</Text>
+                {result.increases.map((d: string, i: number) => (
+                  <Text key={i} c="green">+ {d}</Text>
+                ))}
+
+                <Text fw={700} mt="sm">Decreases</Text>
+                {result.decreases.map((d: string, i: number) => (
+                  <Text key={i} c="red">- {d}</Text>
+                ))}
+
+                {result.recommendation && (
+                  <>
+                    <Text fw={700} mt="sm">Recommendation</Text>
+                    <Text>{result.recommendation}</Text>
+                  </>
+                )}
+              </Card>
+            )}
+          </Stack>
+        </Collapse>
+      </Card>
 
       {/* 🔥 BUTTONS (CENTERED CLEAN) */}
       <Group justify="center" mt={50}>

@@ -425,7 +425,8 @@ export default function ManagePayPeriodsPage() {
           </Table.ScrollContainer>
         </ScrollArea>
       </Card>
-      <Group mt="xl" gap="md"><Button mt="xl" leftSection={<IoDocumentTextOutline size={16} />} onClick={handleSubmit} loading={loading}>
+      <Group mt="xl" gap="md" justify="flex-end">
+        <Button mt="xl" leftSection={<IoDocumentTextOutline size={16} />} onClick={handleSubmit} loading={loading}>
         Generate Pay Statements
       </Button>
         <Button mt="xl" leftSection={<IoDownloadOutline size={16} />} onClick={exportToExcel} loading={loading}>

@@ -1,5 +1,14 @@
 import OpenAI from "openai";
 import { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
+
+import { buildPayComparisonContext } from "./context/payComparison";
+import { buildPayComparisonPrompt } from "./prompts/payComparison";
+import { mapToPayComparison } from "./transformers/paycomparison";
+import { TaskAssistantResponseSchema } from "./schemas";
+
+
+
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -82,4 +91,25 @@ export async function generateStructuredJson<T>({
   const raw = response.output_text;
   const parsed = JSON.parse(raw);
   return schema.parse(parsed);
+}
+
+export const PayComparisonResponseSchema = z.object({
+  summary: z.string(),
+  keyDrivers: z.array(z.string()),
+  increases: z.array(z.string()),
+  decreases: z.array(z.string()),
+  anomalies: z.array(z.string()).default([]),
+  recommendation: z.string().nullable(),
+});
+
+export async function runPayComparisonFeature(a: any, b: any) {
+  const context = buildPayComparisonContext(a, b);
+
+  const aiRaw = await generateStructuredJson({
+    system: "You are a payroll assistant",
+    user: buildPayComparisonPrompt(context),
+    schema: TaskAssistantResponseSchema,
+  });
+
+  return mapToPayComparison(aiRaw);
 }

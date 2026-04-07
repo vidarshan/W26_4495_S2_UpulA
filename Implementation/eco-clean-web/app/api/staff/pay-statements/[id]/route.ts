@@ -4,18 +4,18 @@ import { getToken } from "next-auth/jwt";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   console.log("PAY STATEMENT ROUTE HIT");
 
   try {
     const token = await getToken({ req });
 
-    if (!token) {
+    if (!token || !token.sub) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const statementId = params.id;
+    const { id: statementId } = await context.params;
 
     if (!statementId) {
       return NextResponse.json(
@@ -24,7 +24,6 @@ export async function GET(
       );
     }
 
-    // ✅ Get statement with relations
     const statement = await prisma.payStatement.findUnique({
       where: { id: statementId },
       include: {
@@ -36,24 +35,20 @@ export async function GET(
       },
     });
 
-    console.log("🔍 STATEMENT:", statement);
-    console.log("👤 USER:", statement?.user);
-    console.log("🪪 STAFF PROFILE:", statement?.user?.staffProfile);
-
-    if (!statement || statement.userId !== token.id) {
+    if (!statement || statement.userId !== token.sub) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    // ✅ Start of year (Jan 1)
+    // YTD calculation stays SAME — no change needed
+
     const yearStart = new Date(statement.payPeriodStart);
     yearStart.setMonth(0);
     yearStart.setDate(1);
     yearStart.setHours(0, 0, 0, 0);
 
-    // ✅ Fetch YTD statements
     const ytdStatements = await prisma.payStatement.findMany({
       where: {
-        userId: token.id,
+        userId: token.sub, // ✅ FIXED
         payPeriodStart: {
           gte: yearStart,
           lte: statement.payPeriodStart,
@@ -62,9 +57,6 @@ export async function GET(
       orderBy: { payPeriodStart: "asc" },
     });
 
-    console.log("📊 YTD COUNT:", ytdStatements.length);
-
-    // ✅ Calculate YTD
     const ytd = ytdStatements.reduce(
       (acc, s) => {
         acc.gross += s.grossEarnings || 0;
@@ -73,12 +65,10 @@ export async function GET(
 
         const b = (s.breakdown || {}) as any;
 
-        // Earnings
         acc.regular += b?.regularAmount || 0;
         acc.overtime += b?.otAmount || 0;
         acc.allowance += b?.transportAllowance || 0;
 
-        // Taxes
         acc.federalTax += b?.federalTax || 0;
         acc.quebecTax += b?.quebecTax || 0;
         acc.ei += b?.ei || 0;
@@ -106,15 +96,10 @@ export async function GET(
       }
     );
 
-    console.log("💰 YTD RESULT:", ytd);
-
-    // ✅ Final response
     return NextResponse.json({
       ...statement,
       breakdown: statement.breakdown || {},
       ytd,
-
-      // ✅ Employee info
       employeeName: statement.user?.name || "N/A",
       employeeId: statement.user?.staffProfile?.staffId || "N/A",
     });
