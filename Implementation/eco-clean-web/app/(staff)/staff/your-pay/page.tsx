@@ -350,7 +350,7 @@ const historyOptionsA = history.slice(1).map((p) => ({
                 fontSize: "1.1rem",
               },
             }}
-            onClick={() => router.push("/staff/pay-stub")}
+            onClick={() => router.push("/staff/pay-stub/latest")}
           >
             Current Statement
           </Button>

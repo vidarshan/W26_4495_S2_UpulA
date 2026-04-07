@@ -120,23 +120,7 @@ export default function ManageStaffPage() {
                   time-off related staff activities.
                 </Text>
 
-                <Stack>
-                  <Button
-                    component={Link}
-                    href="/admin/timesheets"
-                    rightSection={<IoArrowForwardOutline size={16} />}
-                  >
-                    Approve Timesheets
-                  </Button>
-
-                  <Button
-                    component={Link}
-                    href="/admin/timesheets"
-                    rightSection={<IoArrowForwardOutline size={16} />}
-                  >
-                    Approve Leave Requests
-                  </Button>
-                </Stack>
+                
               </Accordion.Panel>
             </Accordion.Item>
 

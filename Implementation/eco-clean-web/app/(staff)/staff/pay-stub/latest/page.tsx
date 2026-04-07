@@ -19,6 +19,8 @@ export default function PayStubPage() {
   const pdfRef = useRef<HTMLDivElement>(null);
   const [statement, setStatement] = useState<any>(null);
   const latest = statement?.latest || {};
+const employeeName = statement?.employeeName || "N/A";
+const employeeId = statement?.employeeId || "N/A";
 
 
   useEffect(() => {
@@ -41,8 +43,7 @@ export default function PayStubPage() {
     const height = (canvas.height * width) / canvas.width;
 
     pdf.addImage(imgData, 'PNG', 10, 10, width, height);
-    pdf.save('pay-stub.pdf');
-  };
+pdf.save(`pay-stub-${latest.payDate}.pdf`);  };
 
   if (!statement) return <Text>Loading...</Text>;
 
@@ -114,8 +115,8 @@ const ytd = statement.ytd || {};
         <Box mb="md" p="sm" style={{ border: '1px solid black' }}>
           <Grid>
             <Grid.Col span={6}>
-              <Text><b>Employee:</b> {latest.employeeName}</Text>
-              <Text><b>Employee ID:</b> {latest.employeeId}</Text>
+              <Text><b>Employee:</b> {employeeName}</Text>
+              <Text><b>Employee ID:</b> {employeeId}</Text>
             </Grid.Col>
 
             <Grid.Col span={6}>

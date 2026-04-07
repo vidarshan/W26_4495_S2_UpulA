@@ -4,13 +4,13 @@ import { Box, Button, Container, Group, Text, Title, Loader, Center, Alert } fro
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { useRef, useEffect, useState } from 'react';
-import { useParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { IoDownloadOutline } from 'react-icons/io5';
 import Image from 'next/image';
 
 export default function PayStubPage() {
-  const params = useParams();
-  const statementId = params.statementId as string;
+  const searchParams = useSearchParams();
+  const statementId = searchParams.get("id");
   const pdfRef = useRef<HTMLDivElement>(null);
 
   const [data, setData] = useState<any>(null);
@@ -22,8 +22,7 @@ export default function PayStubPage() {
     async function fetchPayData() {
       try {
         // Using hardcoded ID for now or session.user.id
-        const staffId = "3b32d468-9f20-4808-9f25-bffabed6a9cb";
-        const response = await fetch(`/api/staff/${staffId}/pay-statements/${statementId}`);
+        const response = await fetch(`/api/staff/pay-statements/${statementId}`);
         if (!response.ok) throw new Error("Statement not found.");
         const result = await response.json();
         setData(result);
@@ -45,7 +44,7 @@ export default function PayStubPage() {
     const imgWidth = pageWidth - 20;
     const imgHeight = (canvas.height * imgWidth) / canvas.width;
     pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
-    pdf.save(`pay-stub-${data?.period?.payDate}.pdf`);
+    pdf.save(`pay-stub-${data?.payDate}.pdf`);
   };
 
   if (loading) return <Center h="80vh"><Loader size="xl" color="#125f82" /></Center>;
@@ -53,19 +52,19 @@ export default function PayStubPage() {
 
   // 2. Map Database JSON to your UI structure
   const earnings = [
-    { label: 'Regular', rate: data.details?.regularRate, units: data.details?.regularHours, amount: data.details?.regularAmount, yearToDate: data.details?.regularAmount },
-    { label: 'Overtime', rate: data.details?.otRate, units: data.details?.otHours, amount: data.details?.otAmount, yearToDate: data.details?.otAmount },
-    { label: 'Transport Allowance', rate: null, units: null, amount: data.details?.transportAllowance || 0, yearToDate: null },
+    { label: 'Regular', rate: data.breakdown?.regularRate, units: data.breakdown?.regularHours, amount: data.breakdown?.regularAmount, yearToDate: data.breakdown?.regularAmount },
+    { label: 'Overtime', rate: data.breakdown?.otRate, units: data.breakdown?.otHours, amount: data.breakdown?.otAmount, yearToDate: data.breakdown?.otAmount },
+    { label: 'Transport Allowance', rate: null, units: null, amount: data.breakdown?.transportAllowance || 0, yearToDate: null },
   ];
 
   const deductions = [
-    { label: 'Federal Tax', amount: -(data.details?.federalTax || 0) },
-    { label: 'EI', amount: -(data.details?.ei || 0) },
-    { label: 'CPP', amount: -(data.details?.cpp || 0) },
-    { label: 'Health', amount: -(data.details?.health || 0) },
-    { label: 'Other', amount: -(data.details?.other || 0) },
+    { label: 'Federal Tax', amount: -(data.breakdown?.federalTax || 0) },
+    { label: 'EI', amount: -(data.breakdown?.ei || 0) },
+    { label: 'CPP', amount: -(data.breakdown?.cpp || 0) },
+    { label: 'Health', amount: -(data.breakdown?.health || 0) },
+    { label: 'Other', amount: -(data.breakdown?.other || 0) },
   ];
-
+console.log("🔥 URL ID:", statementId);
   return (
     <Container size="lg" py="xl">
       <Group justify="flex-end" mb="md">
@@ -86,15 +85,22 @@ export default function PayStubPage() {
             <Title order={3}>Eco-Clean Services</Title>
             <Text size="sm">Surrey, British Columbia, CA</Text>
             <Text fw={800} mt="md" size="lg" c="#2e7d32">STATEMENT OF EARNINGS AND DEDUCTIONS</Text>
-
+            <Group justify="center" mt="md" gap="xl">
+              <Text fw={600}>
+                Employee: {data.employeeName}
+              </Text>
+              <Text fw={600}>
+                Staff ID: {data.employeeId}
+              </Text>
+            </Group>
             <Group justify="center" mt="md" gap="xs">
               <Text fw={700} size="sm">Pay Period :</Text>
               <Box px="md" py={4} style={{ border: '2px solid #355c7d', borderRadius: 8, fontSize: '14px' }}>
-                {new Date(data.period.start).toLocaleDateString()}
+                {new Date(data.payPeriodStart).toLocaleDateString()}
               </Box>
               <Text fw={700} size="sm">to</Text>
               <Box px="md" py={4} style={{ border: '2px solid #355c7d', borderRadius: 8, fontSize: '14px' }}>
-                {new Date(data.period.end).toLocaleDateString()}
+                {new Date(data.payPeriodEnd).toLocaleDateString()}
               </Box>
             </Group>
           </Box>
@@ -106,7 +112,7 @@ export default function PayStubPage() {
         {earnings.map((row) => (
           <Row key={row.label} label={row.label} rate={row.rate} units={row.units} amount={row.amount} yearToDate={row.yearToDate} />
         ))}
-        <TotalRow label="Gross Earnings" value={data.summary.gross} />
+        <TotalRow label="Gross Earnings" value={data.grossEarnings} />
 
         <SectionHeader title="Deductions" mt="lg" />
         {deductions.map((row) => (
@@ -116,7 +122,7 @@ export default function PayStubPage() {
         <Box mt="md" px="md" py="sm" style={{ backgroundColor: '#8bcf6c', borderTop: '2px solid black', borderBottom: '2px solid black' }}>
           <Group justify="space-between">
             <Text fw={800} size="xl">Net Earnings</Text>
-            <Text fw={800} size="xl">${data.summary.net.toFixed(2)}</Text>
+            <Text fw={800} size="xl">${data.netEarnings.toFixed(2)}</Text>
           </Group>
         </Box>
       </Box>
