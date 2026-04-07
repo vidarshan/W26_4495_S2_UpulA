@@ -1097,7 +1097,7 @@ export default function NewJobModal({
           <Paper>
             <SegmentedControl
               mt="sm"
-              color="green"
+              color="lime"
               value={form.values.jobType}
               disabled={isBusy}
               onChange={(value) =>

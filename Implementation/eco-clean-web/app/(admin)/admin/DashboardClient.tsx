@@ -53,6 +53,7 @@ import { rescheduleAppointment } from "@/lib/api/appointments";
 import { APP_TZ } from "@/lib/dateTime";
 import { useCalendarStore, useDashboardUI } from "@/stores/store";
 import { Staff } from "@/types";
+import { DateTime } from "luxon";
 
 
 export default function DashboardClient() {
@@ -146,6 +147,17 @@ export default function DashboardClient() {
       allDay: selectInfo.allDay,
     });
   };
+
+  const handleSelectAllow = useCallback((selectInfo: DateSelectArg) => {
+    const start = DateTime.fromJSDate(selectInfo.start, { zone: "utc" }).setZone(
+      APP_TZ,
+    );
+    const end = DateTime.fromJSDate(selectInfo.end, { zone: "utc" })
+      .setZone(APP_TZ)
+      .minus({ millisecond: 1 });
+
+    return start.hasSame(end, "day");
+  }, []);
 
   const handleDateResize = async (info: EventResizeDoneArg) => {
     const { id } = info.event;
@@ -568,6 +580,7 @@ export default function DashboardClient() {
               }}
               loading={setCalendarLoading}
               events={loadEvents}
+              selectAllow={handleSelectAllow}
               select={handleDateSelect}
               eventDrop={handleDateDrop}
               eventResize={handleDateResize}
