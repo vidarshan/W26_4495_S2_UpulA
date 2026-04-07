@@ -464,11 +464,15 @@ model TD1 {
   id              String @id @default(uuid())
   staffProfileId  String @unique
 
-  sin                 String
-  totalClaimAmount     Float
-  additionalTaxPerPay  Float
-  deductionsTotal      Float
-  isExempt             Boolean @default(false)
+  sin String
+
+  federalClaimAmount  Float
+  quebecClaimAmount   Float
+
+  additionalFederalTaxPerPay Float @default(0)
+  additionalQuebecTaxPerPay  Float @default(0)
+
+  isExempt Boolean @default(false)
 
   staffProfile StaffProfile @relation(fields: [staffProfileId], references: [id], onDelete: Cascade)
 }
