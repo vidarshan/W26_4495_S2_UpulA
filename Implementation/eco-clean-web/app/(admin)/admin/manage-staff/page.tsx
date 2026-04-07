@@ -102,6 +102,14 @@ export default function ManageStaffPage() {
                 >
                   Go to Payroll Admin Panel
                 </Button>
+                <Button
+                  component={Link}
+                  href="/admin/manage-staff/payroll"
+                  variant="light"
+                  rightSection={<IoArrowForwardOutline size={16} />}
+                >
+                  Payroll Periods
+                </Button>
               </Accordion.Panel>
             </Accordion.Item>
           </Accordion>
