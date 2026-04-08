@@ -81,7 +81,7 @@ export default function AiTaskAssistantCard({ data }: Props) {
         <Group justify="space-between" align="center">
           <Group gap="xs" justify="space-between">
             <ThemeIcon
-              radius="md"
+              radius="lg"
               variant="filled"
               style={{
                 background: "linear-gradient(135deg, #ec4899 0%, #a855f7 100%)",
@@ -129,7 +129,7 @@ export default function AiTaskAssistantCard({ data }: Props) {
                   spacing="xs"
                   icon={
                     <ThemeIcon
-                      radius="md"
+                      radius="lg"
                       size={18}
                       variant="filled"
                       style={{
@@ -203,7 +203,7 @@ export default function AiTaskAssistantCard({ data }: Props) {
                   spacing="xs"
                   icon={
                     <ThemeIcon
-                      radius="md"
+                      radius="lg"
                       size={18}
                       variant="filled"
                       color="yellow"
@@ -227,7 +227,7 @@ export default function AiTaskAssistantCard({ data }: Props) {
                   spacing="xs"
                   icon={
                     <ThemeIcon
-                      radius="md"
+                      radius="lg"
                       size={18}
                       variant="filled"
                       style={{

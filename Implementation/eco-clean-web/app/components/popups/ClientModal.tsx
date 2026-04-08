@@ -266,21 +266,22 @@ export default function ClientPropertyModal({
             : "email",
       leadSource: client.leadSource ?? "",
       note: client.notes?.[0]?.content ?? "",
-      addresses: (
-        ((client as ClientWithRelations).addresses as ClientAddressWithBilling[])
-          ?.length
-          ? ((client as ClientWithRelations).addresses as ClientAddressWithBilling[])
-          : []
+      addresses: ((
+        (client as ClientWithRelations).addresses as ClientAddressWithBilling[]
+      )?.length
+        ? ((client as ClientWithRelations)
+            .addresses as ClientAddressWithBilling[])
+        : []
       ).map((a) => ({
-          id: a.id,
-          street1: a.street1 ?? "",
-          street2: a.street2 ?? "",
-          city: a.city ?? "",
-          province: a.province ?? "",
-          postalCode: a.postalCode ?? "",
-          country: a.country ?? "Canada",
-          billingSameAsProperty: !a.isBilling,
-        })),
+        id: a.id,
+        street1: a.street1 ?? "",
+        street2: a.street2 ?? "",
+        city: a.city ?? "",
+        province: a.province ?? "",
+        postalCode: a.postalCode ?? "",
+        country: a.country ?? "Canada",
+        billingSameAsProperty: !a.isBilling,
+      })),
     };
 
     form.setValues(nextValues);
@@ -308,7 +309,7 @@ export default function ClientPropertyModal({
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Stack gap="xl">
           {(clientLoading || mutation.isPending) && (
-            <Paper withBorder p="sm" radius="md">
+            <Paper withBorder p="sm" radius="lg">
               <Group gap="xs">
                 <Loader size="sm" />
                 <Text size="sm">
@@ -321,7 +322,7 @@ export default function ClientPropertyModal({
           )}
 
           {clientError && clientId ? (
-            <Paper withBorder p="sm" radius="md">
+            <Paper withBorder p="sm" radius="lg">
               <Text size="sm" c="red">
                 Failed to load client details.
               </Text>
@@ -444,7 +445,7 @@ export default function ClientPropertyModal({
             <Grid.Col span={12}>
               <Stack gap="md">
                 {form.values.addresses.map((_, index) => (
-                  <Paper key={index} withBorder p="md" radius="md">
+                  <Paper key={index} withBorder p="md" radius="lg">
                     <Stack>
                       <Group justify="space-between">
                         <strong>Address {index + 1}</strong>

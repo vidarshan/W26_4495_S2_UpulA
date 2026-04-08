@@ -270,7 +270,7 @@ const JobDetails = () => {
       </Paper>
       <Paper mt="md" p="sm" withBorder>
         <Title order={3}>Appointments</Title>
-        <Tabs mt="sm" variant="pills" radius="md" defaultValue="scheduled">
+        <Tabs mt="sm" variant="pills" radius="lg" defaultValue="scheduled">
           <Tabs.List>
             <Tabs.Tab value="scheduled">Scheduled</Tabs.Tab>
             <Tabs.Tab value="completed">Completed</Tabs.Tab>

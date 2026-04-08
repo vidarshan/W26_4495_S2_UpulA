@@ -292,7 +292,7 @@ export default function AdminStaffDetailsModal({
         <SegmentedControl
           fullWidth
           color="lime"
-          radius="xl"
+          radius="lg"
           value={activeView}
           onChange={(value) => setActiveView(value as "overview" | "financial")}
           data={[

@@ -27,7 +27,12 @@ import {
   Title,
   SegmentedControl,
 } from "@mantine/core";
-import { DateInput, DatePicker, DatePickerInput, TimeInput } from "@mantine/dates";
+import {
+  DateInput,
+  DatePicker,
+  DatePickerInput,
+  TimeInput,
+} from "@mantine/dates";
 import { useMediaQuery } from "@mantine/hooks";
 import { useSession } from "next-auth/react";
 import { IoCalendarOutline, IoDocumentTextOutline } from "react-icons/io5";
@@ -211,8 +216,7 @@ export default function ApplyLeavePage() {
   const sortedLeaveData = useMemo(
     () =>
       [...leaveData].sort(
-        (a, b) =>
-          new Date(b.startAt).getTime() - new Date(a.startAt).getTime(),
+        (a, b) => new Date(b.startAt).getTime() - new Date(a.startAt).getTime(),
       ),
     [leaveData],
   );
@@ -338,7 +342,8 @@ export default function ApplyLeavePage() {
         {isMobile && (
           <SegmentedControl
             fullWidth
-            radius="md"
+            radius="lg"
+            color="lime"
             value={mode}
             onChange={(value) => setMode(value as Mode)}
             data={[
@@ -349,7 +354,7 @@ export default function ApplyLeavePage() {
         )}
 
         <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md" verticalSpacing="md">
-          <Card withBorder radius="md" p={{ base: "sm", sm: "md" }}>
+          <Card withBorder radius="lg" p={{ base: "sm", sm: "md" }}>
             <Stack gap="sm">
               <Group justify="space-between" wrap="wrap">
                 <Text fw={700}>Calendar</Text>
@@ -396,7 +401,7 @@ export default function ApplyLeavePage() {
 
           <Stack gap="md">
             {mode === "balances" ? (
-              <Card withBorder radius="md" p="lg">
+              <Card withBorder radius="lg" p="lg">
                 <Stack gap="md">
                   <Group justify="space-between">
                     <Text fw={800}>Time Off Balances</Text>
@@ -481,7 +486,10 @@ export default function ApplyLeavePage() {
                       <Paper key={record.id} withBorder radius="lg" p="md">
                         <Stack gap="xs">
                           <Group justify="space-between" wrap="wrap" gap="xs">
-                            <Badge variant="light" color={getLeaveAccent(record.type)}>
+                            <Badge
+                              variant="light"
+                              color={getLeaveAccent(record.type)}
+                            >
                               {formatLeaveType(record.type)}
                             </Badge>
                             <Text size="sm" c="dimmed">
@@ -490,8 +498,7 @@ export default function ApplyLeavePage() {
                           </Group>
 
                           <Text fw={600}>
-                            {formatAppTime(record.startAt)}{" "}
-                            to{" "}
+                            {formatAppTime(record.startAt)} to{" "}
                             {formatAppTime(record.endAt)}
                           </Text>
 
@@ -526,11 +533,11 @@ function BalancesCard({
   onRequest: () => void;
 }) {
   return (
-    <Card withBorder radius="md" p="lg">
+    <Card withBorder radius="lg" p="lg">
       <Stack gap="md">
         <Group justify="space-between" align="center">
           <Text fw={800}>Time Off Balances</Text>
-          <Button size="sm" radius="md" onClick={onRequest}>
+          <Button size="sm" radius="lg" onClick={onRequest}>
             Request time off
           </Button>
         </Group>
@@ -562,7 +569,7 @@ function BalancesCard({
 
 function LeaveRequestCard(props: LeaveRequestCardProps) {
   return (
-    <Card withBorder radius="md" p="lg">
+    <Card withBorder radius="lg" p="lg">
       <Stack gap="md">
         <Title order={3}>Leave Request</Title>
 
@@ -572,7 +579,9 @@ function LeaveRequestCard(props: LeaveRequestCardProps) {
               Date
             </Text>
             <DatePickerInput
-              value={props.selectedDate ? appDateKeyToDate(props.selectedDate) : null}
+              value={
+                props.selectedDate ? appDateKeyToDate(props.selectedDate) : null
+              }
               onChange={(value) =>
                 props.setSelectedDate(value ? toAppDateKey(value) : null)
               }
@@ -663,7 +672,6 @@ function LeaveRequestCard(props: LeaveRequestCardProps) {
         <Group grow={props.isMobile} justify="space-between" mt="sm">
           <Button
             size="md"
-            radius="md"
             variant="default"
             onClick={props.onPrevious}
             fullWidth={props.isMobile}
@@ -673,8 +681,6 @@ function LeaveRequestCard(props: LeaveRequestCardProps) {
 
           <Button
             size="md"
-            radius="md"
-            color="dark"
             onClick={props.onSubmit}
             loading={props.submitting}
             fullWidth={props.isMobile}
@@ -693,7 +699,7 @@ function InfoTile({ label, value }: { label: string; value: string }) {
       <Text fw={700} mb={6}>
         {label}
       </Text>
-      <Card withBorder radius="md" p="md" bg="gray.1">
+      <Card withBorder radius="lg" p="md" bg="gray.1">
         <Text fw={800} ta="center">
           {value}
         </Text>

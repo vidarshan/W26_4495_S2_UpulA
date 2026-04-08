@@ -363,7 +363,8 @@ export default function DashboardClient() {
           Dashboard
         </Text>
         <Text size="sm" c="#475569" mt={6}>
-          Manage appointments, scan workload, and adjust the schedule directly from the calendar.
+          Manage appointments, scan workload, and adjust the schedule directly
+          from the calendar.
         </Text>
       </Box>
 
@@ -390,7 +391,8 @@ export default function DashboardClient() {
                 {currentTitle}
               </Text>
               <Text size="sm" c="dimmed">
-                Use this panel to move through the calendar, switch views, and refine what is shown.
+                Use this panel to move through the calendar, switch views, and
+                refine what is shown.
               </Text>
             </Box>
 

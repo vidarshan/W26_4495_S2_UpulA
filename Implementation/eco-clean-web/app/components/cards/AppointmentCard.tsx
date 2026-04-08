@@ -12,7 +12,7 @@ export default function AppointmentCard({ appointment }: Props) {
   const created = new Date(appointment.createdAt);
 
   return (
-    <Card px={0} py="xs" mt="xs" radius="md">
+    <Card px={0} py="xs" mt="xs" radius="lg">
       <Stack gap="xs">
         <Group justify="apart" align="center">
           <Text size="sm" fw={600}>

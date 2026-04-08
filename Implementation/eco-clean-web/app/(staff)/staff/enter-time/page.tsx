@@ -219,54 +219,57 @@ export default function EnterTimePage() {
     }
   }
 
-  const fetchTimesheetEntries = useCallback(async (selectedPeriodId: string | null) => {
-    const selected = allPeriods.find((p) => p.id === selectedPeriodId);
+  const fetchTimesheetEntries = useCallback(
+    async (selectedPeriodId: string | null) => {
+      const selected = allPeriods.find((p) => p.id === selectedPeriodId);
 
-    if (!selected) {
-      setDayMinutes({});
-      setDaySessions({});
-      return;
-    }
-
-    try {
-      setLoadingEntries(true);
-
-      const startDateParam = DateTime.fromISO(selected.startDate, {
-        zone: "utc",
-      })
-        .setZone(APP_TZ)
-        .toFormat("yyyy-LL-dd");
-      const endDateParam = DateTime.fromISO(selected.endDate, {
-        zone: "utc",
-      })
-        .setZone(APP_TZ)
-        .toFormat("yyyy-LL-dd");
-
-      const res = await fetch(
-        `/api/staff/time-sheet?startDate=${encodeURIComponent(
-          startDateParam,
-        )}&endDate=${encodeURIComponent(endDateParam)}`,
-      );
-
-      const result = await res.json();
-
-      if (!res.ok) {
-        console.error("Failed to load timesheet entries:", result.error);
+      if (!selected) {
         setDayMinutes({});
         setDaySessions({});
         return;
       }
 
-      setDayMinutes(result.dailyTotals ?? {});
-      setDaySessions(result.dailySessions ?? {});
-    } catch (error) {
-      console.error("Failed to load timesheet entries:", error);
-      setDayMinutes({});
-      setDaySessions({});
-    } finally {
-      setLoadingEntries(false);
-    }
-  }, [allPeriods]);
+      try {
+        setLoadingEntries(true);
+
+        const startDateParam = DateTime.fromISO(selected.startDate, {
+          zone: "utc",
+        })
+          .setZone(APP_TZ)
+          .toFormat("yyyy-LL-dd");
+        const endDateParam = DateTime.fromISO(selected.endDate, {
+          zone: "utc",
+        })
+          .setZone(APP_TZ)
+          .toFormat("yyyy-LL-dd");
+
+        const res = await fetch(
+          `/api/staff/time-sheet?startDate=${encodeURIComponent(
+            startDateParam,
+          )}&endDate=${encodeURIComponent(endDateParam)}`,
+        );
+
+        const result = await res.json();
+
+        if (!res.ok) {
+          console.error("Failed to load timesheet entries:", result.error);
+          setDayMinutes({});
+          setDaySessions({});
+          return;
+        }
+
+        setDayMinutes(result.dailyTotals ?? {});
+        setDaySessions(result.dailySessions ?? {});
+      } catch (error) {
+        console.error("Failed to load timesheet entries:", error);
+        setDayMinutes({});
+        setDaySessions({});
+      } finally {
+        setLoadingEntries(false);
+      }
+    },
+    [allPeriods],
+  );
 
   useEffect(() => {
     if (payPeriodId && allPeriods.length > 0) {
@@ -295,9 +298,7 @@ export default function EnterTimePage() {
 
         weekDays.push({
           dow: d.toFormat("ccc"),
-          dateLabel: isToday
-            ? "Today"
-            : d.toFormat("LLL d"),
+          dateLabel: isToday ? "Today" : d.toFormat("LLL d"),
           fullDate: d.toJSDate(),
           isToday,
           hours: formatMinutesToHHMM(minutes),
@@ -401,12 +402,17 @@ export default function EnterTimePage() {
           <Stack gap="xs">
             <Title order={3}>Enter Time</Title>
             <Text size="sm" c="dimmed">
-              Review daily work sessions, verify totals, and submit your timesheet.
+              Review daily work sessions, verify totals, and submit your
+              timesheet.
             </Text>
           </Stack>
 
           <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md" mt="md">
-            <SummaryStat label="Current Week" value={`Week ${week}`} icon={IoCalendarOutline} />
+            <SummaryStat
+              label="Current Week"
+              value={`Week ${week}`}
+              icon={IoCalendarOutline}
+            />
             <SummaryStat
               label="Week Total"
               value={formatMinutesToHHMM(totalWeekMinutes)}
@@ -414,7 +420,13 @@ export default function EnterTimePage() {
             />
             <SummaryStat
               label="Sessions"
-              value={String(activeDays.reduce((sum, d) => sum + (daySessions[toDateKey(d.fullDate)]?.length ?? 0), 0))}
+              value={String(
+                activeDays.reduce(
+                  (sum, d) =>
+                    sum + (daySessions[toDateKey(d.fullDate)]?.length ?? 0),
+                  0,
+                ),
+              )}
               icon={IoClipboardOutline}
             />
           </SimpleGrid>
@@ -423,7 +435,13 @@ export default function EnterTimePage() {
         <Card radius="lg" withBorder p="lg" className="staff-app-surface">
           <Stack gap="md">
             <Group justify="space-between" align="end" wrap="wrap">
-              <Box style={{ flex: 1, minWidth: isMobile ? "100%" : 260, maxWidth: 420 }}>
+              <Box
+                style={{
+                  flex: 1,
+                  minWidth: isMobile ? "100%" : 260,
+                  maxWidth: 420,
+                }}
+              >
                 <Text size="sm" fw={700} mb={6}>
                   Pay Period
                 </Text>
@@ -442,7 +460,7 @@ export default function EnterTimePage() {
                 value={String(week)}
                 onChange={(value) => setWeek(Number(value) as Week)}
                 color="lime"
-                radius="xl"
+                radius="lf"
                 data={[
                   { label: "Week 1", value: "1" },
                   { label: "Week 2", value: "2" },
@@ -489,7 +507,7 @@ export default function EnterTimePage() {
                     <Button
                       variant="light"
                       color="lime"
-                      radius="md"
+                      radius="lg"
                       onClick={() => {
                         setModalError(null);
                         setOpenDay({ week, idx: index });
@@ -511,7 +529,12 @@ export default function EnterTimePage() {
             {isMobile ? (
               <Stack gap="xs">
                 {activeDays.map((day) => (
-                  <Paper key={toDateKey(day.fullDate)} withBorder radius="lg" p="sm">
+                  <Paper
+                    key={toDateKey(day.fullDate)}
+                    withBorder
+                    radius="lg"
+                    p="sm"
+                  >
                     <Group justify="space-between" wrap="nowrap">
                       <Box>
                         <Text fw={700}>{day.dow}</Text>
@@ -551,16 +574,21 @@ export default function EnterTimePage() {
 
         <Group justify="flex-end" grow={isMobile}>
           {week === 1 ? (
-            <Button radius="md" color="lime" onClick={() => setWeek(2)}>
+            <Button radius="lg" color="lime" onClick={() => setWeek(2)}>
               Next Week
             </Button>
           ) : (
             <>
-              <Button radius="md" variant="subtle" color="gray" onClick={() => setWeek(1)}>
+              <Button
+                radius="lg"
+                variant="subtle"
+                color="gray"
+                onClick={() => setWeek(1)}
+              >
                 Previous Week
               </Button>
               <Button
-                radius="md"
+                radius="lg"
                 color="lime"
                 onClick={handleSubmitTimesheet}
                 loading={submitting}
@@ -587,7 +615,9 @@ export default function EnterTimePage() {
             <Paper withBorder radius="lg" p="md">
               <Group justify="space-between" align="start">
                 <Box>
-                  <Text fw={700}>{selectedDay.fullDate.toLocaleDateString()}</Text>
+                  <Text fw={700}>
+                    {selectedDay.fullDate.toLocaleDateString()}
+                  </Text>
                   <Text size="sm" c="dimmed">
                     {selectedDay.dow}
                   </Text>
@@ -626,7 +656,8 @@ export default function EnterTimePage() {
                         {!isEditing ? (
                           <>
                             <Text size="sm">
-                              Start: {new Date(session.startedAt).toLocaleString()}
+                              Start:{" "}
+                              {new Date(session.startedAt).toLocaleString()}
                             </Text>
                             <Text size="sm">
                               End:{" "}
@@ -636,7 +667,12 @@ export default function EnterTimePage() {
                             </Text>
 
                             <Group mt="xs">
-                              <Button size="xs" variant="light" color="lime" onClick={() => beginEdit(session)}>
+                              <Button
+                                size="xs"
+                                variant="light"
+                                color="lime"
+                                onClick={() => beginEdit(session)}
+                              >
                                 Edit
                               </Button>
                             </Group>
@@ -647,14 +683,18 @@ export default function EnterTimePage() {
                               label="Started At"
                               type="datetime-local"
                               value={editStartedAt}
-                              onChange={(e) => setEditStartedAt(e.currentTarget.value)}
+                              onChange={(e) =>
+                                setEditStartedAt(e.currentTarget.value)
+                              }
                             />
 
                             <TextInput
                               label="Ended At"
                               type="datetime-local"
                               value={editEndedAt}
-                              onChange={(e) => setEditEndedAt(e.currentTarget.value)}
+                              onChange={(e) =>
+                                setEditEndedAt(e.currentTarget.value)
+                              }
                               placeholder="Leave blank if still running"
                             />
 

@@ -210,11 +210,13 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
     }) ?? [];
 
   const assignmentIdsKey =
-    appointment?.assignments?.map((assignment) => assignment.staff.id).join(",") ??
-    "";
+    appointment?.assignments
+      ?.map((assignment) => assignment.staff.id)
+      .join(",") ?? "";
   const appointmentNotesKey =
-    appointment?.notes?.map((note) => `${note.id}-${note.createdAt}`).join(",") ??
-    "";
+    appointment?.notes
+      ?.map((note) => `${note.id}-${note.createdAt}`)
+      .join(",") ?? "";
 
   useEffect(() => {
     if (!appointment) return;
@@ -331,7 +333,7 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
       {isLoading ? (
         <Loader />
       ) : !appointment ? null : (
-        <Paper radius="md">
+        <Paper radius="lg">
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -443,7 +445,7 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
                   </Text>
 
                   {sortedAppointmentNotes.map((note) => (
-                    <Paper key={note.id} withBorder radius="md" p="sm">
+                    <Paper key={note.id} withBorder radius="lg" p="sm">
                       <Group justify="space-between" align="flex-start" mb={6}>
                         <Badge
                           variant="light"
@@ -473,7 +475,7 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
                     {appointment.images.map((img) => (
                       <Paper
                         key={img.id}
-                        radius="md"
+                        radius="lg"
                         withBorder
                         className={classes.thumbnailCard}
                       >
@@ -551,7 +553,7 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
               />
 
               {!!appointment.job?.visitInstructions && (
-                <Paper withBorder radius="md" p="sm">
+                <Paper withBorder radius="lg" p="sm">
                   <Text size="xs" c="dimmed" mb={4}>
                     Visit Instructions
                   </Text>
@@ -561,14 +563,14 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
 
               {!!appointment.job?.client && (
                 <SimpleGrid cols={{ base: 1, sm: 2 }}>
-                  <Paper withBorder radius="md" p="sm">
+                  <Paper withBorder radius="lg" p="sm">
                     <Text size="xs" c="dimmed" mb={4}>
                       Client Email
                     </Text>
                     <Text size="sm">{appointment.job.client.email || "—"}</Text>
                   </Paper>
 
-                  <Paper withBorder radius="md" p="sm">
+                  <Paper withBorder radius="lg" p="sm">
                     <Text size="xs" c="dimmed" mb={4}>
                       Client Phone
                     </Text>
@@ -584,7 +586,7 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
                   </Text>
 
                   {appointment.job.lineItems.map((item) => (
-                    <Paper key={item.id} withBorder radius="md" p="sm">
+                    <Paper key={item.id} withBorder radius="lg" p="sm">
                       <Group justify="space-between" align="flex-start" mb={4}>
                         <Text fw={600} size="sm">
                           {item.name}
@@ -611,7 +613,7 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
 
                   <Stack gap="sm">
                     {sortedJobNotes.map((note) => (
-                      <Paper key={note.id} withBorder radius="md" p="sm">
+                      <Paper key={note.id} withBorder radius="lg" p="sm">
                         <Group
                           justify="space-between"
                           align="flex-start"
@@ -654,7 +656,7 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
                             {note.images.map((img) => (
                               <Paper
                                 key={img.id}
-                                radius="md"
+                                radius="lg"
                                 withBorder
                                 className={classes.thumbnailCard}
                               >

@@ -951,7 +951,7 @@ export default function NewJobModal({
                       alt="note_image"
                       w={80}
                       h={80}
-                      radius="md"
+                      radius="lg"
                       fit="cover"
                     />
                     <ActionIcon
@@ -1129,7 +1129,7 @@ export default function NewJobModal({
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Stack gap="sm">
           {(isUploading || isSubmitting) && (
-            <Paper p="sm" radius="md" withBorder bg="gray.0">
+            <Paper p="sm" radius="lg" withBorder bg="gray.0">
               <Group gap="xs">
                 <Loader size="sm" />
                 <Text size="sm">

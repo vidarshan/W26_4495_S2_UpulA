@@ -124,7 +124,7 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.currentTarget.value)}
                   size="md"
-                  radius="md"
+                  radius="lg"
                 />
 
                 <PasswordInput
@@ -134,7 +134,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.currentTarget.value)}
                   size="md"
-                  radius="md"
+                  radius="lg"
                 />
               </Stack>
 

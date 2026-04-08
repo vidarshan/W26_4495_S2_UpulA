@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { APP_TZ, formatAppDate } from '@/lib/dateTime';
+import { APP_TZ, formatAppDate } from "@/lib/dateTime";
 import {
   Box,
   Button,
@@ -13,11 +13,11 @@ import {
   Title,
   Card,
   ScrollArea,
-} from '@mantine/core';
-import { notifications } from '@mantine/notifications';
-import { useMemo, useState, useEffect } from 'react';
-import { useMediaQuery } from '@mantine/hooks';
-import { DateTime } from 'luxon';
+} from "@mantine/core";
+import { notifications } from "@mantine/notifications";
+import { useMemo, useState, useEffect } from "react";
+import { useMediaQuery } from "@mantine/hooks";
+import { DateTime } from "luxon";
 
 type StaffPayRow = {
   staffId: string;
@@ -47,8 +47,8 @@ type TimesheetPeriodOption = {
 
 const initialRows: StaffPayRow[] = [
   {
-    staffId: 'STF001',
-    staffName: 'Upul Atapattu',
+    staffId: "STF001",
+    staffName: "Upul Atapattu",
     regularHours: 80,
     regularRate: 18,
     regularAmount: 1440,
@@ -66,8 +66,8 @@ const initialRows: StaffPayRow[] = [
     netEarnings: 1630,
   },
   {
-    staffId: 'STF002',
-    staffName: 'Vidarshan',
+    staffId: "STF002",
+    staffName: "Vidarshan",
     regularHours: 75,
     regularRate: 20,
     regularAmount: 1500,
@@ -94,22 +94,22 @@ export default function ManagePayPeriodsPage() {
   const [rows, setRows] = useState<StaffPayRow[]>(initialRows);
   const [loading, setLoading] = useState(false);
 
-  const isMobile = useMediaQuery('(max-width: 768px)', false, {
+  const isMobile = useMediaQuery("(max-width: 768px)", false, {
     getInitialValueInEffect: true,
   });
 
   useEffect(() => {
     async function loadPeriods() {
       try {
-        const res = await fetch('/api/timesheet-periods');
+        const res = await fetch("/api/timesheet-periods");
         const allPeriods = (await res.json()) as TimesheetPeriodOption[];
         const now = DateTime.now().setZone(APP_TZ);
 
         const currentIndex = allPeriods.findIndex((p) => {
-          const start = DateTime.fromISO(p.startDate, { zone: 'utc' }).setZone(
+          const start = DateTime.fromISO(p.startDate, { zone: "utc" }).setZone(
             APP_TZ,
           );
-          const end = DateTime.fromISO(p.endDate, { zone: 'utc' }).setZone(
+          const end = DateTime.fromISO(p.endDate, { zone: "utc" }).setZone(
             APP_TZ,
           );
           return now >= start && now <= end;
@@ -129,7 +129,7 @@ export default function ManagePayPeriodsPage() {
           setPeriodStart(options[1]?.value || options[0]?.value || null);
         }
       } catch (error) {
-        console.error('Failed to load dynamic periods', error);
+        console.error("Failed to load dynamic periods", error);
       }
     }
 
@@ -139,23 +139,23 @@ export default function ManagePayPeriodsPage() {
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/admin/pay-statements', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/admin/pay-statements", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ periodStart, rows }),
       });
 
       if (response.ok) {
         notifications.show({
-          title: 'Pay statements generated',
-          message: 'Pay statements generated successfully.',
-          color: 'green',
+          title: "Pay statements generated",
+          message: "Pay statements generated successfully.",
+          color: "green",
         });
       } else {
         notifications.show({
-          title: 'Generation failed',
-          message: 'Failed to generate pay statements.',
-          color: 'red',
+          title: "Generation failed",
+          message: "Failed to generate pay statements.",
+          color: "red",
         });
       }
     } catch (error) {
@@ -186,7 +186,7 @@ export default function ManagePayPeriodsPage() {
   function updateRow<K extends keyof StaffPayRow>(
     index: number,
     field: K,
-    value: StaffPayRow[K]
+    value: StaffPayRow[K],
   ) {
     setRows((prev) => {
       const updated = [...prev];
@@ -204,7 +204,7 @@ export default function ManagePayPeriodsPage() {
         acc.net += row.netEarnings;
         return acc;
       },
-      { gross: 0, deductions: 0, net: 0 }
+      { gross: 0, deductions: 0, net: 0 },
     );
   }, [rows]);
 
@@ -227,7 +227,7 @@ export default function ManagePayPeriodsPage() {
         />
       </Box>
 
-      <Card withBorder radius="md" p={isMobile ? 'sm' : 'md'}>
+      <Card withBorder radius="lg" p={isMobile ? "sm" : "md"}>
         <ScrollArea offsetScrollbars>
           <Table.ScrollContainer minWidth={1900}>
             <Table
@@ -267,70 +267,70 @@ export default function ManagePayPeriodsPage() {
                       type="text"
                       value={row.staffId}
                       onChange={(val) =>
-                        updateRow(index, 'staffId', String(val))
+                        updateRow(index, "staffId", String(val))
                       }
                     />
                     <CellText>{row.staffName}</CellText>
                     <InputCell
                       value={row.regularHours}
                       onChange={(val) =>
-                        updateRow(index, 'regularHours', Number(val || 0))
+                        updateRow(index, "regularHours", Number(val || 0))
                       }
                     />
                     <InputCell
                       value={row.regularRate}
                       onChange={(val) =>
-                        updateRow(index, 'regularRate', Number(val || 0))
+                        updateRow(index, "regularRate", Number(val || 0))
                       }
                     />
                     <ReadOnlyCell value={row.regularAmount} />
                     <InputCell
                       value={row.otHours}
                       onChange={(val) =>
-                        updateRow(index, 'otHours', Number(val || 0))
+                        updateRow(index, "otHours", Number(val || 0))
                       }
                     />
                     <InputCell
                       value={row.otRate}
                       onChange={(val) =>
-                        updateRow(index, 'otRate', Number(val || 0))
+                        updateRow(index, "otRate", Number(val || 0))
                       }
                     />
                     <ReadOnlyCell value={row.otAmount} />
                     <InputCell
                       value={row.transportAllowance}
                       onChange={(val) =>
-                        updateRow(index, 'transportAllowance', Number(val || 0))
+                        updateRow(index, "transportAllowance", Number(val || 0))
                       }
                     />
                     <InputCell
                       value={row.federalTax}
                       onChange={(val) =>
-                        updateRow(index, 'federalTax', Number(val || 0))
+                        updateRow(index, "federalTax", Number(val || 0))
                       }
                     />
                     <InputCell
                       value={row.ei}
                       onChange={(val) =>
-                        updateRow(index, 'ei', Number(val || 0))
+                        updateRow(index, "ei", Number(val || 0))
                       }
                     />
                     <InputCell
                       value={row.cpp}
                       onChange={(val) =>
-                        updateRow(index, 'cpp', Number(val || 0))
+                        updateRow(index, "cpp", Number(val || 0))
                       }
                     />
                     <InputCell
                       value={row.health}
                       onChange={(val) =>
-                        updateRow(index, 'health', Number(val || 0))
+                        updateRow(index, "health", Number(val || 0))
                       }
                     />
                     <InputCell
                       value={row.other}
                       onChange={(val) =>
-                        updateRow(index, 'other', Number(val || 0))
+                        updateRow(index, "other", Number(val || 0))
                       }
                     />
                     <ReadOnlyCell value={row.deductions} bg="#d9f0c7" />
@@ -356,8 +356,8 @@ export default function ManagePayPeriodsPage() {
       <Box
         mt="xl"
         style={{
-          display: 'flex',
-          justifyContent: isMobile ? 'stretch' : 'flex-end',
+          display: "flex",
+          justifyContent: isMobile ? "stretch" : "flex-end",
         }}
       >
         <Button
@@ -380,11 +380,11 @@ function HeaderCell({ children }: { children: React.ReactNode }) {
   return (
     <Table.Th
       style={{
-        color: 'white',
-        textAlign: 'center',
+        color: "white",
+        textAlign: "center",
         minWidth: 120,
-        background: '#4ea72e',
-        whiteSpace: 'nowrap',
+        background: "#4ea72e",
+        whiteSpace: "nowrap",
       }}
     >
       {children}
@@ -396,9 +396,9 @@ function CellText({ children }: { children: React.ReactNode }) {
   return (
     <Table.Td
       style={{
-        textAlign: 'center',
+        textAlign: "center",
         minWidth: 140,
-        whiteSpace: 'nowrap',
+        whiteSpace: "nowrap",
       }}
     >
       {children}
@@ -409,15 +409,15 @@ function CellText({ children }: { children: React.ReactNode }) {
 function InputCell({
   value,
   onChange,
-  type = 'number',
+  type = "number",
 }: {
   value: string | number;
   onChange: (value: string | number) => void;
-  type?: 'text' | 'number';
+  type?: "text" | "number";
 }) {
   return (
     <Table.Td style={{ minWidth: 130 }}>
-      {type === 'number' ? (
+      {type === "number" ? (
         <NumberInput
           value={value as number}
           onChange={onChange}
@@ -425,7 +425,7 @@ function InputCell({
           decimalScale={2}
           styles={{
             input: {
-              textAlign: 'right',
+              textAlign: "right",
               minWidth: 100,
             },
           }}
@@ -444,11 +444,11 @@ function ReadOnlyCell({ value, bg }: { value: number; bg?: string }) {
   return (
     <Table.Td
       style={{
-        textAlign: 'right',
+        textAlign: "right",
         fontWeight: 700,
-        background: bg || 'transparent',
+        background: bg || "transparent",
         minWidth: 130,
-        whiteSpace: 'nowrap',
+        whiteSpace: "nowrap",
       }}
     >
       {value.toFixed(2)}

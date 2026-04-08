@@ -561,7 +561,7 @@ const Page = () => {
             className="staff-task-detail__timeband"
           >
             <Group gap="xs" align="center">
-              <ThemeIcon variant="light" radius="md" color="lime">
+              <ThemeIcon variant="light" radius="lg" color="lime">
                 <IoTimeOutline size={16} />
               </ThemeIcon>
               <Box>
@@ -575,7 +575,7 @@ const Page = () => {
             </Group>
 
             <Group gap="xs" align="flex-start">
-              <ThemeIcon variant="light" radius="md" color="lime">
+              <ThemeIcon variant="light" radius="lg" color="lime">
                 <IoTimeOutline size={16} />
               </ThemeIcon>
               <Box>
@@ -642,7 +642,7 @@ const Page = () => {
 
         <Card radius="lg" withBorder p="md" className="staff-app-surface">
           <Group mb="sm" gap="xs">
-            <ThemeIcon radius="md" variant="light" color="teal">
+            <ThemeIcon radius="lg" variant="light" color="teal">
               <IoPersonOutline size={16} />
             </ThemeIcon>
             <Text fw={700} size="sm">
@@ -672,7 +672,7 @@ const Page = () => {
 
                   <Badge
                     size="sm"
-                    radius="md"
+                    radius="lg"
                     color={
                       memberState === "Running"
                         ? "green"
@@ -697,7 +697,7 @@ const Page = () => {
           className="staff-app-surface"
         >
           <Group mb="sm" gap="xs">
-            <ThemeIcon radius="md" variant="light" color="teal">
+            <ThemeIcon radius="lg" variant="light" color="teal">
               <IoLocationOutline size={16} />
             </ThemeIcon>
             <Text fw={700} size="sm">
@@ -748,7 +748,7 @@ const Page = () => {
           className="staff-app-surface"
         >
           <Group mb="sm" gap="xs">
-            <ThemeIcon radius="md" variant="light" color="blue">
+            <ThemeIcon radius="lg" variant="light" color="blue">
               <IoPersonOutline size={16} />
             </ThemeIcon>
             <Text fw={700} size="sm">
@@ -804,7 +804,7 @@ const Page = () => {
           className="staff-app-surface"
         >
           <Group mb="sm" gap="xs">
-            <ThemeIcon radius="md" variant="light" color="grape">
+            <ThemeIcon radius="lg" variant="light" color="grape">
               <IoDocumentTextOutline size={16} />
             </ThemeIcon>
             <Text fw={700} size="sm">
@@ -842,7 +842,7 @@ const Page = () => {
                     {note.category ? (
                       <Badge
                         variant="light"
-                        radius="md"
+                        radius="lg"
                         size="sm"
                         color={note.isPinned ? "yellow" : "gray"}
                       >
@@ -852,7 +852,7 @@ const Page = () => {
                     ) : null}
 
                     {note.isClientVisible ? (
-                      <Badge variant="light" radius="md" size="sm" color="blue">
+                      <Badge variant="light" radius="lg" size="sm" color="blue">
                         Client visible
                       </Badge>
                     ) : null}
@@ -868,7 +868,7 @@ const Page = () => {
                           alt="note image"
                           w={76}
                           h={76}
-                          radius="md"
+                          radius="lg"
                           fit="cover"
                         />
                       ))}
@@ -891,7 +891,7 @@ const Page = () => {
           className="staff-app-surface"
         >
           <Group mb="sm" gap="xs">
-            <ThemeIcon radius="md" variant="light" color="orange">
+            <ThemeIcon radius="lg" variant="light" color="orange">
               <IoDocumentTextOutline size={16} />
             </ThemeIcon>
             <Text fw={700} size="sm">
@@ -932,7 +932,7 @@ const Page = () => {
                           alt="note image"
                           w={76}
                           h={76}
-                          radius="md"
+                          radius="lg"
                           fit="cover"
                         />
                       ))}
@@ -955,7 +955,7 @@ const Page = () => {
           className="staff-app-surface"
         >
           <Group mb="sm" gap="xs">
-            <ThemeIcon radius="md" variant="light" color="orange">
+            <ThemeIcon radius="lg" variant="light" color="orange">
               <IoDocumentTextOutline size={16} />
             </ThemeIcon>
             <Text fw={700} size="sm">
@@ -982,7 +982,7 @@ const Page = () => {
                     alt="visit image"
                     w={76}
                     h={76}
-                    radius="md"
+                    radius="lg"
                     fit="cover"
                   />
                 ))}
