@@ -20,13 +20,13 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo } from "react";
 import {
-  IoCalendarClearOutline,
-  IoCashOutline,
-  IoCheckboxOutline,
-  IoClipboardOutline,
-  IoLogOutOutline,
-  IoPersonOutline,
-  IoTimeOutline,
+  IoCalendarClear,
+  IoCash,
+  IoCheckbox,
+  IoClipboard,
+  IoLogOut,
+  IoPerson,
+  IoTime,
 } from "react-icons/io5";
 
 const PANEL_RADIUS = 18;
@@ -200,14 +200,14 @@ export default function StaffShell({
       href: "/staff/tasks",
       label: "My Tasks",
       description: "Assignments and updates",
-      icon: <IoCheckboxOutline size={18} />,
+      icon: <IoCheckbox size={18} />,
       active: pathname === "/staff" || pathname.startsWith("/staff/tasks"),
     },
     {
       href: "/staff/profile",
       label: "Profile",
       description: "Personal and job details",
-      icon: <IoPersonOutline size={18} />,
+      icon: <IoPerson size={18} />,
       active:
         pathname.startsWith("/staff/profile") ||
         pathname.startsWith("/staff/staff-profile"),
@@ -216,14 +216,14 @@ export default function StaffShell({
       href: "/staff/enter-time",
       label: "Your Time",
       description: "Timesheets and entries",
-      icon: <IoClipboardOutline size={18} />,
+      icon: <IoClipboard size={18} />,
       active: pathname.startsWith("/staff/enter-time"),
     },
     {
       href: "/staff/your-pay",
       label: "Your Pay",
       description: "Statements and history",
-      icon: <IoCashOutline size={18} />,
+      icon: <IoCash size={18} />,
       active:
         pathname.startsWith("/staff/your-pay") ||
         pathname.startsWith("/staff/pay-history") ||
@@ -233,14 +233,14 @@ export default function StaffShell({
       href: "/staff/apply-leave",
       label: "Time-off",
       description: "Leave requests",
-      icon: <IoCalendarClearOutline size={18} />,
+      icon: <IoCalendarClear size={18} />,
       active: pathname.startsWith("/staff/apply-leave"),
     },
     {
       href: "/staff/enter-availability",
       label: "Availability",
       description: "Schedule preferences",
-      icon: <IoTimeOutline size={18} />,
+      icon: <IoTime size={18} />,
       active: pathname.startsWith("/staff/enter-availability"),
     },
   ];
@@ -327,7 +327,7 @@ export default function StaffShell({
                   variant="light"
                   color="red"
                 >
-                  <IoLogOutOutline size={18} />
+                  <IoLogOut size={18} />
                 </ThemeIcon>
                 <Box style={{ minWidth: 0 }}>
                   <Text fw={700} size="sm" c="red.8" truncate>

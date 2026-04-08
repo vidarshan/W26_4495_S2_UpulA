@@ -21,7 +21,7 @@ import React, { useState } from "react";
 import AppointmentCard from "../cards/AppointmentCard";
 import ClientCard from "../cards/ClientCard";
 import { useForm } from "@mantine/form";
-import { IoPersonOutline, IoTextOutline } from "react-icons/io5";
+import { IoPerson, IoText } from "react-icons/io5";
 import { useQuery } from "@tanstack/react-query";
 import { useDebouncedValue } from "@mantine/hooks";
 import { getClients } from "@/lib/api/client";
@@ -219,13 +219,13 @@ const JobDetails = () => {
 
         <Stack gap="xs">
           <TextInput
-            leftSection={<IoTextOutline />}
+            leftSection={<IoText />}
             label="Title"
             placeholder="Enter title"
             {...form.getInputProps("title")}
           />
           <Select
-            leftSection={<IoPersonOutline />}
+            leftSection={<IoPerson />}
             {...form.getInputProps("clientId")}
             data={
               clientsData?.data.map((client: Client) => ({
@@ -242,7 +242,7 @@ const JobDetails = () => {
           />
           <Checkbox label="Anytime" />
           <Select
-            leftSection={<IoPersonOutline />}
+            leftSection={<IoPerson />}
             {...form.getInputProps("clientId")}
             data={
               clientsData?.data.map((client: Client) => ({

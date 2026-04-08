@@ -12,7 +12,7 @@ import {
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { useEffect, useRef, useState } from 'react';
-import { IoDownloadOutline } from 'react-icons/io5';
+import { IoDownload } from 'react-icons/io5';
 import Image from 'next/image';
 import { useParams } from "next/navigation";
 
@@ -90,7 +90,7 @@ const ytd = statement.ytd || {};
     <Container py="xl">
       <Group justify="center" mb="md">
         <Button
-          leftSection={<IoDownloadOutline />}
+          leftSection={<IoDownload />}
           onClick={handleDownloadPdf}
         >
           Download PDF

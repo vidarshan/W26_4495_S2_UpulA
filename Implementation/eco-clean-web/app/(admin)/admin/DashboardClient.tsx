@@ -39,12 +39,12 @@ import timeGridPlugin from "@fullcalendar/timegrid";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  IoArrowBackOutline,
-  IoArrowForwardOutline,
-  IoPersonOutline,
-  IoRefreshSharp,
-  IoSearchSharp,
-  IoToggleOutline,
+  IoArrowBack,
+  IoArrowForward,
+  IoPerson,
+  IoRefresh,
+  IoSearch,
+  IoToggle,
 } from "react-icons/io5";
 import AppointmentInfoModal from "../../components/popups/AppointmentInfoModal";
 import ConfirmCancellationModal from "../../components/popups/ConfirmCancellationModal";
@@ -400,7 +400,7 @@ export default function DashboardClient() {
               <Button
                 variant="default"
                 radius="lg"
-                leftSection={<IoArrowBackOutline />}
+                leftSection={<IoArrowBack />}
                 onClick={() => calendarRef.current?.getApi().prev()}
               >
                 Prev
@@ -415,7 +415,7 @@ export default function DashboardClient() {
               <Button
                 variant="default"
                 radius="lg"
-                rightSection={<IoArrowForwardOutline />}
+                rightSection={<IoArrowForward />}
                 onClick={() => calendarRef.current?.getApi().next()}
               >
                 Next
@@ -469,7 +469,7 @@ export default function DashboardClient() {
                 label="Search"
                 placeholder="Search appointment, client, or job"
                 size="sm"
-                leftSection={<IoSearchSharp />}
+                leftSection={<IoSearch />}
                 style={{ minWidth: isNarrow ? "100%" : 240, flex: 1 }}
                 value={search}
                 onChange={(e) => setSearch(e.currentTarget.value)}
@@ -478,7 +478,7 @@ export default function DashboardClient() {
               <Select
                 size="sm"
                 label="Status"
-                leftSection={<IoToggleOutline />}
+                leftSection={<IoToggle />}
                 placeholder="All statuses"
                 data={[
                   { label: "Scheduled", value: "SCHEDULED" },
@@ -495,7 +495,7 @@ export default function DashboardClient() {
               <Select
                 size="sm"
                 label="Assignee"
-                leftSection={<IoPersonOutline />}
+                leftSection={<IoPerson />}
                 placeholder="All staff"
                 data={
                   staffData?.data?.map((s: Staff) => ({
@@ -528,7 +528,7 @@ export default function DashboardClient() {
               <Button
                 size="sm"
                 variant="filled"
-                leftSection={<IoRefreshSharp />}
+                leftSection={<IoRefresh />}
                 onClick={() => calendarRef.current?.getApi().refetchEvents()}
               >
                 Refresh

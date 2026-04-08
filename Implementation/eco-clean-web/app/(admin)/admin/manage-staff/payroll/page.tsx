@@ -17,10 +17,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { notifications } from '@mantine/notifications';
 import { generateBiweeklyPeriods } from '@/lib/actions/periods';
 import {
-  IoCalendarOutline,
-  IoCheckmarkCircleOutline,
-  IoLockClosedOutline,
-  IoRefreshOutline,
+  IoCalendar,
+  IoCheckmarkCircle,
+  IoLockClosed,
+  IoRefresh,
 } from 'react-icons/io5';
 import { useRouter } from 'next/navigation';
 import AdminPageFrame from '@/app/components/admin/AdminPageFrame';
@@ -115,9 +115,9 @@ export default function ManagePayPeriodsPage() {
       title="Payroll Periods"
       description="Generate payroll periods once, review what already exists, and jump into payroll processing from a clearer admin layout."
       stats={[
-        { label: 'Total periods', value: String(summary.total), icon: IoCalendarOutline },
-        { label: 'Locked', value: String(summary.locked), icon: IoLockClosedOutline },
-        { label: 'Open', value: String(summary.open), icon: IoCheckmarkCircleOutline },
+        { label: 'Total periods', value: String(summary.total), icon: IoCalendar },
+        { label: 'Locked', value: String(summary.locked), icon: IoLockClosed },
+        { label: 'Open', value: String(summary.open), icon: IoCheckmarkCircle },
       ]}
     >
       <Stack gap="lg">
@@ -153,7 +153,7 @@ export default function ManagePayPeriodsPage() {
               </div>
 
               <Button
-                leftSection={<IoCalendarOutline size={18} />}
+                leftSection={<IoCalendar size={18} />}
                 color="lime"
                 loading={loading}
                 onClick={handleGenerate}
@@ -178,7 +178,7 @@ export default function ManagePayPeriodsPage() {
                 <Button
                   variant="light"
                   color="lime"
-                  leftSection={<IoRefreshOutline size={16} />}
+                  leftSection={<IoRefresh size={16} />}
                   onClick={() => void fetchPeriods()}
                 >
                   Refresh

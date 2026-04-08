@@ -1,5 +1,5 @@
 import { ActionIcon, Box, Flex, Text, ThemeIcon } from "@mantine/core";
-import { IoArrowBack, IoMenuOutline, IoRefreshOutline } from "react-icons/io5";
+import { IoArrowBack, IoMenu, IoRefresh } from "react-icons/io5";
 
 interface Props {
   onClick: () => void;
@@ -29,7 +29,7 @@ const TopBar = ({ back, onClick, title, onRefresh, refreshing }: Props) => {
             onClick={onClick}
             className="staff-topbar__nav-icon"
           >
-            {back ? <IoArrowBack size={22} /> : <IoMenuOutline size={24} />}
+            {back ? <IoArrowBack size={22} /> : <IoMenu size={24} />}
           </ThemeIcon>
 
           <Box style={{ minWidth: 0, flex: 1 }}>
@@ -49,7 +49,7 @@ const TopBar = ({ back, onClick, title, onRefresh, refreshing }: Props) => {
           className="staff-topbar__refresh"
           style={{ visibility: onRefresh ? "visible" : "hidden" }}
         >
-          <IoRefreshOutline size={20} />
+          <IoRefresh size={20} />
         </ActionIcon>
       </Flex>
     </Box>

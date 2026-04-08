@@ -35,7 +35,7 @@ import {
 } from "@mantine/dates";
 import { useMediaQuery } from "@mantine/hooks";
 import { useSession } from "next-auth/react";
-import { IoCalendarOutline, IoDocumentTextOutline } from "react-icons/io5";
+import { IoCalendar, IoDocumentText } from "react-icons/io5";
 import {
   APP_TZ,
   addAppDays,
@@ -472,7 +472,7 @@ export default function ApplyLeavePage() {
                 <Group justify="space-between" wrap="wrap">
                   <Text fw={700}>Recent requests</Text>
                   <ThemeIcon radius="xl" size="lg" variant="light" color="lime">
-                    <IoDocumentTextOutline size={18} />
+                    <IoDocumentText size={18} />
                   </ThemeIcon>
                 </Group>
 

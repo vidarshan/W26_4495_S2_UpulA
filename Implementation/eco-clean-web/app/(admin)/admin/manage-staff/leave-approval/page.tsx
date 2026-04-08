@@ -16,10 +16,10 @@ import {
 } from "@mantine/core";
 import { useEffect, useMemo, useState } from "react";
 import {
-  IoCalendarClearOutline,
-  IoCheckmarkCircleOutline,
-  IoCloseCircleOutline,
-  IoTimeOutline,
+  IoCalendarClear,
+  IoCheckmarkCircle,
+  IoCloseCircle,
+  IoTime,
 } from "react-icons/io5";
 import AdminPageFrame from "@/app/components/admin/AdminPageFrame";
 
@@ -134,17 +134,17 @@ export default function LeaveApprovalPage() {
         {
           label: "Pending",
           value: String(summary.pending),
-          icon: IoTimeOutline,
+          icon: IoTime,
         },
         {
           label: "Approved",
           value: String(summary.approved),
-          icon: IoCheckmarkCircleOutline,
+          icon: IoCheckmarkCircle,
         },
         {
           label: "Rejected",
           value: String(summary.rejected),
-          icon: IoCloseCircleOutline,
+          icon: IoCloseCircle,
         },
       ]}
     >
@@ -156,7 +156,7 @@ export default function LeaveApprovalPage() {
         ) : null}
 
         <SimpleGrid cols={{ base: 1, lg: 12 }} spacing="lg">
-          <Paper radius="lg" p="lg" style={{ gridColumn: "span 12" }}>
+          <Paper radius="lg" style={{ gridColumn: "span 12" }}>
             <Stack gap="lg">
               <Group justify="space-between" align="flex-start" gap="md">
                 <div>
@@ -173,7 +173,7 @@ export default function LeaveApprovalPage() {
                   color="lime"
                   variant="light"
                   radius="xl"
-                  leftSection={<IoCalendarClearOutline size={14} />}
+                  leftSection={<IoCalendarClear size={14} />}
                 >
                   Sorted by current API order
                 </Badge>

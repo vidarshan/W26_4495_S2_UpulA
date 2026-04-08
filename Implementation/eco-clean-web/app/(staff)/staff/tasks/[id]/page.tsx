@@ -41,16 +41,16 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import {
-  IoArrowBackOutline,
-  IoCallOutline,
-  IoChatbubbleEllipsesOutline,
-  IoDocumentTextOutline,
-  IoLocationOutline,
-  IoMapOutline,
-  IoPauseOutline,
-  IoPersonOutline,
-  IoPlayOutline,
-  IoTimeOutline,
+  IoArrowBack,
+  IoCall,
+  IoChatbubbleEllipses,
+  IoDocumentText,
+  IoLocation,
+  IoMap,
+  IoPause,
+  IoPerson,
+  IoPlay,
+  IoTime,
 } from "react-icons/io5";
 import { useStaffUiStore } from "@/stores/store";
 
@@ -340,7 +340,7 @@ const Page = () => {
       <Container py="md">
         <Button
           variant="subtle"
-          leftSection={<IoArrowBackOutline />}
+          leftSection={<IoArrowBack />}
           onClick={() => router.back()}
         >
           Back
@@ -488,7 +488,7 @@ const Page = () => {
                 c="#64748b"
                 style={{ letterSpacing: "0.08em" }}
               >
-                Today&apos;s Appointment
+                Job for today
               </Text>
               <Text fw={800} size="xl" mt={4}>
                 {job?.title ?? "Appointment"}
@@ -508,15 +508,15 @@ const Page = () => {
             </Badge>
           </Group>
 
-          <Text size="sm" c={isRunning ? "green" : "dimmed"} fw={600}>
+            <Text size="sm" c={isRunning ? "green" : "dimmed"} fw={600}>
             {appointment.status === "COMPLETED"
               ? "Completed"
               : appointment.status === "CANCELLED"
                 ? "Cancelled"
                 : isRunning
-                  ? "You are clocked in"
+                  ? "You are on the job"
                   : isAnyoneRunning
-                    ? "Another staff member is working"
+                    ? "Someone else has already started"
                     : "Not started"}
           </Text>
 
@@ -531,8 +531,8 @@ const Page = () => {
             </Box>
 
             <Text size="sm" c="dimmed">
-              {formatSeconds(elapsedSeconds)} used /{" "}
-              {formatSeconds(scheduledSeconds)} scheduled
+              {formatSeconds(elapsedSeconds)} used out of{" "}
+              {formatSeconds(scheduledSeconds)}
             </Text>
           </Stack>
 
@@ -550,7 +550,7 @@ const Page = () => {
                 ? "Appointment cancelled"
                 : isOvertime
                   ? `Overtime by ${formatSeconds(overtimeSeconds)}`
-                  : `${progressPct}% of scheduled duration used`}
+                  : `${progressPct}% of your planned time used`}
           </Text>
 
           <Flex
@@ -562,7 +562,7 @@ const Page = () => {
           >
             <Group gap="xs" align="center">
               <ThemeIcon variant="light" radius="lg" color="lime">
-                <IoTimeOutline size={16} />
+                <IoTime size={16} />
               </ThemeIcon>
               <Box>
                 <Text size="xs" c="dimmed">
@@ -576,7 +576,7 @@ const Page = () => {
 
             <Group gap="xs" align="flex-start">
               <ThemeIcon variant="light" radius="lg" color="lime">
-                <IoTimeOutline size={16} />
+                <IoTime size={16} />
               </ThemeIcon>
               <Box>
                 <Text size="xs" c="dimmed">
@@ -592,7 +592,7 @@ const Page = () => {
 
         <SimpleGrid cols={2} spacing="sm">
           <Button
-            leftSection={<IoPlayOutline />}
+            leftSection={<IoPlay />}
             radius="lg"
             color="lime"
             fullWidth
@@ -604,7 +604,7 @@ const Page = () => {
           </Button>
 
           <Button
-            leftSection={<IoPauseOutline />}
+            leftSection={<IoPause />}
             radius="xl"
             color="lime"
             fullWidth
@@ -643,7 +643,7 @@ const Page = () => {
         <Card radius="lg" withBorder p="md" className="staff-app-surface">
           <Group mb="sm" gap="xs">
             <ThemeIcon radius="lg" variant="light" color="teal">
-              <IoPersonOutline size={16} />
+              <IoPerson size={16} />
             </ThemeIcon>
             <Text fw={700} size="sm">
               Team Activity
@@ -652,7 +652,7 @@ const Page = () => {
 
           <Stack gap="xs">
             <Text size="xs" c="dimmed">
-              {activeStaffIds.size} of {assignedStaff.length} active
+              {activeStaffIds.size} of {assignedStaff.length} working right now
             </Text>
 
             {assignedStaff.map((assignment) => {
@@ -698,7 +698,7 @@ const Page = () => {
         >
           <Group mb="sm" gap="xs">
             <ThemeIcon radius="lg" variant="light" color="teal">
-              <IoLocationOutline size={16} />
+              <IoLocation size={16} />
             </ThemeIcon>
             <Text fw={700} size="sm">
               Directions
@@ -727,7 +727,7 @@ const Page = () => {
             <Button
               component="a"
               href={buildDirectionsUrl(address)}
-              leftSection={<IoMapOutline />}
+              leftSection={<IoMap />}
               radius="lg"
               color="lime"
               disabled={!address}
@@ -749,7 +749,7 @@ const Page = () => {
         >
           <Group mb="sm" gap="xs">
             <ThemeIcon radius="lg" variant="light" color="blue">
-              <IoPersonOutline size={16} />
+              <IoPerson size={16} />
             </ThemeIcon>
             <Text fw={700} size="sm">
               Client Details
@@ -777,7 +777,7 @@ const Page = () => {
               component="a"
               radius="lg"
               color="lime"
-              leftSection={<IoCallOutline />}
+              leftSection={<IoCall />}
               href={phone ? `tel:${phone}` : undefined}
               disabled={!phone}
             >
@@ -788,7 +788,7 @@ const Page = () => {
               component="a"
               radius="lg"
               color="blue"
-              leftSection={<IoChatbubbleEllipsesOutline />}
+              leftSection={<IoChatbubbleEllipses />}
               href={phone ? `sms:${phone}` : undefined}
               disabled={!phone}
             >
@@ -805,7 +805,7 @@ const Page = () => {
         >
           <Group mb="sm" gap="xs">
             <ThemeIcon radius="lg" variant="light" color="grape">
-              <IoDocumentTextOutline size={16} />
+              <IoDocumentText size={16} />
             </ThemeIcon>
             <Text fw={700} size="sm">
               Instructions
@@ -878,7 +878,7 @@ const Page = () => {
               ))
             ) : (
               <Text size="sm" c="dimmed">
-                No notes provided.
+                There are no extra notes for this job.
               </Text>
             )}
           </Stack>
@@ -892,10 +892,10 @@ const Page = () => {
         >
           <Group mb="sm" gap="xs">
             <ThemeIcon radius="lg" variant="light" color="orange">
-              <IoDocumentTextOutline size={16} />
+              <IoDocumentText size={16} />
             </ThemeIcon>
             <Text fw={700} size="sm">
-              Visit History
+              Previous notes
             </Text>
           </Group>
 
@@ -942,7 +942,7 @@ const Page = () => {
               ))
             ) : (
               <Text size="sm" c="dimmed">
-                No visit notes yet.
+                Nothing has been added here yet.
               </Text>
             )}
           </Stack>
@@ -956,17 +956,17 @@ const Page = () => {
         >
           <Group mb="sm" gap="xs">
             <ThemeIcon radius="lg" variant="light" color="orange">
-              <IoDocumentTextOutline size={16} />
+              <IoDocumentText size={16} />
             </ThemeIcon>
             <Text fw={700} size="sm">
-              Add Visit Note
+              Add a note
             </Text>
           </Group>
 
           <Stack gap="sm">
             <Textarea
-              label="What happened during this visit?"
-              placeholder="Add visit details, issues, observations, client requests..."
+              label="What should the team know?"
+              placeholder="Add anything helpful from this visit."
               minRows={4}
               value={visitNote}
               onChange={(e) => setVisitNote(e.currentTarget.value)}
@@ -1008,7 +1008,7 @@ const Page = () => {
               }}
             >
               <Flex direction="column" align="center" py="xs">
-                <IoDocumentTextOutline size={24} />
+                <IoDocumentText size={24} />
                 <Text mt="xs" size="xs">
                   Drag visit images here or click to upload
                 </Text>

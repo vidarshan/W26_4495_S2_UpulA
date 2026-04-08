@@ -13,7 +13,7 @@ import {
   ThemeIcon,
   Loader,
 } from "@mantine/core";
-import { IoSparklesOutline, IoTrophyOutline } from "react-icons/io5";
+import { IoSparkles, IoTrophy } from "react-icons/io5";
 import { Staff } from "@/types";
 import { StaffRecommendationResponse } from "@/lib/ai/schemas";
 
@@ -85,7 +85,7 @@ const AIStaffSuggestionCard = ({
         <Group justify="space-between" align="flex-start">
           <Group gap="sm" align="center">
             <ActionIcon radius="xl" variant="light" color="pink" size="lg">
-              <IoSparklesOutline />
+              <IoSparkles />
             </ActionIcon>
 
             <Box>
@@ -137,7 +137,7 @@ const AIStaffSuggestionCard = ({
                 <Paper p="sm" withBorder>
                   <Flex gap="xs">
                     <ThemeIcon size="" px="xs" color="yellow">
-                      <IoTrophyOutline />
+                      <IoTrophy />
                     </ThemeIcon>
 
                     <Flex direction="column">

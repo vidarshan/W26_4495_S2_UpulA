@@ -25,15 +25,15 @@ import { useForm } from "@mantine/form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { notifications } from "@mantine/notifications";
 import {
-  IoCalendarOutline,
-  IoBriefcaseOutline,
-  IoCloseOutline,
-  IoDocumentTextOutline,
-  IoLocationOutline,
-  IoPeopleOutline,
-  IoPersonOutline,
-  IoPricetagOutline,
-  IoTimeOutline,
+  IoCalendar,
+  IoBriefcase,
+  IoClose,
+  IoDocumentText,
+  IoLocation,
+  IoPeople,
+  IoPerson,
+  IoPricetag,
+  IoTime,
 } from "react-icons/io5";
 
 import Loader from "../UI/Loader";
@@ -364,7 +364,7 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
                     radius="xl"
                     variant="filled"
                     size="sm"
-                    leftSection={<IoBriefcaseOutline />}
+                    leftSection={<IoBriefcase />}
                     onClick={() => {
                       closeAppointment();
                       openEditJob();
@@ -496,7 +496,7 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
                           onClick={() => deleteImageMutation.mutate(img.id)}
                           aria-label="Delete image"
                         >
-                          <IoCloseOutline size={14} />
+                          <IoClose size={14} />
                         </ActionIcon>
                       </Paper>
                     ))}
@@ -508,37 +508,37 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
 
               <SimpleGrid cols={{ base: 1, sm: 2 }}>
                 <ReadOnlyItem
-                  icon={<IoDocumentTextOutline size={18} />}
+                  icon={<IoDocumentText size={18} />}
                   label="Job Title"
                   value={appointment.job?.title || "—"}
                 />
 
                 <ReadOnlyItem
-                  icon={<IoPricetagOutline size={18} />}
+                  icon={<IoPricetag size={18} />}
                   label="Job Type"
                   value={appointment.job?.type || "—"}
                 />
 
                 <ReadOnlyItem
-                  icon={<IoPersonOutline size={18} />}
+                  icon={<IoPerson size={18} />}
                   label="Client"
                   value={buildClientName(appointment.job?.client)}
                 />
 
                 <ReadOnlyItem
-                  icon={<IoPeopleOutline size={18} />}
+                  icon={<IoPeople size={18} />}
                   label="Preferred Contact"
                   value={appointment.job?.client?.preferredContact || "—"}
                 />
 
                 <ReadOnlyItem
-                  icon={<IoCalendarOutline size={18} />}
+                  icon={<IoCalendar size={18} />}
                   label="Created"
                   value={formatDateOnly(appointment.createdAt)}
                 />
 
                 <ReadOnlyItem
-                  icon={<IoTimeOutline size={18} />}
+                  icon={<IoTime size={18} />}
                   label="Scheduled Window"
                   value={`${formatDateTime(appointment.startTime)} → ${formatDateTime(
                     appointment.endTime,
@@ -547,7 +547,7 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
               </SimpleGrid>
 
               <ReadOnlyItem
-                icon={<IoLocationOutline size={18} />}
+                icon={<IoLocation size={18} />}
                 label="Service Address"
                 value={buildAddress(appointment.job?.address)}
               />

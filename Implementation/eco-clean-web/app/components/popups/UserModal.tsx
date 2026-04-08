@@ -23,10 +23,10 @@ import { notifications } from "@mantine/notifications";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import {
-  IoLockClosedOutline,
-  IoPeopleOutline,
-  IoPersonCircleOutline,
-  IoTextOutline,
+  IoLockClosed,
+  IoPeople,
+  IoPersonCircle,
+  IoText,
 } from "react-icons/io5";
 import AdminStaffDetailsModal from "@/app/components/popups/AdminStaffDetailsModal";
 import { StaffRole } from "@/types";
@@ -278,7 +278,7 @@ export default function UserUpsertModal({
             <Group justify="space-between" align="flex-start" wrap="wrap">
               <Group align="flex-start" wrap="nowrap" gap="md">
                 <ThemeIcon size={48} radius="xl" color="lime" variant="light">
-                  <IoPersonCircleOutline size={22} />
+                  <IoPersonCircle size={22} />
                 </ThemeIcon>
                 <Stack gap={4}>
                   <Text size="xs" fw={800} c="dimmed" tt="uppercase">
@@ -322,7 +322,7 @@ export default function UserUpsertModal({
               <Text fw={700}>Account details</Text>
 
               <TextInput
-                leftSection={<IoTextOutline />}
+                leftSection={<IoText />}
                 label="Name"
                 placeholder="Staff name"
                 disabled={isBusy || isCreateComplete}
@@ -330,7 +330,7 @@ export default function UserUpsertModal({
               />
 
               <TextInput
-                leftSection={<IoTextOutline />}
+                leftSection={<IoText />}
                 label="Email"
                 placeholder="Staff email"
                 disabled={isBusy || isCreateComplete}
@@ -341,7 +341,7 @@ export default function UserUpsertModal({
                 label="Role"
                 data={roleOptions}
                 value={form.values.role}
-                leftSection={<IoPeopleOutline />}
+                leftSection={<IoPeople />}
                 disabled={isBusy || isCreateComplete}
                 onChange={(v) =>
                   form.setFieldValue("role", (v as Role) || "STAFF")
@@ -360,7 +360,7 @@ export default function UserUpsertModal({
                     variant="light"
                     color="grape"
                   >
-                    <IoLockClosedOutline size={18} />
+                    <IoLockClosed size={18} />
                   </ThemeIcon>
                   <Stack gap={2}>
                     <Text fw={700}>Generated password</Text>

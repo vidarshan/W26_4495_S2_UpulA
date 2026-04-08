@@ -15,12 +15,7 @@ import {
   Text,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import {
-  IoCalendarOutline,
-  IoCheckmarkDoneOutline,
-  IoPeopleOutline,
-  IoTimeOutline,
-} from "react-icons/io5";
+import { IoCalendar, IoCheckmarkDone, IoPeople, IoTime } from "react-icons/io5";
 import AdminPageFrame from "@/app/components/admin/AdminPageFrame";
 
 type TimesheetPeriod = {
@@ -196,7 +191,9 @@ export default function AdminTimesheetOverviewPage() {
         setOverview(data);
       } catch (err) {
         console.error(err);
-        setError(err instanceof Error ? err.message : "Failed to load overview");
+        setError(
+          err instanceof Error ? err.message : "Failed to load overview",
+        );
       } finally {
         setLoadingOverview(false);
       }
@@ -291,9 +288,21 @@ export default function AdminTimesheetOverviewPage() {
       title="Timesheets"
       description="Compare planned work against submitted time, then approve ready timesheets from a more readable admin review flow."
       stats={[
-        { label: "Employees", value: String(summary.employeeCount), icon: IoPeopleOutline },
-        { label: "Awaiting approval", value: String(summary.submittedCount), icon: IoCheckmarkDoneOutline },
-        { label: "Period variance", value: formatMinutes(summary.totalVarianceMinutes), icon: IoTimeOutline },
+        {
+          label: "Employees",
+          value: String(summary.employeeCount),
+          icon: IoPeople,
+        },
+        {
+          label: "Awaiting approval",
+          value: String(summary.submittedCount),
+          icon: IoCheckmarkDone,
+        },
+        {
+          label: "Period variance",
+          value: formatMinutes(summary.totalVarianceMinutes),
+          icon: IoTime,
+        },
       ]}
     >
       <Stack gap="lg">
@@ -304,7 +313,16 @@ export default function AdminTimesheetOverviewPage() {
             </Alert>
           ) : null}
 
-          <Paper withBorder radius="lg" p="md" className="admin-page-frame__stat">
+          <Paper
+            withBorder
+            radius="lg"
+            p="md"
+            className="admin-page-frame__stat"
+            style={{
+              background:
+                "linear-gradient(180deg, rgba(247, 254, 231, 0.78), rgba(255, 255, 255, 0.96))",
+            }}
+          >
             <Stack gap="md">
               <Group justify="space-between" align="flex-end" gap="md">
                 <div>
@@ -312,25 +330,33 @@ export default function AdminTimesheetOverviewPage() {
                     Timesheet review window
                   </Text>
                   <Text size="sm" c="dimmed" mt={4}>
-                    Review one period at a time, then approve submitted staff timesheets from the employee cards below.
+                    Review one period at a time, then approve submitted staff
+                    timesheets from the employee cards below.
                   </Text>
                 </div>
 
                 {overview?.period ? (
                   <Group gap="sm">
-                    <Badge color={overview.period.status === "LOCKED" ? "grape" : "lime"}>
+                    <Badge
+                      color={
+                        overview.period.status === "LOCKED" ? "grape" : "lime"
+                      }
+                    >
                       {overview.period.status}
                     </Badge>
                     <Badge variant="light" color="gray">
-                      <IoCalendarOutline size={14} style={{ marginRight: 6 }} />
-                      {formatDate(overview.period.startDate)} → {formatDate(overview.period.endDate)}
+                      <IoCalendar size={14} style={{ marginRight: 6 }} />
+                      {formatDate(overview.period.startDate)} →{" "}
+                      {formatDate(overview.period.endDate)}
                     </Badge>
                   </Group>
                 ) : null}
               </Group>
 
               <Select
-                placeholder={loadingPeriods ? "Loading periods..." : "Select a period"}
+                placeholder={
+                  loadingPeriods ? "Loading periods..." : "Select a period"
+                }
                 data={periodOptions}
                 value={selectedPeriodId}
                 onChange={setSelectedPeriodId}
@@ -353,7 +379,12 @@ export default function AdminTimesheetOverviewPage() {
           ) : overview ? (
             <Stack gap="lg">
               <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="md">
-                <Paper withBorder radius="lg" p="md" className="admin-page-frame__stat">
+                <Paper
+                  withBorder
+                  radius="lg"
+                  p="md"
+                  className="admin-page-frame__stat"
+                >
                   <Text size="sm" c="dimmed">
                     Employees
                   </Text>
@@ -361,7 +392,12 @@ export default function AdminTimesheetOverviewPage() {
                     {summary.employeeCount}
                   </Text>
                 </Paper>
-                <Paper withBorder radius="lg" p="md" className="admin-page-frame__stat">
+                <Paper
+                  withBorder
+                  radius="lg"
+                  p="md"
+                  className="admin-page-frame__stat"
+                >
                   <Text size="sm" c="dimmed">
                     Planned
                   </Text>
@@ -369,7 +405,12 @@ export default function AdminTimesheetOverviewPage() {
                     {formatMinutes(summary.totalPlannedMinutes)}
                   </Text>
                 </Paper>
-                <Paper withBorder radius="lg" p="md" className="admin-page-frame__stat">
+                <Paper
+                  withBorder
+                  radius="lg"
+                  p="md"
+                  className="admin-page-frame__stat"
+                >
                   <Text size="sm" c="dimmed">
                     Actual
                   </Text>
@@ -377,12 +418,26 @@ export default function AdminTimesheetOverviewPage() {
                     {formatMinutes(summary.totalActualMinutes)}
                   </Text>
                 </Paper>
-                <Paper withBorder radius="lg" p="md" className="admin-page-frame__stat">
+                <Paper
+                  withBorder
+                  radius="lg"
+                  p="md"
+                  className="admin-page-frame__stat"
+                >
                   <Text size="sm" c="dimmed">
                     Variance
                   </Text>
-                  <Text size="xl" fw={700} c={`${varianceColor(summary.totalVarianceMinutes)}.6`} mt={6}>
-                    {summary.totalVarianceMinutes > 0 ? "+" : summary.totalVarianceMinutes < 0 ? "-" : ""}
+                  <Text
+                    size="xl"
+                    fw={700}
+                    c={`${varianceColor(summary.totalVarianceMinutes)}.6`}
+                    mt={6}
+                  >
+                    {summary.totalVarianceMinutes > 0
+                      ? "+"
+                      : summary.totalVarianceMinutes < 0
+                        ? "-"
+                        : ""}
                     {formatMinutes(summary.totalVarianceMinutes)}
                   </Text>
                 </Paper>
@@ -400,7 +455,11 @@ export default function AdminTimesheetOverviewPage() {
                     className="admin-page-frame__surface"
                   >
                     <Stack gap="md">
-                      <Group justify="space-between" align="flex-start" gap="md">
+                      <Group
+                        justify="space-between"
+                        align="flex-start"
+                        gap="md"
+                      >
                         <div>
                           <Text size="lg" fw={700} c="#0f172a">
                             {employee.name}
@@ -409,7 +468,8 @@ export default function AdminTimesheetOverviewPage() {
                             {employee.email}
                           </Text>
                           <Text size="sm" c="dimmed">
-                            Staff ID: {employee.staffCode || "—"} | Position: {employee.position || "—"}
+                            Staff ID: {employee.staffCode || "—"} | Position:{" "}
+                            {employee.position || "—"}
                           </Text>
                         </div>
 
@@ -422,12 +482,15 @@ export default function AdminTimesheetOverviewPage() {
                               Submitted: {formatDate(employee.submittedAt)}
                             </Badge>
                           ) : null}
-                          {employee.timesheetId && employee.timesheetStatus === "SUBMITTED" ? (
+                          {employee.timesheetId &&
+                          employee.timesheetStatus === "SUBMITTED" ? (
                             <Button
                               size="xs"
                               color="lime"
                               loading={approvingId === employee.timesheetId}
-                              onClick={() => handleApprove(employee.timesheetId!)}
+                              onClick={() =>
+                                handleApprove(employee.timesheetId!)
+                              }
                             >
                               Approve
                             </Button>
@@ -448,7 +511,12 @@ export default function AdminTimesheetOverviewPage() {
                       </Group>
 
                       <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
-                        <Paper withBorder radius="lg" p="md" className="admin-page-frame__stat">
+                        <Paper
+                          withBorder
+                          radius="lg"
+                          p="md"
+                          className="admin-page-frame__stat"
+                        >
                           <Text size="sm" c="dimmed">
                             Planned
                           </Text>
@@ -456,7 +524,12 @@ export default function AdminTimesheetOverviewPage() {
                             {formatMinutes(employee.totals.plannedMinutes)}
                           </Text>
                         </Paper>
-                        <Paper withBorder radius="lg" p="md" className="admin-page-frame__stat">
+                        <Paper
+                          withBorder
+                          radius="lg"
+                          p="md"
+                          className="admin-page-frame__stat"
+                        >
                           <Text size="sm" c="dimmed">
                             Actual
                           </Text>
@@ -464,12 +537,25 @@ export default function AdminTimesheetOverviewPage() {
                             {formatMinutes(employee.totals.actualMinutes)}
                           </Text>
                         </Paper>
-                        <Paper withBorder radius="lg" p="md" className="admin-page-frame__stat">
+                        <Paper
+                          withBorder
+                          radius="lg"
+                          p="md"
+                          className="admin-page-frame__stat"
+                        >
                           <Text size="sm" c="dimmed">
                             Variance
                           </Text>
-                          <Text fw={700} c={`${varianceColor(employee.totals.varianceMinutes)}.6`} mt={6}>
-                            {employee.totals.varianceMinutes > 0 ? "+" : employee.totals.varianceMinutes < 0 ? "-" : ""}
+                          <Text
+                            fw={700}
+                            c={`${varianceColor(employee.totals.varianceMinutes)}.6`}
+                            mt={6}
+                          >
+                            {employee.totals.varianceMinutes > 0
+                              ? "+"
+                              : employee.totals.varianceMinutes < 0
+                                ? "-"
+                                : ""}
                             {formatMinutes(employee.totals.varianceMinutes)}
                           </Text>
                         </Paper>
@@ -500,7 +586,11 @@ export default function AdminTimesheetOverviewPage() {
                                   className="admin-page-frame__stat"
                                 >
                                   <Stack gap="md">
-                                    <Group justify="space-between" align="flex-start" gap="md">
+                                    <Group
+                                      justify="space-between"
+                                      align="flex-start"
+                                      gap="md"
+                                    >
                                       <div>
                                         <Text fw={700} c="#0f172a">
                                           {day.date}
@@ -510,13 +600,23 @@ export default function AdminTimesheetOverviewPage() {
                                         </Text>
                                       </div>
 
-                                      <Text c={`${varianceColor(day.varianceMinutes)}.6`} fw={700}>
-                                        {day.varianceMinutes > 0 ? "+" : day.varianceMinutes < 0 ? "-" : ""}
+                                      <Text
+                                        c={`${varianceColor(day.varianceMinutes)}.6`}
+                                        fw={700}
+                                      >
+                                        {day.varianceMinutes > 0
+                                          ? "+"
+                                          : day.varianceMinutes < 0
+                                            ? "-"
+                                            : ""}
                                         {formatMinutes(day.varianceMinutes)}
                                       </Text>
                                     </Group>
 
-                                    <SimpleGrid cols={{ base: 2, lg: 4 }} spacing="sm">
+                                    <SimpleGrid
+                                      cols={{ base: 2, lg: 4 }}
+                                      spacing="sm"
+                                    >
                                       <Paper withBorder p="sm" radius="lg">
                                         <Text size="xs" c="dimmed">
                                           Planned
@@ -538,7 +638,9 @@ export default function AdminTimesheetOverviewPage() {
                                           Hourly rate
                                         </Text>
                                         <Text fw={700} mt={4}>
-                                          {day.hourlyRate != null ? `$${day.hourlyRate.toFixed(2)}` : "—"}
+                                          {day.hourlyRate != null
+                                            ? `$${day.hourlyRate.toFixed(2)}`
+                                            : "—"}
                                         </Text>
                                       </Paper>
                                       <Paper withBorder p="sm" radius="lg">
@@ -565,31 +667,57 @@ export default function AdminTimesheetOverviewPage() {
                                             p="sm"
                                             className="admin-page-frame__surface"
                                           >
-                                            <Group justify="space-between" align="flex-start" gap="md">
+                                            <Group
+                                              justify="space-between"
+                                              align="flex-start"
+                                              gap="md"
+                                            >
                                               <div>
-                                                <Text fw={600}>{assignment.jobTitle}</Text>
+                                                <Text fw={600}>
+                                                  {assignment.jobTitle}
+                                                </Text>
                                                 <Text size="sm" c="dimmed">
                                                   {assignment.clientName}
                                                 </Text>
                                                 <Text size="sm" c="dimmed">
-                                                  {assignment.addressLine || "No address"}
+                                                  {assignment.addressLine ||
+                                                    "No address"}
                                                 </Text>
                                               </div>
-                                              <Badge variant="light">{assignment.status}</Badge>
+                                              <Badge variant="light">
+                                                {assignment.status}
+                                              </Badge>
                                             </Group>
 
-                                            <SimpleGrid cols={{ base: 1, md: 2 }} spacing="xs" mt="sm">
+                                            <SimpleGrid
+                                              cols={{ base: 1, md: 2 }}
+                                              spacing="xs"
+                                              mt="sm"
+                                            >
                                               <Text size="sm">
-                                                Planned: {formatDateTime(assignment.plannedStart)} →{" "}
-                                                {formatDateTime(assignment.plannedEnd)}
+                                                Planned:{" "}
+                                                {formatDateTime(
+                                                  assignment.plannedStart,
+                                                )}{" "}
+                                                →{" "}
+                                                {formatDateTime(
+                                                  assignment.plannedEnd,
+                                                )}
                                               </Text>
                                               <Text size="sm">
-                                                Planned minutes: {formatMinutes(assignment.plannedMinutes)}
+                                                Planned minutes:{" "}
+                                                {formatMinutes(
+                                                  assignment.plannedMinutes,
+                                                )}
                                               </Text>
-                                              <Text size="sm">Break: {assignment.breakMinutes} min</Text>
+                                              <Text size="sm">
+                                                Break: {assignment.breakMinutes}{" "}
+                                                min
+                                              </Text>
                                               <Text size="sm">
                                                 Assignment rate:{" "}
-                                                {assignment.hourlyRateAtTime != null
+                                                {assignment.hourlyRateAtTime !=
+                                                null
                                                   ? `$${assignment.hourlyRateAtTime.toFixed(2)}`
                                                   : "—"}
                                               </Text>

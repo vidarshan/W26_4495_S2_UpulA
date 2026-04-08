@@ -16,7 +16,7 @@ import {
 } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { useCallback, useState } from "react";
-import { IoAdd, IoFilterOutline, IoSearchOutline } from "react-icons/io5";
+import { IoAdd, IoFilter, IoSearch } from "react-icons/io5";
 import Loader from "../UI/Loader";
 import UserUpsertModal from "../popups/UserModal";
 import { Staff } from "@/types";
@@ -94,7 +94,7 @@ export default function StaffTable() {
 
           <TextInput
             placeholder="Search users"
-            leftSection={<IoSearchOutline size={16} />}
+            leftSection={<IoSearch size={16} />}
             radius="xl"
             onChange={(e) => handleSearch(e.target.value)}
             style={{
@@ -104,7 +104,7 @@ export default function StaffTable() {
           />
           <Select
             placeholder="Sort by"
-            leftSection={<IoFilterOutline />}
+            leftSection={<IoFilter />}
             value={sort}
             data={[
               { value: "newest", label: "Newest" },

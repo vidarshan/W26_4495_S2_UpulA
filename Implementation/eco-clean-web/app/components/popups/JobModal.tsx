@@ -35,7 +35,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { IoAddOutline, IoCloseOutline, IoImageOutline } from "react-icons/io5";
+import { IoAdd, IoClose, IoImage } from "react-icons/io5";
 import { createJob, CreateJobPayload, JobFormValues } from "@/lib/api/jobs";
 import { getClientAddresses, getClients } from "@/lib/api/client";
 import { getStaff } from "@/lib/api/users";
@@ -930,7 +930,7 @@ export default function NewJobModal({
               }}
             >
               <Flex direction="column" align="center">
-                <IoImageOutline size={24} />
+                <IoImage size={24} />
                 <Text mt="xs" size="xs">
                   Drag note images here or click to upload
                 </Text>
@@ -963,7 +963,7 @@ export default function NewJobModal({
                       onClick={() => removeNoteImage(index, img.fileKey)}
                       disabled={isBusy}
                     >
-                      <IoCloseOutline size={14} />
+                      <IoClose size={14} />
                     </ActionIcon>
                   </Box>
                 ))}
@@ -1223,7 +1223,7 @@ export default function NewJobModal({
             <Group align="center" justify="space-between">
               <Text fw={500}>Services</Text>
               <Button
-                leftSection={<IoAddOutline />}
+                leftSection={<IoAdd />}
                 size="xs"
                 type="button"
                 disabled={isBusy}
@@ -1385,7 +1385,7 @@ export default function NewJobModal({
             <Group align="center" justify="space-between" mt="sm">
               <Text fw={500}>Appointments</Text>
               <Button
-                leftSection={<IoAddOutline />}
+                leftSection={<IoAdd />}
                 size="xs"
                 type="button"
                 disabled={isBusy || form.values.jobType === "RECURRING"}
@@ -1403,7 +1403,7 @@ export default function NewJobModal({
           <Group align="center" justify="space-between">
             <Text fw={500}>Notes</Text>
             <Button
-              leftSection={<IoAddOutline />}
+              leftSection={<IoAdd />}
               size="xs"
               type="button"
               disabled={isBusy}

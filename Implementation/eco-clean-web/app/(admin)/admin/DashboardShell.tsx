@@ -22,14 +22,14 @@ import { usePathname } from "next/navigation";
 import React, { useCallback, useEffect, useState } from "react";
 
 import {
-  IoAlertCircleOutline,
-  IoBriefcaseOutline,
-  IoCalendarClearOutline,
-  IoCashOutline,
-  IoHomeOutline,
-  IoLogOutOutline,
-  IoPeopleOutline,
-  IoTimeOutline,
+  IoAlertCircle,
+  IoBriefcase,
+  IoCalendarClear,
+  IoCash,
+  IoHome,
+  IoLogOut,
+  IoPeople,
+  IoTime,
 } from "react-icons/io5";
 import ClientPropertyModal from "../../components/popups/ClientModal";
 import NewJobModal from "../../components/popups/JobModal";
@@ -108,35 +108,35 @@ export default function DashboardShell({
       href: "/admin",
       label: "Dashboard",
       description: "Calendar and operations",
-      icon: <IoHomeOutline size={18} />,
+      icon: <IoHome size={18} />,
       active: pathname === "/admin",
     },
     {
       href: "/admin/clients",
       label: "Clients",
       description: "Accounts and properties",
-      icon: <IoPeopleOutline size={18} />,
+      icon: <IoPeople size={18} />,
       active: pathname.startsWith("/admin/clients"),
     },
     {
       href: "/admin/employees",
       label: "Employees",
       description: "Payroll and team setup",
-      icon: <IoBriefcaseOutline size={18} />,
+      icon: <IoBriefcase size={18} />,
       active: pathname.startsWith("/admin/employees"),
     },
     {
       href: "/admin/manage-staff/leave-approval",
       label: "Leave",
       description: "Requests and approvals",
-      icon: <IoCalendarClearOutline size={18} />,
+      icon: <IoCalendarClear size={18} />,
       active: pathname.startsWith("/admin/manage-staff/leave-approval"),
     },
     {
       href: "/admin/pay-periods",
       label: "Payroll",
       description: "Statements and pay runs",
-      icon: <IoCashOutline size={18} />,
+      icon: <IoCash size={18} />,
       active:
         pathname.startsWith("/admin/pay-periods") ||
         pathname.startsWith("/admin/pay/"),
@@ -145,7 +145,7 @@ export default function DashboardShell({
       href: "/admin/timesheets",
       label: "Timesheets",
       description: "Time review and approval",
-      icon: <IoTimeOutline size={18} />,
+      icon: <IoTime size={18} />,
       active: pathname.startsWith("/admin/timesheets"),
     },
   ];
@@ -392,7 +392,7 @@ export default function DashboardShell({
                   variant="light"
                   color="red"
                 >
-                  <IoLogOutOutline size={18} />
+                  <IoLogOut size={18} />
                 </ThemeIcon>
 
                 <Box
@@ -426,7 +426,7 @@ export default function DashboardShell({
           {error && (
             <Alert
               mb="md"
-              icon={<IoAlertCircleOutline size={18} />}
+              icon={<IoAlertCircle size={18} />}
               color="red"
               radius="lg"
               variant="light"

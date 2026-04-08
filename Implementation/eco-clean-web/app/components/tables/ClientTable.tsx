@@ -16,7 +16,7 @@ import {
 } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 
-import { IoAdd, IoFilterOutline, IoSearchOutline } from "react-icons/io5";
+import { IoAdd, IoFilter, IoSearch } from "react-icons/io5";
 import Loader from "../UI/Loader";
 import { useClients } from "@/hooks/useClient";
 import { useState } from "react";
@@ -112,7 +112,7 @@ export default function ClientsTable() {
           <TextInput
             placeholder="Search clients"
             radius="xl"
-            leftSection={<IoSearchOutline size={16} />}
+            leftSection={<IoSearch size={16} />}
             onChange={(e) => handleSearch(e.target.value)}
             style={{
               flex: isNarrow ? 1 : undefined,
@@ -122,7 +122,7 @@ export default function ClientsTable() {
 
           <Select
             placeholder="Sort by"
-            leftSection={<IoFilterOutline />}
+            leftSection={<IoFilter />}
             value={sort}
             data={[
               { value: "newest", label: "Newest" },

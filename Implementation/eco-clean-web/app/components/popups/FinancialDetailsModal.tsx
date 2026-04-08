@@ -18,9 +18,9 @@ import {
 import { notifications } from "@mantine/notifications";
 import { useState, useEffect } from "react";
 import {
-  IoCardOutline,
-  IoLockClosedOutline,
-  IoShieldCheckmarkOutline,
+  IoCard,
+  IoLockClosed,
+  IoShieldCheckmark,
 } from "react-icons/io5";
 type Props = {
   opened: boolean;
@@ -222,7 +222,7 @@ export default function FinancialDetailsModal({
           <Group justify="space-between" align="flex-start" wrap="wrap">
             <Group align="flex-start" wrap="nowrap" gap="md">
               <ThemeIcon size={48} radius="xl" color="teal" variant="light">
-                <IoCardOutline size={22} />
+                <IoCard size={22} />
               </ThemeIcon>
               <Stack gap={4}>
                 <Text size="xs" fw={800} c="dimmed" tt="uppercase">
@@ -251,7 +251,7 @@ export default function FinancialDetailsModal({
             <Group justify="space-between" align="center" wrap="wrap">
               <Group gap="sm">
                 <ThemeIcon radius="xl" size="lg" variant="light" color="blue">
-                  <IoCardOutline size={18} />
+                  <IoCard size={18} />
                 </ThemeIcon>
                 <Stack gap={2}>
                   <Text fw={700}>Bank details</Text>
@@ -318,7 +318,7 @@ export default function FinancialDetailsModal({
           <Stack gap="md">
             <Group gap="sm">
               <ThemeIcon radius="xl" size="lg" variant="light" color="grape">
-                <IoShieldCheckmarkOutline size={18} />
+                <IoShieldCheckmark size={18} />
               </ThemeIcon>
               <Stack gap={2}>
                 <Text fw={700}>Tax details</Text>
@@ -393,7 +393,7 @@ export default function FinancialDetailsModal({
           <Group justify="space-between" wrap="wrap">
             <Group gap="xs">
               <ThemeIcon radius="xl" size="md" variant="light" color="gray">
-                <IoLockClosedOutline size={14} />
+                <IoLockClosed size={14} />
               </ThemeIcon>
               <Text size="sm" c="dimmed">
                 Sensitive values are masked outside edit mode.

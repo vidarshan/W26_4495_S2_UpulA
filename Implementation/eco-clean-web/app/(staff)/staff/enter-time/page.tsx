@@ -27,10 +27,10 @@ import { notifications } from "@mantine/notifications";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DateTime } from "luxon";
 import {
-  IoCalendarOutline,
+  IoCalendar,
   IoChevronDown,
-  IoClipboardOutline,
-  IoTimeOutline,
+  IoClipboard,
+  IoTime,
 } from "react-icons/io5";
 import { APP_TZ } from "@/lib/dateTime";
 
@@ -402,8 +402,7 @@ export default function EnterTimePage() {
           <Stack gap="xs">
             <Title order={3}>Enter Time</Title>
             <Text size="sm" c="dimmed">
-              Review daily work sessions, verify totals, and submit your
-              timesheet.
+              Check your hours for each day and send them in when they look right.
             </Text>
           </Stack>
 
@@ -411,12 +410,12 @@ export default function EnterTimePage() {
             <SummaryStat
               label="Current Week"
               value={`Week ${week}`}
-              icon={IoCalendarOutline}
+              icon={IoCalendar}
             />
             <SummaryStat
               label="Week Total"
               value={formatMinutesToHHMM(totalWeekMinutes)}
-              icon={IoTimeOutline}
+              icon={IoTime}
             />
             <SummaryStat
               label="Sessions"
@@ -427,7 +426,7 @@ export default function EnterTimePage() {
                   0,
                 ),
               )}
-              icon={IoClipboardOutline}
+              icon={IoClipboard}
             />
           </SimpleGrid>
         </Card>
@@ -474,7 +473,7 @@ export default function EnterTimePage() {
               <Group gap="xs">
                 <Loader size="sm" />
                 <Text size="sm" c="dimmed">
-                  Refreshing timesheet entries...
+                  Updating your hours...
                 </Text>
               </Group>
             ) : null}
@@ -493,7 +492,7 @@ export default function EnterTimePage() {
                         </Text>
                       </Box>
                       <ThemeIcon radius="lg" variant="light" color="lime">
-                        <IoClipboardOutline size={16} />
+                        <IoClipboard size={16} />
                       </ThemeIcon>
                     </Group>
 
@@ -525,7 +524,7 @@ export default function EnterTimePage() {
 
         <Card radius="lg" withBorder p="lg" className="staff-app-surface">
           <Stack gap="sm">
-            <Text fw={700}>Week summary</Text>
+              <Text fw={700}>Week summary</Text>
             {isMobile ? (
               <Stack gap="xs">
                 {activeDays.map((day) => (
@@ -634,7 +633,7 @@ export default function EnterTimePage() {
 
             {selectedDaySessions.length === 0 ? (
               <Text c="dimmed" size="sm">
-                No work sessions found for this day.
+                No hours have been recorded for this day.
               </Text>
             ) : (
               <Stack gap="md">
@@ -646,10 +645,10 @@ export default function EnterTimePage() {
                       <Stack gap="xs">
                         <Text fw={700}>{session.jobTitle}</Text>
                         <Text size="sm" c="dimmed">
-                          Client: {session.clientName}
+                          For {session.clientName}
                         </Text>
                         <Text size="sm">
-                          Hours counted for this day:{" "}
+                          Counted for this day:{" "}
                           <b>{formatMinutesToHHMM(session.minutesForDay)}</b>
                         </Text>
 
@@ -663,7 +662,7 @@ export default function EnterTimePage() {
                               End:{" "}
                               {session.endedAt
                                 ? new Date(session.endedAt).toLocaleString()
-                                : "Still running"}
+                                : "Still in progress"}
                             </Text>
 
                             <Group mt="xs">
@@ -695,7 +694,7 @@ export default function EnterTimePage() {
                               onChange={(e) =>
                                 setEditEndedAt(e.currentTarget.value)
                               }
-                              placeholder="Leave blank if still running"
+                              placeholder="Leave blank if you are still working"
                             />
 
                             <Group mt="xs">
@@ -739,7 +738,7 @@ function SummaryStat({
 }: {
   label: string;
   value: string;
-  icon: typeof IoCalendarOutline;
+  icon: typeof IoCalendar;
 }) {
   return (
     <Paper withBorder radius="lg" p="md">

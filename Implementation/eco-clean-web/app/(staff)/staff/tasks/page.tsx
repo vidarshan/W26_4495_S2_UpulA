@@ -8,7 +8,6 @@ import {
   Container,
   Flex,
   Group,
-  Indicator,
   Loader,
   SegmentedControl,
   Stack,
@@ -23,9 +22,9 @@ import { useQuery } from "@tanstack/react-query";
 import { getMarkedDates, getStaffAppointments } from "@/lib/api/appointments";
 import { useRouter } from "next/navigation";
 import {
-  IoLocationOutline,
-  IoPersonOutline,
-  IoTimeOutline,
+  IoLocation,
+  IoPerson,
+  IoTime,
 } from "react-icons/io5";
 import { useSession } from "next-auth/react";
 import { AppointmentReminderWatcher } from "@/app/components/AppointmentReminderWatcher";
@@ -261,14 +260,30 @@ const Page = () => {
                   renderDay={(date) => {
                     const hasAppointments = markedDates.has(date);
                     return (
-                      <Indicator
-                        size={4}
-                        color="lime"
-                        position="bottom-center"
-                        disabled={!hasAppointments}
+                      <Box
+                        style={{
+                          minWidth: 28,
+                          minHeight: 28,
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          lineHeight: 1,
+                        }}
                       >
-                        {dayjs(date).date()}
-                      </Indicator>
+                        <span>{dayjs(date).date()}</span>
+                        <Box
+                          aria-hidden="true"
+                          style={{
+                            marginTop: 3,
+                            width: 4,
+                            height: 4,
+                            borderRadius: "50%",
+                            backgroundColor: "var(--mantine-color-lime-6)",
+                            opacity: hasAppointments ? 1 : 0,
+                          }}
+                        />
+                      </Box>
                     );
                   }}
                   getDayProps={(date) => {
@@ -300,12 +315,12 @@ const Page = () => {
           ) : error ? (
             <Card radius="lg" withBorder p="lg" className="staff-app-surface">
               <Text c="red" size="sm">
-                Failed to load tasks
+                We couldn&apos;t load your tasks.
               </Text>
             </Card>
           ) : filteredTasks.length === 0 ? (
             <Card radius="lg" withBorder p="lg" className="staff-app-surface">
-              <Text c="dimmed">No tasks found for this section.</Text>
+              <Text c="dimmed">Nothing is waiting for you in this section.</Text>
             </Card>
           ) : (
             <>
@@ -351,7 +366,7 @@ const Page = () => {
                     <Stack gap="xs">
                       <Group gap="xs" wrap="nowrap">
                         <ThemeIcon radius="lg" variant="light" color="lime">
-                          <IoTimeOutline size={14} />
+                          <IoTime size={14} />
                         </ThemeIcon>
                         <Text size="sm">
                           {start.toFormat("h:mm a")} - {end.toFormat("h:mm a")}
@@ -360,7 +375,7 @@ const Page = () => {
 
                       <Group gap="xs" wrap="nowrap">
                         <ThemeIcon radius="lg" variant="light" color="gray">
-                          <IoPersonOutline size={14} />
+                          <IoPerson size={14} />
                         </ThemeIcon>
                         <Text size="sm">
                           {task.job.client.firstName} {task.job.client.lastName}
@@ -369,7 +384,7 @@ const Page = () => {
 
                       <Group gap="xs" wrap="nowrap" align="start">
                         <ThemeIcon radius="lg" variant="light" color="lime">
-                          <IoLocationOutline size={14} />
+                          <IoLocation size={14} />
                         </ThemeIcon>
                         <Text size="sm" c="dimmed">
                           {task.job.address.street1}, {task.job.address.city},{" "}

@@ -23,7 +23,7 @@ import { notifications } from "@mantine/notifications";
 import { useSession } from "next-auth/react";
 import { addAppDays, appNowDate } from "@/lib/dateTime";
 import { useEffect } from "react";
-import { IoCalendarOutline, IoTimeOutline } from "react-icons/io5";
+import { IoCalendar, IoTime } from "react-icons/io5";
 
 type DayAvailability = {
   active: boolean;
@@ -184,7 +184,7 @@ export default function EnterAvailabilityPage() {
             <Card withBorder radius="lg" p="md" className="staff-app-surface">
               <Group align="flex-start" wrap="nowrap">
                 <ThemeIcon size={40} radius="lg" color="lime" variant="light">
-                  <IoCalendarOutline size={20} />
+                  <IoCalendar size={20} />
                 </ThemeIcon>
                 <Box>
                   <Text fw={700}>Effective date</Text>
@@ -198,7 +198,7 @@ export default function EnterAvailabilityPage() {
             <Card withBorder radius="lg" p="md" className="staff-app-surface">
               <Group align="flex-start" wrap="nowrap">
                 <ThemeIcon size={40} radius="lg" color="lime" variant="light">
-                  <IoTimeOutline size={20} />
+                  <IoTime size={20} />
                 </ThemeIcon>
                 <Box>
                   <Text fw={700}>Shift pattern</Text>

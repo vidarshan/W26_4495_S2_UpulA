@@ -12,11 +12,11 @@ import {
 } from "@mantine/core";
 import { useState } from "react";
 import {
-  IoAlertCircleOutline,
+  IoAlertCircle,
   IoArrowDown,
   IoArrowUp,
-  IoCheckmarkCircleOutline,
-  IoSparklesOutline,
+  IoCheckmarkCircle,
+  IoSparkles,
 } from "react-icons/io5";
 import { TaskAssistantResponse } from "@/lib/ai/schemas";
 
@@ -88,7 +88,7 @@ export default function AiTaskAssistantCard({ data }: Props) {
                 boxShadow: "0 6px 16px rgba(236, 72, 153, 0.24)",
               }}
             >
-              <IoSparklesOutline size={16} />
+              <IoSparkles size={16} />
             </ThemeIcon>
             <Title order={4}>AI Overview</Title>
           </Group>
@@ -137,7 +137,7 @@ export default function AiTaskAssistantCard({ data }: Props) {
                           "linear-gradient(135deg, rgba(236, 72, 153, 0.92), rgba(168, 85, 247, 0.92))",
                       }}
                     >
-                      <IoCheckmarkCircleOutline size={12} />
+                      <IoCheckmarkCircle size={12} />
                     </ThemeIcon>
                   }
                 >
@@ -208,7 +208,7 @@ export default function AiTaskAssistantCard({ data }: Props) {
                       variant="filled"
                       color="yellow"
                     >
-                      <IoAlertCircleOutline size={12} />
+                      <IoAlertCircle size={12} />
                     </ThemeIcon>
                   }
                 >
@@ -235,7 +235,7 @@ export default function AiTaskAssistantCard({ data }: Props) {
                           "linear-gradient(135deg, rgba(236, 72, 153, 0.92), rgba(168, 85, 247, 0.92))",
                       }}
                     >
-                      <IoCheckmarkCircleOutline size={12} />
+                      <IoCheckmarkCircle size={12} />
                     </ThemeIcon>
                   }
                 >

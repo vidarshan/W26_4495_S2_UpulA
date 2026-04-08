@@ -18,20 +18,19 @@ import {
   Box,
   Button,
   Modal,
-  TextInput
+  TextInput,
 } from "@mantine/core";
 import { useQuery } from "@tanstack/react-query";
 import {
-  IoCallOutline,
-  IoHomeOutline,
-  IoMailOutline,
-  IoPersonOutline,
-  IoShieldOutline,
-  IoTimeOutline,
+  IoCall,
+  IoHome,
+  IoMail,
+  IoPerson,
+  IoShield,
+  IoTime,
 } from "react-icons/io5";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-
 
 type StaffMeResponse = {
   id: string;
@@ -68,7 +67,68 @@ type InfoRowProps = {
   value?: React.ReactNode;
 };
 
+type AddressForm = {
+  street1: string;
+  street2: string | null;
+  city: string;
+  province: string;
+  postalCode: string;
+  country: string;
+};
 
+type EmergencyForm = {
+  name: string;
+  phoneNumber: string;
+  relationship: string;
+};
+
+type StaffAddress = NonNullable<
+  NonNullable<StaffMeResponse["staffProfile"]>["staffAddress"]
+>;
+
+type EmergencyContact = NonNullable<
+  NonNullable<StaffMeResponse["staffProfile"]>["emergencyContact"]
+>;
+
+function getInitialAddressForm(address?: StaffAddress | null): AddressForm {
+  if (!address) {
+    return {
+      street1: "",
+      street2: null,
+      city: "",
+      province: "",
+      postalCode: "",
+      country: "",
+    };
+  }
+
+  return {
+    street1: address.street1 ?? "",
+    street2: address.street2 ?? null,
+    city: address.city ?? "",
+    province: address.province ?? "",
+    postalCode: address.postalCode ?? "",
+    country: address.country ?? "",
+  };
+}
+
+function getInitialEmergencyForm(
+  emergency?: EmergencyContact | null,
+): EmergencyForm {
+  if (!emergency) {
+    return {
+      name: "",
+      phoneNumber: "",
+      relationship: "",
+    };
+  }
+
+  return {
+    name: emergency.name ?? "",
+    phoneNumber: emergency.phoneNumber ?? "",
+    relationship: emergency.relationship ?? "",
+  };
+}
 
 function InfoRow({ icon, label, value }: InfoRowProps) {
   return (
@@ -90,9 +150,6 @@ function InfoRow({ icon, label, value }: InfoRowProps) {
 }
 
 export default function StaffProfileDetailsCard() {
-
-
-
   const { data, isLoading, error } = useQuery<StaffMeResponse>({
     queryKey: ["staff-me"],
     queryFn: async () => {
@@ -118,66 +175,13 @@ export default function StaffProfileDetailsCard() {
 
   const [formPhone, setFormPhone] = useState("");
 
-  const [formAddress, setFormAddress] = useState(() =>
-    address
-      ? {
-        street1: address.street1 ?? "",
-        street2: address.street2 ?? null,
-        city: address.city ?? "",
-        province: address.province ?? "",
-        postalCode: address.postalCode ?? "",
-        country: address.country ?? "",
-      }
-      : {
-        street1: "",
-        street2: null,
-        city: "",
-        province: "",
-        postalCode: "",
-        country: "",
-      }
+  const [formAddress, setFormAddress] = useState<AddressForm>(() =>
+    getInitialAddressForm(address),
   );
 
-  useEffect(() => {
-    if (address) {
-      setFormAddress({
-        street1: address.street1 ?? "",
-        street2: address.street2 ?? "",
-        city: address.city ?? "",
-        province: address.province ?? "",
-        postalCode: address.postalCode ?? "",
-        country: address.country ?? "",
-      });
-    }
-
-    if (emergency) {
-      setFormEmergency({
-        name: emergency.name ?? "",
-        phoneNumber: emergency.phoneNumber ?? "",
-        relationship: emergency.relationship ?? "",
-      });
-    }
-
-    if (profile?.phoneNumber) {
-      setFormPhone(profile.phoneNumber);
-    }
-  }, [address, emergency]);
-
-  const [formEmergency, setFormEmergency] = useState(() =>
-    emergency
-      ? {
-        name: emergency.name ?? "",
-        phoneNumber: emergency.phoneNumber ?? "",
-        relationship: emergency.relationship ?? "",
-      }
-      : {
-        name: "",
-        phoneNumber: "",
-        relationship: "",
-      }
+  const [formEmergency, setFormEmergency] = useState<EmergencyForm>(() =>
+    getInitialEmergencyForm(emergency),
   );
-
-
 
   if (isLoading) {
     return (
@@ -195,17 +199,15 @@ export default function StaffProfileDetailsCard() {
     );
   }
 
-
-
   const fullAddress = address
     ? [
-      address.street1,
-      address.street2,
-      `${address.city}, ${address.province} ${address.postalCode}`,
-      address.country,
-    ]
-      .filter(Boolean)
-      .join(", ")
+        address.street1,
+        address.street2,
+        `${address.city}, ${address.province} ${address.postalCode}`,
+        address.country,
+      ]
+        .filter(Boolean)
+        .join(", ")
     : null;
 
   return (
@@ -245,39 +247,44 @@ export default function StaffProfileDetailsCard() {
             </Group>
             <Group justify="space-between" align="center">
               <InfoRow
-                icon={<IoCallOutline />}
+                icon={<IoCall />}
                 label="Contact Number"
                 value={profile?.phoneNumber || "—"}
               />
 
-              <Button size="xs" variant="light" onClick={() => setPhoneOpen(true)}>
+              <Button
+                size="xs"
+                variant="light"
+                onClick={() => {
+                  setFormPhone(profile?.phoneNumber ?? "");
+                  setPhoneOpen(true);
+                }}
+              >
                 Edit
               </Button>
             </Group>
-
-
           </Stack>
         </Center>
 
         <Divider />
 
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg" verticalSpacing="lg">
-          <InfoRow icon={<IoMailOutline />} label="Email" value={data.email} />
+          <InfoRow icon={<IoMail />} label="Email" value={data.email} />
 
           <InfoRow
-            icon={<IoTimeOutline />}
+            icon={<IoTime />}
             label="Joined"
             value={new Date(data.createdAt).toLocaleDateString()}
           />
 
           <InfoRow
-            icon={<IoPersonOutline />}
+            icon={<IoPerson />}
             label="Position"
             value={profile?.position}
           />
 
           <InfoRow
-            icon={<IoShieldOutline />}
+            icon={<IoShield />}
             label="Hourly Rate"
             value={
               profile?.hourlyRate != null
@@ -293,10 +300,17 @@ export default function StaffProfileDetailsCard() {
               <Stack gap="md">
                 <Group gap="sm">
                   <ThemeIcon variant="light" radius="xl" size={34}>
-                    <IoHomeOutline size={18} />
+                    <IoHome size={18} />
                   </ThemeIcon>
                   <Title order={5}>Address</Title>
-                  <Button size="xs" variant="light" onClick={() => setAddressOpen(true)}>
+                  <Button
+                    size="xs"
+                    variant="light"
+                    onClick={() => {
+                      setFormAddress(getInitialAddressForm(address));
+                      setAddressOpen(true);
+                    }}
+                  >
                     Edit
                   </Button>
                 </Group>
@@ -338,10 +352,17 @@ export default function StaffProfileDetailsCard() {
               <Stack gap="md">
                 <Group gap="sm">
                   <ThemeIcon variant="light" radius="xl" size={34}>
-                    <IoCallOutline size={18} />
+                    <IoCall size={18} />
                   </ThemeIcon>
                   <Title order={5}>Emergency Contact</Title>
-                  <Button size="xs" variant="light" onClick={() => setEmergencyOpen(true)}>
+                  <Button
+                    size="xs"
+                    variant="light"
+                    onClick={() => {
+                      setFormEmergency(getInitialEmergencyForm(emergency));
+                      setEmergencyOpen(true);
+                    }}
+                  >
                     Edit
                   </Button>
                 </Group>
@@ -349,19 +370,19 @@ export default function StaffProfileDetailsCard() {
                 {emergency ? (
                   <Stack gap="sm">
                     <InfoRow
-                      icon={<IoPersonOutline size={18} />}
+                      icon={<IoPerson size={18} />}
                       label="Name"
                       value={emergency.name}
                     />
 
                     <InfoRow
-                      icon={<IoCallOutline size={18} />}
+                      icon={<IoCall size={18} />}
                       label="Phone"
                       value={emergency.phoneNumber}
                     />
 
                     <InfoRow
-                      icon={<IoShieldOutline size={18} />}
+                      icon={<IoShield size={18} />}
                       label="Relationship"
                       value={emergency.relationship}
                     />
@@ -515,6 +536,7 @@ export default function StaffProfileDetailsCard() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(formEmergency),
               });
+              queryClient.invalidateQueries({ queryKey: ["staff-me"] });
               setEmergencyOpen(false);
             }}
           >
@@ -551,8 +573,6 @@ export default function StaffProfileDetailsCard() {
           </Button>
         </Stack>
       </Modal>
-
-
     </Box>
   );
 }

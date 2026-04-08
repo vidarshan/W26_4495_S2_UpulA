@@ -10,10 +10,10 @@ import {
   ThemeIcon,
 } from "@mantine/core";
 import {
-  IoCalendarClearOutline,
-  IoCheckboxOutline,
-  IoPersonOutline,
-  IoTimeOutline,
+  IoCalendarClear,
+  IoCheckbox,
+  IoPerson,
+  IoTime,
 } from "react-icons/io5";
 import { JSX } from "react";
 
@@ -24,10 +24,10 @@ type Tab = {
 };
 
 const TABS: Tab[] = [
-  { href: "/staff/tasks", label: "Tasks", Icon: <IoCheckboxOutline /> },
-  { href: "/staff/apply-leave", label: "Time-off", Icon: <IoCalendarClearOutline /> },
-  { href: "/staff/enter-availability", label: "Hours", Icon: <IoTimeOutline /> },
-  { href: "/staff/profile", label: "Profile", Icon: <IoPersonOutline /> },
+  { href: "/staff/tasks", label: "Tasks", Icon: <IoCheckbox /> },
+  { href: "/staff/apply-leave", label: "Time-off", Icon: <IoCalendarClear /> },
+  { href: "/staff/enter-availability", label: "Hours", Icon: <IoTime /> },
+  { href: "/staff/profile", label: "Profile", Icon: <IoPerson /> },
 ];
 
 export default function BottomBar() {

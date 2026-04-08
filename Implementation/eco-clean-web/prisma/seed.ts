@@ -11,6 +11,7 @@ import {
   TimesheetStatus,
   TimesheetPeriodStatus,
 } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
 import { faker } from "@faker-js/faker";
 import * as bcrypt from "bcrypt";
 
@@ -18,7 +19,13 @@ if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is missing");
 }
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({
+  adapter: new PrismaPg({
+    connectionString: process.env.DATABASE_URL,
+    max: 3,
+  }),
+  log: ["error"],
+});
 
 type SeedMode = "small" | "medium" | "large";
 type DayKey = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
@@ -511,6 +518,10 @@ function fmtMoney(n: number) {
   return Number(n.toFixed(2));
 }
 
+function logStage(message: string) {
+  console.log(`• ${message}`);
+}
+
 async function resetDatabase() {
   await prisma.payStatement.deleteMany();
   await prisma.timesheetDay.deleteMany();
@@ -843,6 +854,7 @@ async function createJobsForClients(
   const now = new Date();
   const threeWeeksAgo = addDays(now, -21);
   const threeWeeksAhead = addDays(now, 21);
+  const clientIds = clients.map((client) => client.id);
   const latestAvailabilities = await prisma.staffAvailability.findMany({
     where: {
       staffProfile: {
@@ -880,6 +892,25 @@ async function createJobsForClients(
     },
   });
   const availabilityMap = new Map<string, AvailabilitySnapshot>();
+  const addresses = await prisma.address.findMany({
+    where: { clientId: { in: clientIds } },
+    select: { id: true, clientId: true },
+  });
+  const addressesByClientId = new Map<string, { id: string }[]>();
+
+  for (const address of addresses) {
+    const existing = addressesByClientId.get(address.clientId) ?? [];
+    existing.push({ id: address.id });
+    addressesByClientId.set(address.clientId, existing);
+  }
+
+  const staffProfiles = await prisma.staffProfile.findMany({
+    where: { userId: { in: staff.map((s) => s.id) } },
+    select: { userId: true, hourlyRate: true },
+  });
+  const hourlyRateMap = new Map(
+    staffProfiles.map((p) => [p.userId, p.hourlyRate]),
+  );
 
   for (const availability of latestAvailabilities) {
     const userId = availability.staffProfile.userId;
@@ -911,26 +942,26 @@ async function createJobsForClients(
     }
   }
 
-  for (const client of clients) {
-    const addresses = await prisma.address.findMany({
-      where: { clientId: client.id },
-      select: { id: true },
-    });
+  for (let clientIndex = 0; clientIndex < clients.length; clientIndex++) {
+    const client = clients[clientIndex];
+    const clientAddresses = addressesByClientId.get(client.id) ?? [];
 
-    const staffProfiles = await prisma.staffProfile.findMany({
-      where: { userId: { in: staff.map((s) => s.id) } },
-      select: { userId: true, hourlyRate: true },
-    });
+    if (!clientAddresses.length) {
+      continue;
+    }
 
-    const hourlyRateMap = new Map(
-      staffProfiles.map((p) => [p.userId, p.hourlyRate]),
-    );
+    if (clientIndex > 0 && clientIndex % 20 === 0) {
+      console.log(
+        `  Processed ${clientIndex}/${clients.length} clients for jobs...`,
+      );
+    }
 
     const jobsCount = randInt(cfg.jobsPerClientMin, cfg.jobsPerClientMax);
 
     for (let j = 0; j < jobsCount; j++) {
       const jobType = maybe(0.45) ? JobType.RECURRING : JobType.ONE_OFF;
-      const selectedAddress = addresses[randInt(0, addresses.length - 1)];
+      const selectedAddress =
+        clientAddresses[randInt(0, clientAddresses.length - 1)];
 
       const job = await prisma.job.create({
         data: {
@@ -1698,20 +1729,40 @@ async function createGuaranteedReminderTestAppointments(
 async function main() {
   console.log(`\n🌱 Eco Clean seed started in "${mode}" mode...\n`);
 
+  logStage("Resetting database");
   await resetDatabase();
+
+  logStage("Creating timesheet periods");
   const periodsCreated = await createTimesheetPeriodsForYear(new Date().getFullYear());
 
+  logStage("Creating users");
   const users = await createUsers();
+
+  logStage("Creating staff profiles");
   const staffProfileCounts = await createStaffProfiles(users.staff);
+
+  logStage("Creating clients");
   const clients = await createClients();
+
+  logStage("Creating jobs and appointments");
   const counts = await createJobsForClients(clients, users.staff);
+
+  logStage("Creating current time fixtures");
   const currentTimeFixtures = await createCurrentTimeLogFixtures(users.staff);
+
+  logStage("Creating leave records");
   const leaveCount = await createLeaves(users.staff);
+
+  logStage("Creating timesheets and payroll");
   const payrollCounts = await createTimesheetsAndPayroll(
     users.staff,
     users.admins,
   );
+
+  logStage("Creating appointment AI insights");
   const aiInsightCount = await createAppointmentAiInsights();
+
+  logStage("Creating guaranteed reminder fixtures");
   const guaranteedReminderAppointments =
     await createGuaranteedReminderTestAppointments(users.staff);
 

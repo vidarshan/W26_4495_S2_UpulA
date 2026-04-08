@@ -2,7 +2,7 @@ import { cancelAppointment } from "@/lib/api/appointments";
 import { cancelJob } from "@/lib/api/jobs";
 import { Modal, Button, Group, Text } from "@mantine/core";
 import { useState } from "react";
-import { IoCloseOutline, IoTrashBinOutline } from "react-icons/io5";
+import { IoClose, IoTrashBin } from "react-icons/io5";
 import { useCalendarStore, useDashboardUI } from "@/stores/store";
 
 interface Props {
@@ -54,7 +54,7 @@ const ConfirmCancellationModal = ({ onSuccess }: Props) => {
       <Group mt="xs" justify="flex-end">
         <Button
           color="gray"
-          leftSection={<IoCloseOutline />}
+          leftSection={<IoClose />}
           onClick={closeConfirmCancel}
         >
           Cancel
@@ -62,7 +62,7 @@ const ConfirmCancellationModal = ({ onSuccess }: Props) => {
 
         <Button
           color="red"
-          leftSection={<IoTrashBinOutline />}
+          leftSection={<IoTrashBin />}
           onClick={handleCancel}
           loading={loading}
         >

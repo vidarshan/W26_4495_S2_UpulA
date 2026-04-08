@@ -21,14 +21,14 @@ import {
   Title,
 } from "@mantine/core";
 import {
-  IoCallOutline,
-  IoCashOutline,
-  IoHomeOutline,
-  IoMailOutline,
-  IoPencilOutline,
-  IoPersonOutline,
-  IoShieldOutline,
-  IoCardOutline,
+  IoCall,
+  IoCash,
+  IoHome,
+  IoMail,
+  IoPencil,
+  IoPerson,
+  IoShield,
+  IoCard,
 } from "react-icons/io5";
 import { notifications } from "@mantine/notifications";
 import { useEffect, useState } from "react";
@@ -267,7 +267,7 @@ export default function AdminStaffDetailsModal({
           <Group justify="space-between" align="flex-start" wrap="wrap">
             <Group align="flex-start" wrap="nowrap" gap="md">
               <ThemeIcon size={48} radius="xl" color="lime" variant="light">
-                <IoPersonOutline size={22} />
+                <IoPerson size={22} />
               </ThemeIcon>
               <Stack gap={4}>
                 <Title order={4}>{staff?.name || "Staff member"}</Title>
@@ -307,7 +307,7 @@ export default function AdminStaffDetailsModal({
               <Stack gap="md">
                 <Group gap="sm">
                   <ThemeIcon radius="xl" size="lg" variant="light" color="blue">
-                    <IoShieldOutline size={18} />
+                    <IoShield size={18} />
                   </ThemeIcon>
                   <Stack gap={2}>
                     <Text fw={700}>Role and pay</Text>
@@ -326,7 +326,7 @@ export default function AdminStaffDetailsModal({
                       onChange={(e) => setPosition(e.currentTarget.value)}
                       rightSection={
                         <ActionIcon variant="subtle" color="gray">
-                          <IoPencilOutline size={14} />
+                          <IoPencil size={14} />
                         </ActionIcon>
                       }
                     />
@@ -349,22 +349,22 @@ export default function AdminStaffDetailsModal({
                     {
                       label: "Email",
                       value: staff?.email || "—",
-                      icon: <IoMailOutline size={16} />,
+                      icon: <IoMail size={16} />,
                     },
                     {
                       label: "Phone",
                       value: profile?.phoneNumber || "No contact number",
-                      icon: <IoCallOutline size={16} />,
+                      icon: <IoCall size={16} />,
                     },
                     {
                       label: "Position",
                       value: position || "—",
-                      icon: <IoPersonOutline size={16} />,
+                      icon: <IoPerson size={16} />,
                     },
                     {
                       label: "Hourly Rate",
                       value: `$${Number(rate || 0).toFixed(2)}`,
-                      icon: <IoCashOutline size={16} />,
+                      icon: <IoCash size={16} />,
                     },
                   ]}
                 />
@@ -382,7 +382,7 @@ export default function AdminStaffDetailsModal({
                         variant="light"
                         color="orange"
                       >
-                        <IoHomeOutline size={18} />
+                        <IoHome size={18} />
                       </ThemeIcon>
                       <Stack gap={2}>
                         <Text fw={700}>Address</Text>
@@ -425,7 +425,7 @@ export default function AdminStaffDetailsModal({
                         variant="light"
                         color="grape"
                       >
-                        <IoCallOutline size={18} />
+                        <IoCall size={18} />
                       </ThemeIcon>
                       <Stack gap={2}>
                         <Text fw={700}>Emergency Contact</Text>
@@ -441,17 +441,17 @@ export default function AdminStaffDetailsModal({
                           {
                             label: "Name",
                             value: emergency.name || "—",
-                            icon: <IoPersonOutline size={16} />,
+                            icon: <IoPerson size={16} />,
                           },
                           {
                             label: "Phone",
                             value: emergency.phoneNumber || "—",
-                            icon: <IoCallOutline size={16} />,
+                            icon: <IoCall size={16} />,
                           },
                           {
                             label: "Relationship",
                             value: emergency.relationship || "—",
-                            icon: <IoShieldOutline size={16} />,
+                            icon: <IoShield size={16} />,
                           },
                         ]}
                       />
@@ -470,7 +470,7 @@ export default function AdminStaffDetailsModal({
             <Stack gap="md">
               <Group gap="sm">
                 <ThemeIcon radius="xl" size="lg" variant="light" color="teal">
-                  <IoCardOutline size={18} />
+                  <IoCard size={18} />
                 </ThemeIcon>
                 <Stack gap={2}>
                   <Text fw={700}>Financial Details</Text>

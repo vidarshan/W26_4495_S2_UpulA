@@ -25,12 +25,12 @@ import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  IoAddOutline,
-  IoCalendarOutline,
-  IoCloseOutline,
-  IoConstructOutline,
-  IoLocationOutline,
-  IoRefreshOutline,
+  IoAdd,
+  IoCalendar,
+  IoClose,
+  IoConstruct,
+  IoLocation,
+  IoRefresh,
 } from "react-icons/io5";
 
 import Loader from "../UI/Loader";
@@ -431,7 +431,7 @@ export default function JobEditModal({ onSuccess }: Props) {
                     <Select
                       label="Client"
                       searchable
-                      leftSection={<IoLocationOutline size={16} />}
+                      leftSection={<IoLocation size={16} />}
                       placeholder={
                         clientsLoading ? "Loading clients..." : "Select client"
                       }
@@ -450,7 +450,7 @@ export default function JobEditModal({ onSuccess }: Props) {
                   <Grid.Col span={{ base: 12, sm: 6 }}>
                     <Select
                       label="Service Address"
-                      leftSection={<IoLocationOutline size={16} />}
+                      leftSection={<IoLocation size={16} />}
                       placeholder={
                         !form.values.clientId
                           ? "Select client first"
@@ -594,7 +594,7 @@ export default function JobEditModal({ onSuccess }: Props) {
                   type="button"
                   size="sm"
                   variant="light"
-                  leftSection={<IoAddOutline />}
+                  leftSection={<IoAdd />}
                   onClick={addLineItem}
                   disabled={updateMutation.isPending}
                 >
@@ -623,7 +623,7 @@ export default function JobEditModal({ onSuccess }: Props) {
                         disabled={updateMutation.isPending}
                         aria-label={`Remove line item ${index + 1}`}
                       >
-                        <IoCloseOutline size={18} />
+                        <IoClose size={18} />
                       </ActionIcon>
                     </Group>
 
@@ -693,7 +693,7 @@ export default function JobEditModal({ onSuccess }: Props) {
               <Button
                 type="submit"
                 loading={updateMutation.isPending}
-                leftSection={<IoCalendarOutline size={16} />}
+                leftSection={<IoCalendar size={16} />}
               >
                 Save Job Changes
               </Button>

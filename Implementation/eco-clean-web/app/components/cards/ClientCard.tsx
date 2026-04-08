@@ -1,9 +1,9 @@
 import { Address, Client } from "@/types";
 import { Card, Text, Group, Stack, Flex, Button, Box } from "@mantine/core";
 import {
-  IoCallOutline,
-  IoHomeOutline,
-  IoMailOpenOutline,
+  IoCall,
+  IoHome,
+  IoMailOpen,
 } from "react-icons/io5";
 
 interface Props {
@@ -32,7 +32,7 @@ export default function ClientCard({ client, address }: Props) {
 
         {client.email && (
           <Flex justify="flex-start" align="center">
-            <IoMailOpenOutline />
+            <IoMailOpen />
             <Text ml="xs" size="sm" lineClamp={1}>
               {client.email}
             </Text>
@@ -41,7 +41,7 @@ export default function ClientCard({ client, address }: Props) {
 
         {client.phone && (
           <Flex justify="flex-start" align="center">
-            <IoCallOutline />
+            <IoCall />
             <Text ml="xs" size="sm" lineClamp={1}>
               {client.phone}
             </Text>
@@ -49,7 +49,7 @@ export default function ClientCard({ client, address }: Props) {
         )}
         <Flex justify="space-between" align="center">
           <Flex>
-            <IoHomeOutline />
+            <IoHome />
             <Text ml="xs" size="sm" color="dimmed" lineClamp={2}>
               {fullAddress}
             </Text>

@@ -16,11 +16,11 @@ import { notifications } from "@mantine/notifications";
 import { useEffect, useMemo, useState } from "react";
 import * as XLSX from "xlsx";
 import {
-  IoCalendarOutline,
-  IoCashOutline,
-  IoDocumentTextOutline,
-  IoDownloadOutline,
-  IoPeopleOutline,
+  IoCalendar,
+  IoCash,
+  IoDocumentText,
+  IoDownload,
+  IoPeople,
 } from "react-icons/io5";
 import AdminPageFrame from "@/app/components/admin/AdminPageFrame";
 import { calculatePayroll } from "@/lib/payroll/calculatePayroll";
@@ -330,7 +330,7 @@ export default function ManagePayPeriodsPage() {
       action={
         <Group gap="sm">
           <Button
-            leftSection={<IoDocumentTextOutline size={16} />}
+            leftSection={<IoDocumentText size={16} />}
             onClick={handleSubmit}
             loading={loading}
             disabled={!rows.length}
@@ -340,7 +340,7 @@ export default function ManagePayPeriodsPage() {
           </Button>
           <Button
             variant="light"
-            leftSection={<IoDownloadOutline size={16} />}
+            leftSection={<IoDownload size={16} />}
             onClick={exportToExcel}
             disabled={!rows.length}
           >
@@ -352,17 +352,17 @@ export default function ManagePayPeriodsPage() {
         {
           label: "Selected period",
           value: periodId ? "1 active" : "None",
-          icon: IoCalendarOutline,
+          icon: IoCalendar,
         },
         {
           label: "Staff rows",
           value: String(rows.length),
-          icon: IoPeopleOutline,
+          icon: IoPeople,
         },
         {
           label: "Net payroll",
           value: formatMoney(totals.net),
-          icon: IoCashOutline,
+          icon: IoCash,
         },
       ]}
     >

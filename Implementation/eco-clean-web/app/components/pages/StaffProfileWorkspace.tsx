@@ -19,9 +19,9 @@ import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
-  IoCheckmarkOutline,
-  IoCloseOutline,
-  IoPencilOutline,
+  IoCheckmark,
+  IoClose,
+  IoPencil,
 } from "react-icons/io5";
 
 type EmergencyContact = {
@@ -264,7 +264,7 @@ export default function StaffProfileWorkspace() {
         <Group justify="space-between" gap="sm" wrap="wrap">
           {!isEditing ? (
             <Button
-              leftSection={<IoPencilOutline />}
+              leftSection={<IoPencil />}
               variant="light"
               color="lime"
               onClick={() => setIsEditing(true)}
@@ -275,7 +275,7 @@ export default function StaffProfileWorkspace() {
             <Group gap="xs" wrap="wrap">
               <Button
                 color="lime"
-                leftSection={<IoCheckmarkOutline />}
+                leftSection={<IoCheckmark />}
                 loading={saving}
                 onClick={handleSave}
               >
@@ -283,7 +283,7 @@ export default function StaffProfileWorkspace() {
               </Button>
               <Button
                 variant="default"
-                leftSection={<IoCloseOutline />}
+                leftSection={<IoClose />}
                 onClick={() => setIsEditing(false)}
               >
                 Cancel

@@ -20,12 +20,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import {
-  IoArrowBackOutline,
-  IoCalendarOutline,
-  IoCashOutline,
-  IoDownloadOutline,
-  IoDocumentTextOutline,
-  IoPersonOutline,
+  IoArrowBack,
+  IoCalendar,
+  IoCash,
+  IoDownload,
+  IoDocumentText,
+  IoPerson,
 } from "react-icons/io5";
 import AdminPageFrame from "@/app/components/admin/AdminPageFrame";
 
@@ -233,12 +233,12 @@ export default function AdminPayStubPage({ params }: PageProps) {
             component={Link}
             href="/admin/pay-periods"
             variant="default"
-            leftSection={<IoArrowBackOutline size={16} />}
+            leftSection={<IoArrowBack size={16} />}
           >
             Back to pay periods
           </Button>
           <Button
-            leftSection={<IoDownloadOutline size={16} />}
+            leftSection={<IoDownload size={16} />}
             onClick={handleDownloadPdf}
             loading={downloading}
             color="lime"
@@ -248,9 +248,9 @@ export default function AdminPayStubPage({ params }: PageProps) {
         </Group>
       }
       stats={[
-        { label: "Employee", value: data.employeeId || "N/A", icon: IoPersonOutline },
-        { label: "Pay date", value: formatDate(data.payDate), icon: IoCalendarOutline },
-        { label: "Net earnings", value: formatMoney(data.netEarnings), icon: IoCashOutline },
+        { label: "Employee", value: data.employeeId || "N/A", icon: IoPerson },
+        { label: "Pay date", value: formatDate(data.payDate), icon: IoCalendar },
+        { label: "Net earnings", value: formatMoney(data.netEarnings), icon: IoCash },
       ]}
     >
       <Stack gap="lg">
@@ -361,7 +361,7 @@ export default function AdminPayStubPage({ params }: PageProps) {
 
               <Stack gap="sm">
                 <Group gap="xs">
-                  <IoDocumentTextOutline size={18} color="#0f172a" />
+                  <IoDocumentText size={18} color="#0f172a" />
                   <Text fw={700} c="#0f172a">
                     Earnings
                   </Text>
@@ -401,7 +401,7 @@ export default function AdminPayStubPage({ params }: PageProps) {
 
               <Stack gap="sm">
                 <Group gap="xs">
-                  <IoCashOutline size={18} color="#0f172a" />
+                  <IoCash size={18} color="#0f172a" />
                   <Text fw={700} c="#0f172a">
                     Deductions
                   </Text>
