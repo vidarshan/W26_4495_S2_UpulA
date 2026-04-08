@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Flex,
   Group,
   Paper,
   Text,
   Box,
+  ThemeIcon,
 } from "@mantine/core";
 import {
   IoCalendarClearOutline,
@@ -41,13 +41,9 @@ export default function BottomBar() {
       left={0}
       right={0}
       radius={0}
-      style={{
-        paddingBottom: "max(env(safe-area-inset-bottom), 10px)",
-        zIndex: 2000,
-      }}
       className="staff-bottom-bar"
     >
-      <Group justify="space-around" py="xs" wrap="nowrap">
+      <Group justify="space-around" py="xs" px="xs" wrap="nowrap">
         {TABS.map(({ href, label, Icon }) => {
           const active =
             pathname === href || (href !== "/" && pathname?.startsWith(href));
@@ -59,7 +55,15 @@ export default function BottomBar() {
               key={label}
               className={`staff-bottom-bar__item${active ? " staff-bottom-bar__item--active" : ""}`}
             >
-              <Box className="staff-bottom-bar__icon">{Icon}</Box>
+              <ThemeIcon
+                size={34}
+                radius="xl"
+                variant={active ? "filled" : "light"}
+                color={active ? "lime" : "gray"}
+                className="staff-bottom-bar__icon"
+              >
+                {Icon}
+              </ThemeIcon>
               <Text fw={700} size="xs" className="staff-bottom-bar__label">
                 {label}
               </Text>

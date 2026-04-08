@@ -17,7 +17,8 @@ import {
 import { signOut } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useMemo } from "react";
 import {
   IoCalendarClearOutline,
   IoCashOutline,
@@ -31,6 +32,62 @@ import {
 const PANEL_RADIUS = 18;
 const ITEM_RADIUS = 16;
 const ICON_RADIUS = 14;
+
+const PRIMARY_NAV_ROUTES = [
+  "/staff/tasks",
+  "/staff/profile",
+  "/staff/enter-time",
+  "/staff/your-pay",
+  "/staff/apply-leave",
+  "/staff/enter-availability",
+] as const;
+
+function resolveRouteMeta(pathname: string) {
+  if (pathname === "/staff" || pathname.startsWith("/staff/tasks")) {
+    if (pathname === "/staff" || pathname === "/staff/tasks") {
+      return { title: "Tasks", backHref: null };
+    }
+
+    return { title: "Task Details", backHref: "/staff/tasks" };
+  }
+
+  if (
+    pathname.startsWith("/staff/profile") ||
+    pathname.startsWith("/staff/staff-profile")
+  ) {
+    return { title: "Profile", backHref: null };
+  }
+
+  if (pathname.startsWith("/staff/enter-time")) {
+    return { title: "Time", backHref: null };
+  }
+
+  if (pathname.startsWith("/staff/your-pay")) {
+    return { title: "Pay", backHref: null };
+  }
+
+  if (pathname.startsWith("/staff/pay-history")) {
+    return { title: "Pay History", backHref: "/staff/your-pay" };
+  }
+
+  if (pathname.startsWith("/staff/pay-periods")) {
+    return { title: "Pay Periods", backHref: "/staff/your-pay" };
+  }
+
+  if (pathname.startsWith("/staff/pay-stub")) {
+    return { title: "Pay Stub", backHref: "/staff/your-pay" };
+  }
+
+  if (pathname.startsWith("/staff/apply-leave")) {
+    return { title: "Time-off", backHref: null };
+  }
+
+  if (pathname.startsWith("/staff/enter-availability")) {
+    return { title: "Availability", backHref: null };
+  }
+
+  return { title: "Eco Clean", backHref: null };
+}
 
 type NavItem = {
   href: string;
@@ -98,18 +155,45 @@ export default function StaffShell({
 }: {
   children: React.ReactNode;
 }) {
+  const router = useRouter();
   const {
     drawerOpened,
     openDrawer,
     closeDrawer,
-    title,
-    back,
     refreshing,
     onRefresh,
     onBack,
   } = useStaffUiStore();
 
   const pathname = usePathname();
+  const routeMeta = useMemo(() => resolveRouteMeta(pathname), [pathname]);
+  const isPrimaryRoute = useMemo(
+    () =>
+      PRIMARY_NAV_ROUTES.some((route) =>
+        pathname === route || pathname.startsWith(`${route}/`),
+      ) || pathname === "/staff",
+    [pathname],
+  );
+  const effectiveTitle = routeMeta.title;
+  const effectiveBack = !isPrimaryRoute && !!routeMeta.backHref;
+  const handleTopBarClick = () => {
+    if (effectiveBack) {
+      if (onBack) {
+        onBack();
+        return;
+      }
+
+      if (routeMeta.backHref) {
+        router.push(routeMeta.backHref);
+        return;
+      }
+
+      router.back();
+      return;
+    }
+
+    openDrawer();
+  };
 
   const navItems: NavItem[] = [
     {
@@ -257,14 +341,14 @@ export default function StaffShell({
       </Drawer>
 
       <TopBar
-        back={back}
-        onClick={back ? (onBack ?? (() => window.history.back())) : openDrawer}
-        title={title}
-        onRefresh={() => onRefresh?.()}
+        back={effectiveBack}
+        onClick={handleTopBarClick}
+        title={effectiveTitle}
+        onRefresh={onRefresh ?? undefined}
         refreshing={refreshing}
       />
 
-      {children}
+      <Box className="staff-shell__main">{children}</Box>
     </Container>
   );
 }

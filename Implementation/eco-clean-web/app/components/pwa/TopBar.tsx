@@ -12,55 +12,46 @@ interface Props {
 const TopBar = ({ back, onClick, title, onRefresh, refreshing }: Props) => {
   return (
     <Box pos="sticky" top={0} className="staff-topbar">
-      {back ? (
-        <Flex py={10} px="sm" align="center" className="staff-topbar__inner">
+      <Flex
+        justify="space-between"
+        py={10}
+        px="sm"
+        align="center"
+        gap="sm"
+        className="staff-topbar__inner"
+      >
+        <Flex align="center" gap="xs" style={{ minWidth: 0, flex: 1 }}>
           <ThemeIcon
             variant="light"
             color="lime"
             radius="lg"
-            size={40}
+            size={42}
             onClick={onClick}
             className="staff-topbar__nav-icon"
           >
-            <IoArrowBack size={22} />
+            {back ? <IoArrowBack size={22} /> : <IoMenuOutline size={24} />}
           </ThemeIcon>
 
-          <Text size="lg" fw={700} className="staff-topbar__title">
-            {title}
-          </Text>
-        </Flex>
-      ) : (
-        <Flex justify="space-between" py={10} px="sm" align="center" className="staff-topbar__inner">
-          <Flex align="center" gap="xs">
-            <ThemeIcon
-              variant="light"
-              color="lime"
-              radius="lg"
-              size={40}
-              onClick={onClick}
-              className="staff-topbar__nav-icon"
-            >
-              <IoMenuOutline size={24} />
-            </ThemeIcon>
-
-            <Text size="lg" fw={700} className="staff-topbar__title">
+          <Box style={{ minWidth: 0, flex: 1 }}>
+            <Text size="lg" fw={700} className="staff-topbar__title" truncate>
               {title}
             </Text>
-          </Flex>
-
-          <ActionIcon
-            radius="lg"
-            size={40}
-            variant="light"
-            aria-label="Refresh appointments"
-            onClick={onRefresh}
-            disabled={refreshing}
-            className="staff-topbar__refresh"
-          >
-            <IoRefreshOutline size={20} />
-          </ActionIcon>
+          </Box>
         </Flex>
-      )}
+
+        <ActionIcon
+          radius="lg"
+          size={42}
+          variant="light"
+          aria-label="Refresh"
+          onClick={onRefresh}
+          disabled={!onRefresh || refreshing}
+          className="staff-topbar__refresh"
+          style={{ visibility: onRefresh ? "visible" : "hidden" }}
+        >
+          <IoRefreshOutline size={20} />
+        </ActionIcon>
+      </Flex>
     </Box>
   );
 };

@@ -120,7 +120,7 @@ const Page = () => {
   );
 
   useEffect(() => {
-    setTitle("Eco Clean");
+    setTitle("Tasks");
     setBack(false);
 
     return () => {

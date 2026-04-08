@@ -1,5 +1,5 @@
-import StaffProfile from "@/app/components/pages/StaffProfile";
+import StaffProfileWorkspace from "@/app/components/pages/StaffProfileWorkspace";
 
 export default function StaffProfilePage() {
-  return <StaffProfile />;
+  return <StaffProfileWorkspace />;
 }

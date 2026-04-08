@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Badge,
   Container,
   Title,
   TextInput,
@@ -14,14 +15,15 @@ import {
   Card,
   SimpleGrid,
   Textarea,
+  ThemeIcon,
 } from "@mantine/core";
 import { DateInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { useSession } from "next-auth/react";
-import { useState } from "react";
-import { addAppDays, appNowDate, toAppDateKey } from "@/lib/dateTime";
+import { addAppDays, appNowDate } from "@/lib/dateTime";
 import { useEffect } from "react";
+import { IoCalendarOutline, IoTimeOutline } from "react-icons/io5";
 
 type DayAvailability = {
   active: boolean;
@@ -49,13 +51,7 @@ const DAYS = [
 ];
 
 export default function EnterAvailabilityPage() {
-  const { data: session, status } = useSession();
-
-  useEffect(() => {
-    if (session?.user?.name) {
-      form.setFieldValue("employeeName", session.user.name);
-    }
-  }, [session]);
+  const { data: session } = useSession();
 
   const form = useForm<AvailabilityFormValues>({
     initialValues: {
@@ -79,6 +75,14 @@ export default function EnterAvailabilityPage() {
       effectiveDate: (v) => (v ? null : "Effective date is required"),
     },
   });
+
+  useEffect(() => {
+    if (session?.user?.name) {
+      form.setFieldValue("employeeName", session.user.name);
+    }
+    // useForm returns a mutable object; depending on it here can cause a render loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.user?.name]);
 
   async function handleSubmit(values: AvailabilityFormValues) {
     const staffProfileId = session?.user?.id;
@@ -145,58 +149,106 @@ export default function EnterAvailabilityPage() {
   }
 
   return (
-    <Container size="md" py="xl">
-      <Title order={1} ta="center" mb="xl">
-        Your Availability
-      </Title>
-
+    <Container p={0} className="staff-app-page">
       <Box
         component="form"
         onSubmit={form.onSubmit(handleSubmit)}
-        style={{ maxWidth: 720, marginInline: "auto" }}
       >
-        <Stack gap="xl">
-          <Group grow>
-            <DateInput
-              label="Today's Date"
-              value={form.values.todaysDate}
-              readOnly
-            />
-            <TextInput
-              label="Employee Name"
-              {...form.getInputProps("employeeName")}
-              readOnly
-            />
-          </Group>
+        <Stack className="staff-page-stack">
+          <Card
+            withBorder
+            radius="lg"
+            p="lg"
+            className="staff-app-surface staff-app-surface--hero"
+          >
+            <Group justify="space-between" align="flex-start" gap="md">
+              <Box>
+                <Text size="xs" fw={700} c="#64748b" tt="uppercase" style={{ letterSpacing: "0.08em" }}>
+                  Schedule preferences
+                </Text>
+                <Title order={2} mt={6}>
+                  Availability
+                </Title>
+                <Text size="sm" c="dimmed" mt={4}>
+                  Tell us which days and times you are usually available.
+                </Text>
+              </Box>
 
-          <DateInput
-            label="Effective Date"
-            {...form.getInputProps("effectiveDate")}
-            placeholder="When does this start?"
-            minDate={new Date(new Date().getTime() + 7 * 24 * 3600)}
-          />
+              <Badge variant="light" color="lime">
+                Two shifts per day
+              </Badge>
+            </Group>
+          </Card>
 
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-              <DateInput
-                label="Effective Date"
-                placeholder="When does this start?"
-                minDate={addAppDays(appNowDate(), 7)}
-                {...form.getInputProps("effectiveDate")}
-              />
-              <Textarea
-                label="Comments"
-                placeholder="Optional notes"
-                minRows={2}
-                autosize
-                {...form.getInputProps("comments")}
-              />
-            </SimpleGrid>
-          {/* THE SHIFT GRID */}
-          <Box>
-            <Text fw={600} mb={10}>
-              Weekly Shift Availability <span style={{ color: "red" }}>*</span>
-            </Text>
-            <Card withBorder radius="md" p={0}>
+          <SimpleGrid cols={{ base: 1, sm: 2 }} className="staff-summary-grid">
+            <Card withBorder radius="lg" p="md" className="staff-app-surface">
+              <Group align="flex-start" wrap="nowrap">
+                <ThemeIcon size={40} radius="lg" color="lime" variant="light">
+                  <IoCalendarOutline size={20} />
+                </ThemeIcon>
+                <Box>
+                  <Text fw={700}>Effective date</Text>
+                  <Text size="sm" c="dimmed">
+                    Your changes will start next week.
+                  </Text>
+                </Box>
+              </Group>
+            </Card>
+
+            <Card withBorder radius="lg" p="md" className="staff-app-surface">
+              <Group align="flex-start" wrap="nowrap">
+                <ThemeIcon size={40} radius="lg" color="lime" variant="light">
+                  <IoTimeOutline size={20} />
+                </ThemeIcon>
+                <Box>
+                  <Text fw={700}>Shift pattern</Text>
+                  <Text size="sm" c="dimmed">
+                    Choose morning, afternoon, or both for each day.
+                  </Text>
+                </Box>
+              </Group>
+            </Card>
+          </SimpleGrid>
+
+          <Card withBorder radius="lg" p="lg" className="staff-app-surface">
+            <Stack gap="md">
+              <SimpleGrid cols={{ base: 1, sm: 2 }} className="staff-form-grid">
+                <DateInput
+                  label="Today's Date"
+                  value={form.values.todaysDate}
+                  readOnly
+                />
+                <TextInput
+                  label="Employee Name"
+                  {...form.getInputProps("employeeName")}
+                  readOnly
+                />
+                <DateInput
+                  label="Effective Date"
+                  placeholder="When does this start?"
+                  minDate={addAppDays(appNowDate(), 7)}
+                  {...form.getInputProps("effectiveDate")}
+                />
+                <Textarea
+                  label="Comments"
+                  placeholder="Optional notes"
+                  minRows={2}
+                  autosize
+                  {...form.getInputProps("comments")}
+                />
+              </SimpleGrid>
+            </Stack>
+          </Card>
+
+          <Card withBorder radius="lg" p={0} className="staff-app-surface staff-mobile-table-card">
+            <Box p="md">
+              <Text fw={700}>Weekly shift availability</Text>
+              <Text size="sm" c="dimmed" mt={4}>
+                Pick the times you are usually free to work.
+              </Text>
+            </Box>
+
+            <Box style={{ overflowX: "auto" }}>
               <Table verticalSpacing="sm" horizontalSpacing="md">
                 <Table.Thead>
                   <Table.Tr bg="gray.0">
@@ -249,20 +301,18 @@ export default function EnterAvailabilityPage() {
                   ))}
                 </Table.Tbody>
               </Table>
-            </Card>
-          </Box>
-
-          <TextInput label="Comments" {...form.getInputProps("comments")} />
+            </Box>
+          </Card>
 
           <Group justify="center" mt="md">
             <Button
               type="submit"
               size="lg"
-              radius="md"
-              color="green"
-              styles={{ root: { minWidth: 220, height: 56, fontWeight: 700 } }}
+              radius="lg"
+              color="lime"
+              styles={{ root: { minWidth: 220, height: 52, fontWeight: 700 } }}
             >
-              Submit
+              Save Availability
             </Button>
           </Group>
         </Stack>
