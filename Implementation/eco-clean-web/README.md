@@ -93,3 +93,12 @@ When adding a new feature, the preferred order is:
 1. Add or extend the request helper in `lib/api/*`.
 2. Add or extend the query/mutation hook in `hooks/*`.
 3. Use that hook in the page or component.
+
+## Feature Flags
+
+AI features can be disabled at deploy time.
+
+1. Copy `.env.example` to `.env.local`.
+2. Set `NEXT_PUBLIC_AI_ENABLED=false`.
+
+When this flag is off, AI UI is hidden and AI API routes return a disabled response instead of calling the model provider.

@@ -1,6 +1,5 @@
 import OpenAI from "openai";
 import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 
 import { buildPayComparisonContext } from "./context/payComparison";
 import { buildPayComparisonPrompt } from "./prompts/payComparison";
@@ -15,13 +14,19 @@ export async function generateStructuredJson<T>({
   system,
   user,
   schema,
+  schemaName = "structured_response",
+  model = "gpt-5-mini",
 }: {
   system: string;
   user: string;
   schema: z.ZodSchema<T>;
+  schemaName?: string;
+  model?: string;
 }): Promise<T> {
+  const jsonSchema = z.toJSONSchema(schema);
+
   const response = await openai.responses.create({
-    model: "gpt-5-mini",
+    model,
     input: [
       { role: "system", content: system },
       { role: "user", content: user },
@@ -29,58 +34,8 @@ export async function generateStructuredJson<T>({
     text: {
       format: {
         type: "json_schema",
-        name: "task_assistant_response",
-        schema: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            brief: { type: "string" },
-            priorityOrder: {
-              type: "array",
-              items: { type: "string" },
-            },
-            timePlan: {
-              type: "array",
-              items: {
-                type: "object",
-                additionalProperties: false,
-                properties: {
-                  label: { type: "string" },
-                  minutes: { type: "number" },
-                },
-                required: ["label", "minutes"],
-              },
-            },
-            alerts: {
-              type: "array",
-              items: { type: "string" },
-            },
-            checklist: {
-              type: "array",
-              items: { type: "string" },
-            },
-            riskLevel: {
-              type: "string",
-              enum: ["low", "medium", "high"],
-            },
-            riskReason: {
-              type: ["string", "null"],
-            },
-            completionDraft: {
-              type: ["string", "null"],
-            },
-          },
-          required: [
-            "brief",
-            "priorityOrder",
-            "timePlan",
-            "alerts",
-            "checklist",
-            "riskLevel",
-            "riskReason",
-            "completionDraft",
-          ],
-        },
+        name: schemaName,
+        schema: jsonSchema,
       },
     },
   });
@@ -99,7 +54,7 @@ export const PayComparisonResponseSchema = z.object({
   recommendation: z.string().nullable(),
 });
 
-export async function runPayComparisonFeature(a: any, b: any) {
+export async function runPayComparisonFeature(a: unknown, b: unknown) {
   const context = buildPayComparisonContext(a, b);
 
   const aiRaw = await generateStructuredJson({

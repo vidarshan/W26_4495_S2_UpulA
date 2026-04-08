@@ -3,7 +3,6 @@ import { prisma } from "@/lib/prisma";
 import { getToken } from "next-auth/jwt";
 
 export async function GET(req: NextRequest) {
-  console.log("🔥 LATEST PAY ROUTE HIT");
 
   try {
     const token = await getToken({ req });
@@ -11,12 +10,10 @@ export async function GET(req: NextRequest) {
     if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    // ✅ GET latest WITH relations
     const statements = await prisma.payStatement.findMany({
-      where: { userId: token.sub }, // ✅ fix token
+      where: { userId: token.sub },
       orderBy: { payPeriodStart: "desc" },
-      take: 3, // 🔥 get last 3
+      take: 3,
       include: {
         user: {
           include: {
@@ -29,8 +26,6 @@ export async function GET(req: NextRequest) {
     const latest = statements[0];
     const previous = statements[1] || null;
 
-    console.log("📄 LATEST:", latest);
-
     if (!latest) {
       return NextResponse.json(
         { error: "No statements found" },
@@ -38,13 +33,11 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // ✅ FIXED: start of year
     const yearStart = new Date(latest.payPeriodStart);
     yearStart.setMonth(0);
     yearStart.setDate(1);
     yearStart.setHours(0, 0, 0, 0);
 
-    // ✅ YTD (ONLY same year)
     const ytdStatements = await prisma.payStatement.findMany({
       where: {
         userId: token.id,
@@ -56,9 +49,6 @@ export async function GET(req: NextRequest) {
       orderBy: { payPeriodStart: "asc" },
     });
 
-    console.log("📊 YTD COUNT:", ytdStatements.length);
-
-    // ✅ FULL YTD CALC (match your main route)
     const ytd = ytdStatements.reduce(
       (acc, s) => {
         acc.gross += s.grossEarnings || 0;
@@ -99,10 +89,6 @@ export async function GET(req: NextRequest) {
         qpip: 0,
       }
     );
-
-    console.log("💰 YTD:", ytd);
-
-    // ✅ FINAL RESPONSE (MATCH UI EXPECTATION)
     return NextResponse.json({
       latest: {
         ...latest,
@@ -111,7 +97,7 @@ export async function GET(req: NextRequest) {
 
       previous,
 
-      all: statements, // 🔥 for dropdown
+      all: statements,
 
       ytd,
 
@@ -120,7 +106,7 @@ export async function GET(req: NextRequest) {
     });
 
   } catch (error) {
-    console.error("❌ GET LATEST PAY ERROR:", error);
+    console.error(error);
 
     return NextResponse.json(
       { error: "Failed to load latest pay statement" },

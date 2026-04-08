@@ -11,6 +11,7 @@ import {
   Stack,
   Text,
   ThemeIcon,
+  Loader,
 } from "@mantine/core";
 import { IoSparklesOutline, IoTrophyOutline } from "react-icons/io5";
 import { Staff } from "@/types";
@@ -104,14 +105,15 @@ const AIStaffSuggestionCard = ({
             available staff.
           </Text>
         ) : isLoading ? (
-          <Skeleton height={50} mb="xl">
-            Skeleton{" "}
-          </Skeleton>
+          <Group>
+            <Loader size="sm" />
+            <Text size="sm">Loading staff recommendations...</Text>
+          </Group>
         ) : isAiLoading ? (
-          <Skeleton height={50} mb="xl">
-            {" "}
-            Loading AI suggestions
-          </Skeleton>
+          <Group>
+            <Loader size="sm" />
+            <Text size="sm">Loading staff recommendations...</Text>
+          </Group>
         ) : aiError ? (
           <Text size="sm" c="dimmed">
             AI staff recommendation could not be generated for this slot.

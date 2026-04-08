@@ -37,7 +37,7 @@ export function getStaff(params?: {
       );
 
     return {
-      data: filtered, // ✅ FIX
+      data: filtered,
       meta: raw.meta ?? {
         page: 1,
         limit: filtered.length,

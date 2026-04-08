@@ -4,10 +4,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { generateStructuredJson } from "@/lib/ai";
 import { buildStaffRecommendationPrompt } from "@/lib/ai/prompts";
 import { StaffRecommendationResponseSchema } from "@/lib/ai/schemas";
+import { AI_FEATURES_ENABLED } from "@/lib/config/ai";
 import { CandidateResponse } from "@/types";
 
 export async function POST(req: NextRequest) {
   try {
+    if (!AI_FEATURES_ENABLED) {
+      return NextResponse.json(
+        { error: "AI features are disabled" },
+        { status: 503 },
+      );
+    }
+
     const body = await req.json().catch(() => ({}));
     const appointmentStart =
       typeof body?.appointmentStart === "string"

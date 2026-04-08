@@ -12,6 +12,7 @@ import { showLocalNotification } from "@/lib/notifications/showNotification";
 import { useUploadThing } from "@/lib/uploadthing";
 import formatPrettyDate from "@/lib/utils/formatPrettyDate";
 import { TaskAssistantResponse } from "@/lib/ai/schemas";
+import { AI_FEATURES_ENABLED } from "@/lib/config/ai";
 import { APP_TZ } from "@/lib/dateTime";
 import { JobNote, WorkSession } from "@/types";
 import {
@@ -136,6 +137,7 @@ function getErrorMessage(error: unknown) {
 }
 
 const Page = () => {
+  const aiFeaturesEnabled = AI_FEATURES_ENABLED;
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const appointmentId = params?.id;
@@ -190,7 +192,7 @@ const Page = () => {
 
         return res.json();
       },
-      enabled: !!appointmentId,
+      enabled: aiFeaturesEnabled && !!appointmentId,
     });
 
   useEffect(() => {
@@ -615,7 +617,7 @@ const Page = () => {
           Complete Job
         </Button>
 
-        {isAssistantLoading ? (
+        {aiFeaturesEnabled && isAssistantLoading ? (
           <Card radius={CARD_RADIUS} withBorder p={CARD_PADDING}>
             <Group gap="sm">
               <Loader size="sm" />
@@ -624,7 +626,7 @@ const Page = () => {
               </Text>
             </Group>
           </Card>
-        ) : aiTaskAssistant ? (
+        ) : aiFeaturesEnabled && aiTaskAssistant ? (
           <AiTaskAssistantCard data={aiTaskAssistant} />
         ) : null}
 

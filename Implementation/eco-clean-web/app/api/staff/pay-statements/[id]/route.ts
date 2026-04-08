@@ -7,7 +7,6 @@ export async function GET(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
-  console.log("PAY STATEMENT ROUTE HIT");
 
   try {
     const token = await getToken({ req });
@@ -47,7 +46,7 @@ export async function GET(
 
     const ytdStatements = await prisma.payStatement.findMany({
       where: {
-        userId: token.sub, // ✅ FIXED
+        userId: token.sub,
         payPeriodStart: {
           gte: yearStart,
           lte: statement.payPeriodStart,

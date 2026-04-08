@@ -34,7 +34,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { IoAddOutline, IoCloseOutline, IoImageOutline } from "react-icons/io5";
 import { createJob, CreateJobPayload, JobFormValues } from "@/lib/api/jobs";
 import { getClientAddresses, getClients } from "@/lib/api/client";
@@ -49,11 +49,11 @@ import {
   Staff,
 } from "@/types";
 import { DateTime } from "luxon";
+import { AI_FEATURES_ENABLED } from "@/lib/config/ai";
 import { APP_TZ } from "@/lib/dateTime";
 import { useUploadThing } from "@/lib/uploadthing";
 import { notifications } from "@mantine/notifications";
 import AIStaffSuggestionCard from "../cards/AIStaffSuggestionCard";
-import { getAvailableStaff } from "@/lib/api/users";
 
 interface Props {
   opened: boolean;
@@ -138,6 +138,55 @@ type AppointmentApiPayload = {
   images?: Array<{ url: string; fileKey?: string | null }>;
 };
 
+const SUPPORTED_SHIFT_START = "07:00";
+const SUPPORTED_SHIFT_END = "17:00";
+
+function toTotalMinutes(value: string) {
+  const [hour, minute] = value.split(":").map(Number);
+
+  if (
+    Number.isNaN(hour) ||
+    Number.isNaN(minute) ||
+    hour < 0 ||
+    hour > 23 ||
+    minute < 0 ||
+    minute > 59
+  ) {
+    return null;
+  }
+
+  return hour * 60 + minute;
+}
+
+function getAppointmentTimeError(startTime: string, endTime: string) {
+  const startMinutes = toTotalMinutes(startTime.trim());
+  const endMinutes = toTotalMinutes(endTime.trim());
+  const supportedStartMinutes = toTotalMinutes(SUPPORTED_SHIFT_START);
+  const supportedEndMinutes = toTotalMinutes(SUPPORTED_SHIFT_END);
+
+  if (
+    startMinutes === null ||
+    endMinutes === null ||
+    supportedStartMinutes === null ||
+    supportedEndMinutes === null
+  ) {
+    return "Enter a valid time";
+  }
+
+  if (endMinutes <= startMinutes) {
+    return "End time must be later than start time";
+  }
+
+  if (
+    startMinutes < supportedStartMinutes ||
+    endMinutes > supportedEndMinutes
+  ) {
+    return `Appointments must stay within ${SUPPORTED_SHIFT_START} to ${SUPPORTED_SHIFT_END}`;
+  }
+
+  return null;
+}
+
 function jsDateToHHmm(d: Date) {
   if (!(d instanceof Date) || Number.isNaN(d.getTime())) return "";
   const dt = DateTime.fromJSDate(d, { zone: APP_TZ });
@@ -162,7 +211,13 @@ function buildAppointmentWindow(
     { zone: APP_TZ },
   );
 
-  if (!start.isValid || !end.isValid || end <= start) return null;
+  if (
+    !start.isValid ||
+    !end.isValid ||
+    getAppointmentTimeError(appointment.startTime, appointment.endTime)
+  ) {
+    return null;
+  }
 
   return {
     appointmentStart: start.toUTC().toISO(),
@@ -326,7 +381,7 @@ export default function NewJobModal({
 }: Props) {
   const queryClient = useQueryClient();
   const { startUpload, isUploading } = useUploadThing("appointmentImages");
-  const initializedSelectionKeyRef = useRef<string | null>(null);
+  const aiFeaturesEnabled = AI_FEATURES_ENABLED;
 
   const initialValues = useMemo(
     () => buildInitialValues(selectedInfo),
@@ -472,6 +527,7 @@ export default function NewJobModal({
       );
       const candidateData = candidateQuery?.data?.data;
       const enabled =
+        aiFeaturesEnabled &&
         opened &&
         !!candidateData &&
         !!window?.appointmentStart &&
@@ -690,6 +746,19 @@ export default function NewJobModal({
           "End time is required",
         );
         return;
+      }
+
+      if (!values.isAnytime) {
+        const timeError = getAppointmentTimeError(
+          appt.startTime ?? "",
+          appt.endTime ?? "",
+        );
+
+        if (timeError) {
+          form.setFieldError(`appointments.${index}.startTime`, timeError);
+          form.setFieldError(`appointments.${index}.endTime`, timeError);
+          return;
+        }
       }
     }
 
@@ -919,36 +988,57 @@ export default function NewJobModal({
 
   const renderAppointments = () =>
     form.values.appointments.map((appt, index) => {
-      const shouldFetch =
-        opened &&
-        !!appt.startDate &&
-        !!appt.startTime &&
-        !!appt.endTime &&
-        appt.endTime > appt.startTime;
+      const candidateQuery = appointmentCandidateQueries[index];
+      const staffRecommendationQuery =
+        appointmentStaffRecommendationQueries[index];
+      const candidatePayload = candidateQuery?.data?.data;
+      const recommendedMembers = candidatePayload?.recommendedMembers ?? [];
+      const unavailableMembers =
+        candidatePayload?.staffMembers?.filter((member: CandidateStaff) => {
+          const m = member;
+          return (
+            (m.leaves?.length ?? 0) > 0 || (m.assignments?.length ?? 0) > 0
+          );
+        }) ?? [];
+      const staffMembers = candidatePayload?.staffMembers?.length
+        ? candidatePayload.staffMembers
+        : ((staffData?.data as Staff[] | undefined) ?? []);
 
-      const {
-        data: staffData,
-        isLoading: staffLoading,
-        isFetching: staffFetching,
-        isError: staffError,
-      } = useQuery<Staff[]>({
-        queryKey: [
-          "available-staff",
-          appt.startDate,
-          appt.startTime,
-          appt.endTime,
-          debouncedSearchAssignees,
-        ],
-        queryFn: () =>
-          getAvailableStaff({
-            date: appt.startDate!,
-            startTime: appt.startTime || "",
-            endTime: appt.endTime || "",
-            q: debouncedSearchAssignees,
-          }),
-        enabled: shouldFetch,
-        staleTime: 30_000,
+      const search = debouncedSearchAssignees.trim().toLowerCase();
+      const visibleStaff = staffMembers.filter((member: CandidateStaff) => {
+        if (!search) return true;
+        return member.name.toLowerCase().includes(search);
       });
+
+      const multiSelectData = visibleStaff.map((member: CandidateStaff) => {
+        const candidateMember = member as CandidateStaff;
+
+        const isRecommended = recommendedMembers.some(
+          (candidate: CandidateRecommendation) =>
+            candidate.staff.id === member.id,
+        );
+
+        const hasLeaveConflict = (candidateMember.leaves?.length ?? 0) > 0;
+
+        const hasAssignmentConflict =
+          (candidateMember.assignments?.length ?? 0) > 0;
+
+        let suffix = "";
+        if (isRecommended) suffix = "Recommended";
+        else if (hasLeaveConflict) suffix = "On leave";
+        else if (hasAssignmentConflict) suffix = "Busy";
+
+        return {
+          value: member.id,
+          label: suffix ? `${member.name} (${suffix})` : member.name,
+        };
+      });
+      const candidateWindow = buildAppointmentWindow(
+        appt,
+        form.values.isAnytime,
+      );
+      const candidatesDisabled =
+        !form.values.addressId || !candidateWindow?.appointmentStart;
 
       return (
         <Card withBorder mt="sm" key={appt.id}>
@@ -963,6 +1053,8 @@ export default function NewJobModal({
             <Grid.Col span={4}>
               <TimeInput
                 label="Start"
+                min={SUPPORTED_SHIFT_START}
+                max={SUPPORTED_SHIFT_END}
                 {...form.getInputProps(`appointments.${index}.startTime`)}
               />
             </Grid.Col>
@@ -970,32 +1062,46 @@ export default function NewJobModal({
             <Grid.Col span={4}>
               <TimeInput
                 label="End"
+                min={SUPPORTED_SHIFT_START}
+                max={SUPPORTED_SHIFT_END}
                 {...form.getInputProps(`appointments.${index}.endTime`)}
               />
             </Grid.Col>
-
+            {aiFeaturesEnabled ? (
+              <Grid.Col span={12}>
+                <AIStaffSuggestionCard
+                  recommendedMembers={recommendedMembers}
+                  unavailableMembers={unavailableMembers}
+                  isLoading={candidateQuery?.isLoading}
+                  isDisabled={candidatesDisabled}
+                  aiSuggestion={staffRecommendationQuery?.data ?? null}
+                  isAiLoading={staffRecommendationQuery?.isLoading}
+                  aiError={staffRecommendationQuery?.isError ?? false}
+                />
+              </Grid.Col>
+            ) : null}
             <Grid.Col span={12}>
               <MultiSelect
                 label="Staff"
                 searchable
                 placeholder={
-                  !shouldFetch
-                    ? "Select date & time first"
-                    : staffLoading
-                      ? "Loading staff..."
-                      : staffError
-                        ? "Failed to load staff"
-                        : "Assign staff"
+                  candidateQuery?.isLoading || staffLoading
+                    ? "Loading staff..."
+                    : candidateQuery?.isError || staffError
+                      ? "Failed to load staff"
+                      : candidatesDisabled
+                        ? "Select address, date, and time first"
+                        : "Assign available staff"
+                }
+                disabled={
+                  (candidateQuery?.isLoading ?? false) || staffLoading || isBusy
                 }
                 rightSection={
-                  staffFetching ? <Loader size="xs" /> : undefined
+                  candidateQuery?.isFetching || staffFetching ? (
+                    <Loader size="xs" />
+                  ) : undefined
                 }
-                data={
-                  staffData?.map((s) => ({
-                    value: s.id,
-                    label: s.name || s.email,
-                  })) || []
-                }
+                data={multiSelectData}
                 onSearchChange={setSearchAssignees}
                 {...form.getInputProps(`appointments.${index}.staffId`)}
               />

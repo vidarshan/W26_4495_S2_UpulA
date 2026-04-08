@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 🔥 get period dates
+    // Get period dates
     const period = await prisma.timesheetPeriod.findUnique({
       where: { id: periodId },
     });

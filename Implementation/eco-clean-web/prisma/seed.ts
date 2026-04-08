@@ -1131,9 +1131,6 @@ async function createTimesheetsAndPayroll(
   });
 
   if (!periods.length) {
-    console.log(
-      "ℹ️ No manually created timesheet periods found. Skipping timesheets/payroll seed.",
-    );
 
     return {
       existingPeriodsUsed: 0,
@@ -1349,9 +1346,6 @@ async function createGuaranteedReminderTestAppointments(
   staff: { id: string }[],
 ) {
   if (!SEED_TEST_EMAIL) {
-    console.log(
-      "ℹ️ SEED_TEST_EMAIL not set. Skipping guaranteed reminder test appointments.",
-    );
     return 0;
   }
 
@@ -1376,7 +1370,6 @@ async function createGuaranteedReminderTestAppointments(
   });
 
   if (!clients.length) {
-    console.log("ℹ️ No clients found for SEED_TEST_EMAIL.");
     return 0;
   }
 

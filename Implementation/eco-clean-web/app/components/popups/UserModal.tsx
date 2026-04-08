@@ -55,7 +55,7 @@ type FormValues = {
   confirmPassword: string;
 };
 
-// ✅ FIXED TYPE (matches backend)
+// Matches backend response shape
 type CreateUserResult = {
   user: {
     id: string;
@@ -134,7 +134,7 @@ export default function UserUpsertModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opened, mode, user?.id]);
 
-  // ✅ FIXED MUTATION
+  // Mutation
   const mutation = useMutation<
     CreateUserResult | EditUserResult,
     Error,
@@ -168,7 +168,7 @@ export default function UserUpsertModal({
         queryClient.invalidateQueries({ queryKey: ["users"], exact: false }),
       ]);
 
-      // ✅ CLEAN TYPE-SAFE HANDLING
+      // Type-safe result handling
       if (mode === "create" && "temporaryPassword" in result) {
         const temp = result.temporaryPassword;
 

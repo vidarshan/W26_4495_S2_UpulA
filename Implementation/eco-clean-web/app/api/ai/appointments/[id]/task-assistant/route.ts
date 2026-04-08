@@ -7,12 +7,20 @@ import {
   getTaskAssistantInsightType,
   runTaskAssistantFeature,
 } from "@/lib/ai";
+import { AI_FEATURES_ENABLED } from "@/lib/config/ai";
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    if (!AI_FEATURES_ENABLED) {
+      return NextResponse.json(
+        { error: "AI features are disabled" },
+        { status: 503 },
+      );
+    }
+
     const { id } = await params;
     const body = await req.json().catch(() => ({}));
     const mode = body?.mode ?? "plan";
@@ -84,7 +92,7 @@ export async function POST(
     }
 
     return NextResponse.json(result);
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Failed to generate task assistant response" },
       { status: 500 },

@@ -9,7 +9,7 @@ export async function GET(
   try {
     const token = await getToken({ req });
 
-    // 🔐 Admin check
+    // Admin check
     if (!token || token.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -63,7 +63,7 @@ export async function PATCH(
   try {
     const token = await getToken({ req });
 
-    // 🔐 Admin check
+    // Admin check
     if (!token || token.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -80,7 +80,7 @@ export async function PATCH(
       );
     }
 
-    // 🔍 Get staff profile
+    // Get staff profile
     const user = await prisma.user.findUnique({
       where: { id },
       include: { staffProfile: true },

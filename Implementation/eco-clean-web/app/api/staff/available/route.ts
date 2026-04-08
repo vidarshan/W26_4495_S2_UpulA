@@ -35,24 +35,61 @@ export async function GET(req: Request) {
 
     const jsDate = dateTime.toJSDate();
 
-    // 👉 Get weekday (mon, tue, etc.)
+    // Get weekday (mon, tue, etc.)
     const day = dateTime.toFormat("ccc").toLowerCase(); // mon, tue...
 
-    // 👉 Determine shift
-    const getShift = (startTime: string) => {
-      const hour = Number(startTime.split(":")[0]);
+    const toTotalMinutes = (value: string) => {
+      const [hour, minute] = value.split(":").map(Number);
 
-      if (hour >= 7 && hour < 12) return "S1";
-      if (hour >= 12 && hour < 17) return "S2";
+      if (
+        Number.isNaN(hour) ||
+        Number.isNaN(minute) ||
+        hour < 0 ||
+        hour > 23 ||
+        minute < 0 ||
+        minute > 59
+      ) {
+        return null;
+      }
 
-      return null;
+      return hour * 60 + minute;
     };
 
-    const shift = getShift(startTime);
+    const startMinutes = toTotalMinutes(startTime);
+    const endMinutes = toTotalMinutes(endTime);
 
-    if (!shift) {
+    if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) {
       return NextResponse.json(
-        { error: "Time outside supported shifts (7–17)" },
+        { error: "Invalid time range" },
+        { status: 400 }
+      );
+    }
+
+    const SHIFT_1_START = 7 * 60;
+    const SHIFT_1_END = 12 * 60;
+    const SHIFT_2_START = 12 * 60;
+    const SHIFT_2_END = 17 * 60;
+
+    if (startMinutes < SHIFT_1_START || endMinutes > SHIFT_2_END) {
+      return NextResponse.json(
+        { error: "Time outside supported shifts (07:00–17:00)" },
+        { status: 400 }
+      );
+    }
+
+    const requiredShifts: Array<"S1" | "S2"> = [];
+
+    if (startMinutes < SHIFT_1_END && endMinutes > SHIFT_1_START) {
+      requiredShifts.push("S1");
+    }
+
+    if (startMinutes < SHIFT_2_END && endMinutes > SHIFT_2_START) {
+      requiredShifts.push("S2");
+    }
+
+    if (!requiredShifts.length) {
+      return NextResponse.json(
+        { error: "Time outside supported shifts (07:00–17:00)" },
         { status: 400 }
       );
     }
@@ -96,9 +133,11 @@ export async function GET(req: Request) {
     // ---------------------------------------------------
     const availableStaff = latestAvailabilities.filter((a) => {
       const isActive = a[`${day}Active` as keyof typeof a];
-      const shiftAvailable = a[`${day}${shift}` as keyof typeof a];
+      const supportsAllShifts = requiredShifts.every((shift) =>
+        Boolean(a[`${day}${shift}` as keyof typeof a])
+      );
 
-      return Boolean(isActive && shiftAvailable);
+      return Boolean(isActive && supportsAllShifts);
     });
 
     // ---------------------------------------------------

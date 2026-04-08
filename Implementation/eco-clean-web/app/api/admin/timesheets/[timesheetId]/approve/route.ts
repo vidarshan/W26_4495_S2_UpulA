@@ -7,7 +7,6 @@ export async function POST(
   context: { params: Promise<{ timesheetId: string }> }
 ) {
   try {
-    // 🔐 1. Auth
     const token = await getToken({ req });
 
     if (!token || token.role !== "ADMIN") {
@@ -16,7 +15,6 @@ export async function POST(
 
     const adminId = token.id as string;
 
-    // ✅ FIX: await params
     const { timesheetId } = await context.params;
 
     if (!timesheetId) {
@@ -26,9 +24,6 @@ export async function POST(
       );
     }
 
-    console.log("Approving timesheet:", timesheetId);
-
-    // 📦 2. Fetch
     const timesheet = await prisma.timesheet.findUnique({
       where: { id: timesheetId },
       include: {
@@ -55,7 +50,6 @@ export async function POST(
       );
     }
 
-    // 🧠 3. Calculate totals
     let totalMinutes = 0;
     let totalPay = 0;
 
@@ -94,7 +88,6 @@ export async function POST(
       days: snapshotDays,
     };
 
-    // 🔒 4. Update (FIXED RELATION HERE)
     const updatedTimesheet = await prisma.timesheet.update({
       where: { id: timesheetId },
       data: {
@@ -102,17 +95,14 @@ export async function POST(
         approvedAt: new Date(),
 
         approvedBy: {
-          connect: { id: adminId }, // ✅ FIX HERE
+          connect: { id: adminId }, 
         },
-
-        // isLocked: true,
         snapshot,
         totalMinutes,
         totalPay,
       },
     });
 
-    // 📤 5. Response
     return NextResponse.json({
       message: "Timesheet approved successfully",
       timesheet: updatedTimesheet,

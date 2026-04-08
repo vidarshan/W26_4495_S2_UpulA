@@ -62,7 +62,7 @@ export async function PATCH(
   try {
     const token = await getToken({ req });
 
-    // 🔐 Only ADMIN allowed
+    // Only ADMIN allowed
     if (!token || token.role !== "ADMIN") {
       return NextResponse.json(
         { error: "Unauthorized" },
@@ -82,7 +82,7 @@ export async function PATCH(
     const body = await req.json();
     const { position, hourlyRate } = body;
 
-    // ✅ Validation
+    // Validation
     if (hourlyRate !== undefined && Number(hourlyRate) < 0) {
       return NextResponse.json(
         { error: "Hourly rate must be >= 0" },
@@ -90,7 +90,7 @@ export async function PATCH(
       );
     }
 
-    // 🔍 Find staff profile via userId
+    // Find staff profile via userId
     const staffProfile = await prisma.staffProfile.findUnique({
       where: { userId: id },
     });
@@ -102,7 +102,7 @@ export async function PATCH(
       );
     }
 
-    // 🚀 Update
+    // Update
     const updated = await prisma.staffProfile.update({
       where: { id: staffProfile.id },
       data: {

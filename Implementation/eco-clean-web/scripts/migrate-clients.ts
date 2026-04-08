@@ -2,8 +2,6 @@ import { prisma } from "@/lib/prisma";
 import { Role } from "@prisma/client";
 import "dotenv/config";
 
-console.log("DB URL:", process.env.DATABASE_URL);
-
 async function migrateClients() {
   const users = await prisma.user.findMany({
     where: { role: Role.CLIENT },

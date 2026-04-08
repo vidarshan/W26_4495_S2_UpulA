@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { runPayComparisonFeature } from "@/lib/ai"; // ✅ uses your lib folder
+import { runPayComparisonFeature } from "@/lib/ai";
+import { AI_FEATURES_ENABLED } from "@/lib/config/ai";
 
 export async function POST(req: NextRequest) {
   try {
+    if (!AI_FEATURES_ENABLED) {
+      return NextResponse.json(
+        { error: "AI features are disabled" },
+        { status: 503 },
+      );
+    }
+
     const { periodA, periodB } = await req.json();
 
     if (!periodA || !periodB) {

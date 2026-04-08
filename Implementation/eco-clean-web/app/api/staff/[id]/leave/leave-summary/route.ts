@@ -14,7 +14,7 @@ function calculateLeaveHours(start: Date, end: Date) {
       (new Date(end).getTime() - new Date(start).getTime()) / msPerDay
     ) || 1;
 
-  return days * 8; // 👈 key fix
+  return days * 8;
 }
 
 export async function GET(
@@ -40,7 +40,7 @@ export async function GET(
         return acc + calculateLeaveHours(l.startAt, l.endAt);
       }, 0);
 
-    // 🔒 GUARDRAILS
+    // Guardrails
     const vacationRemaining = Math.max(
       POLICY.VACATION - vacationUsed,
       0

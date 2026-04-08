@@ -2,9 +2,17 @@ export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 import { runTaskAssistantFeature } from "@/lib/ai";
+import { AI_FEATURES_ENABLED } from "@/lib/config/ai";
 
 export async function POST(req: NextRequest) {
   try {
+    if (!AI_FEATURES_ENABLED) {
+      return NextResponse.json(
+        { error: "AI features are disabled" },
+        { status: 503 },
+      );
+    }
+
     const body = await req.json().catch(() => ({}));
     const addressId =
       typeof body?.addressId === "string" ? body.addressId.trim() : "";

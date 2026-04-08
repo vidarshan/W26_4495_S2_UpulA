@@ -63,7 +63,7 @@ export async function POST(
 
     const userId = session.user.id;
 
-    // 🔥 Step 1: Get staff profile
+    // Step 1: Get staff profile
     const staffProfile = await prisma.staffProfile.findUnique({
       where: { userId },
     });

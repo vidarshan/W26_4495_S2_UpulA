@@ -6,7 +6,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: leaveId } = await params; // 👈 FIX HERE
+    const { id: leaveId } = await params;
 
     const body = await req.json();
     const { status } = body;

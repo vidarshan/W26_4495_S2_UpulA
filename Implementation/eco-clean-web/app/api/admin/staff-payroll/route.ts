@@ -12,8 +12,8 @@ export async function GET(req: NextRequest) {
           is: {
             timesheets: {
               some: {
-                ...(periodId ? { periodId: periodId } : {}), // ✅ CORRECT FIELD
-                status: "APPROVED", // ✅ ONLY approved
+                ...(periodId ? { periodId: periodId } : {}),
+                status: "APPROVED",
               },
             },
           },

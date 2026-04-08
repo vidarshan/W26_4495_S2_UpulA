@@ -15,7 +15,7 @@ export async function PATCH(req: NextRequest) {
     const body = await req.json();
     const { phoneNumber } = body;
 
-    // ✅ Validation
+    // Validation
     if (!phoneNumber || phoneNumber.trim().length < 6) {
       return NextResponse.json(
         { error: "Invalid phone number" },
@@ -23,7 +23,7 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    // 🔍 Find staff profile
+    // Find staff profile
     const staffProfile = await prisma.staffProfile.findUnique({
       where: { userId: userId as string },
     });
@@ -35,7 +35,7 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    // 🚀 Update phone number
+    // Update phone number
     const updated = await prisma.staffProfile.update({
       where: { id: staffProfile.id },
       data: {

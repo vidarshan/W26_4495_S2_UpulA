@@ -71,7 +71,7 @@ export async function POST(req: Request) {
     email = email.trim().toLowerCase();
     name = name?.trim() || "";
 
-    // 🔍 Check duplicate
+    // Check duplicate
     const existing = await prisma.user.findUnique({
       where: { email },
     });
@@ -83,7 +83,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // 🔐 Generate temp password
+    // Generate temp password
     const tempPassword = crypto.randomBytes(4).toString("hex");
 
     const hashedPassword = await bcrypt.hash(tempPassword, 10);
@@ -120,7 +120,7 @@ export async function POST(req: Request) {
       return { user, staffProfile };
     });
 
-    // ✅ CLEAN CONSISTENT RESPONSE
+    // Consistent response
     return NextResponse.json({
       user: {
         id: result.user.id,
@@ -142,4 +142,3 @@ export async function POST(req: Request) {
     );
   }
 }
-

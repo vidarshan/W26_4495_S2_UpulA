@@ -67,7 +67,7 @@ export async function PATCH(
 
   const body = (await req.json()) as PatchBody;
 
-  // ✅ only update provided fields
+  // Only update provided fields
   const data: Partial<{
     name: string;
     email: string;

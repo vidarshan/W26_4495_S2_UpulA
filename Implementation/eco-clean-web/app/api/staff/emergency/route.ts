@@ -14,7 +14,7 @@ export async function PATCH(req: NextRequest) {
 
     const { name, phoneNumber, relationship } = body;
 
-    // ✅ validation
+    // Validation
     if (!name || !phoneNumber || !relationship) {
       return NextResponse.json(
         { error: "Missing required fields" },

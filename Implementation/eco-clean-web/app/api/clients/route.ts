@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
-// ✅ Define Address type here (or move to /types/address.ts and import from there)
+// Define Address type here, or move it to /types/address.ts and import it.
 type Address = {
   street1: string;
   street2?: string | null;

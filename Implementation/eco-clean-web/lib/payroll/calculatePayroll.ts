@@ -48,7 +48,7 @@ const QC = {
     { upper: Infinity, rate: 0.29, constant: 15684.68 },
   ],
 
-  // ✅ Québec brackets WITH constants (FIXED)
+  // Quebec brackets with constants
   quebecBrackets: [
     { upper: 54345, rate: 0.14, constant: 0 },
     { upper: 108680, rate: 0.19, constant: 2717 },
@@ -61,7 +61,7 @@ const QC = {
   qppExemptionAnnual: 3500,
 
   eiRate: 0.013,
-  eiMaxAnnual: 1002, // ✅ cap added
+  eiMaxAnnual: 1002, // cap added
 
   qpipRate: 0.0043,
 
@@ -111,7 +111,7 @@ export function calculatePayroll(input: PayrollInput): PayrollOutput {
 
   const qpp = manual.qpp ?? calculatedQpp;
 
-  // ✅ EI with cap
+  // EI with cap
   const eiAnnualRaw =
     grossPayPerPeriod * payPeriodsPerYear * QC.eiRate;
 
@@ -191,12 +191,12 @@ if (quebecTax === undefined) {
   const baseTax =
     annualIncome * bracket.rate - bracket.constant;
 
-  // 🔹 Annual contributions
+  // Annual contributions
   const qppAnnual = qpp * payPeriodsPerYear;
   const eiAnnual = ei * payPeriodsPerYear;
   const qpipAnnual = qpip * payPeriodsPerYear;
 
-  // 🔹 Total credits
+  // Total credits
   const totalCredits =
     18952 +
     qppAnnual +

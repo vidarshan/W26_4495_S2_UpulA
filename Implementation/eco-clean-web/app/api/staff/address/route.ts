@@ -21,7 +21,7 @@ export async function PATCH(req: NextRequest) {
       country,
     } = body;
 
-    // ✅ basic validation
+    // Basic validation
     if (!street1 || !city || !province || !country) {
       return NextResponse.json(
         { error: "Missing required fields" },
@@ -29,7 +29,7 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    // 🔍 find staff profile
+    // Find staff profile
     const staffProfile = await prisma.staffProfile.findUnique({
       where: { userId: token.id },
     });
@@ -41,7 +41,7 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    // 🚀 UPSERT (key part)
+    // Upsert
     const address = await prisma.staffAddress.upsert({
       where: {
         staffProfileId: staffProfile.id,

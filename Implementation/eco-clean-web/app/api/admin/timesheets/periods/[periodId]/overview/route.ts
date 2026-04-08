@@ -41,7 +41,7 @@ export async function GET(_req: Request, context: RouteContext) {
 
     const { periodId } = await context.params;
 
-    // 🔹 Fetch period
+    // Fetch period
     const period = await prisma.timesheetPeriod.findUnique({
       where: { id: periodId },
     });
@@ -59,7 +59,7 @@ export async function GET(_req: Request, context: RouteContext) {
       .startOf("day")
       .toJSDate();
 
-    // 🔹 Fetch data
+    // Fetch data
     const [timesheets, assignments] = await Promise.all([
       prisma.timesheet.findMany({
         where: { periodId },
@@ -111,7 +111,7 @@ export async function GET(_req: Request, context: RouteContext) {
     ]);
 
     // ======================================================
-    // ✅ STEP 1: Build employees from TIMESHEETS ONLY
+    // Step 1: Build employees from timesheets only
     // ======================================================
 
     const employees = timesheets.map((ts) => {
@@ -149,7 +149,7 @@ export async function GET(_req: Request, context: RouteContext) {
     });
 
     // ======================================================
-    // ✅ STEP 2: Attach assignments
+    // Step 2: Attach assignments
     // ======================================================
 
     for (const assignment of assignments) {
@@ -199,7 +199,7 @@ export async function GET(_req: Request, context: RouteContext) {
     }
 
     // ======================================================
-    // ✅ STEP 3: Final transformation
+    // Step 3: Final transformation
     // ======================================================
 
     const result = employees.map((emp) => {

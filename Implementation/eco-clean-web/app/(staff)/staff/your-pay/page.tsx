@@ -26,6 +26,7 @@ import {
 } from "recharts";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { AI_FEATURES_ENABLED } from "@/lib/config/ai";
 
 import { Collapse, Select } from "@mantine/core";
 
@@ -75,6 +76,7 @@ type PayCompareResponse = {
 };
 
 export default function YourPayPage() {
+  const aiFeaturesEnabled = AI_FEATURES_ENABLED;
   useSession();
   const [data, setData] = useState<PayOverviewResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -97,7 +99,6 @@ export default function YourPayPage() {
 
         setHistory(historyData.all || []);
 
-        // ✅ Auto-select defaults
         if (historyData.all && historyData.all.length >= 2) {
           setPeriodB(historyData.all[0]); // latest
           setPeriodA(historyData.all[1]); // previous
@@ -106,7 +107,6 @@ export default function YourPayPage() {
         if (!res.ok) throw new Error("Failed to fetch");
 
         const result = (await res.json()) as PayOverviewResponse;
-        console.log("📦 PAY DATA:", result);
 
         setData(result);
       } catch (err) {
@@ -135,7 +135,7 @@ export default function YourPayPage() {
     );
   }
 
-  // ✅ CORRECT SOURCE
+  // Correct source
   const latest = data.latest || {};
   const b = latest.breakdown || {};
   const ytd = data.ytd || {};
@@ -233,7 +233,7 @@ export default function YourPayPage() {
       </Card>
 
       <Grid gutter="xl">
-        {/* 🔥 CHART */}
+        {/* Chart */}
         <Grid.Col span={{ base: 12, md: 6 }}>
           <Card p="lg" withBorder radius="lg" className="staff-app-surface">
             <Title order={4} ta="center" mb="md">
@@ -265,7 +265,7 @@ export default function YourPayPage() {
           </Card>
         </Grid.Col>
 
-        {/* 🔥 SUMMARY */}
+        {/* Summary */}
         <Grid.Col span={{ base: 12, md: 6 }}>
           <Stack gap="lg">
             <SummaryBlock
@@ -314,7 +314,8 @@ export default function YourPayPage() {
         </Grid.Col>
       </Grid>
 
-      <Card withBorder radius="lg" mt="xl" className="staff-app-surface">
+      {aiFeaturesEnabled ? (
+        <Card withBorder radius="lg" mt="xl" className="staff-app-surface">
         <Group justify="space-between">
           <Text fw={700}>AI Pay Insights</Text>
 
@@ -412,9 +413,10 @@ export default function YourPayPage() {
             )}
           </Stack>
         </Collapse>
-      </Card>
+        </Card>
+      ) : null}
 
-      {/* 🔥 BUTTONS (CENTERED CLEAN) */}
+      {/* Buttons */}
       <Group justify="center" mt={50}>
         <Stack align="center" gap="md">
           <Button
@@ -443,7 +445,7 @@ export default function YourPayPage() {
   );
 }
 
-/* 🔥 CLEAN SUMMARY BLOCK */
+/* Summary block */
 function SummaryBlock({
   title,
   total,

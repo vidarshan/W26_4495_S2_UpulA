@@ -154,7 +154,6 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
 
   const { data: appointment, isLoading } = useAppointment(selectedApptId);
   const qc = useQueryClient();
-  console.log(appointment);
 
   const { data: staffData, isLoading: staffLoading } = useQuery<
     PaginatedResponse<Staff>
