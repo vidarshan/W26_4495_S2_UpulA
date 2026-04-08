@@ -17,6 +17,7 @@ import {
   TextInput,
   ThemeIcon,
   Loader,
+  Divider,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
@@ -87,7 +88,6 @@ export default function UserUpsertModal({
   const queryClient = useQueryClient();
   const [generatedPassword, setGeneratedPassword] = useState("");
   const [copied, setCopied] = useState(false);
-  const [detailsOpen, setDetailsOpen] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   const initialValues = useMemo<FormValues>(
@@ -291,7 +291,7 @@ export default function UserUpsertModal({
       opened={opened}
       onClose={() => handleClose()}
       title={mode === "create" ? "Add User" : "Edit User"}
-      size={mode === "edit" ? "lg" : "sm"}
+      size={mode === "edit" && form.values.role === "STAFF" ? "xl" : mode === "edit" ? "lg" : "sm"}
       centered
       closeOnClickOutside={!isBusyAny}
       closeOnEscape={!isBusyAny}
@@ -435,32 +435,20 @@ export default function UserUpsertModal({
               </Stack>
             </Paper>
           )}
+
+          {mode === "edit" && form.values.role === "STAFF" && user?.id && (
+            <>
+              <Divider
+                label="Staff details"
+                labelPosition="center"
+                color="gray.4"
+              />
+              <AdminStaffDetailsModal embedded staff={user} />
+            </>
+          )}
         </Stack>
 
         <Flex mt="md" gap="xs" direction="column">
-          {mode === "edit" && form.values.role === "STAFF" && (
-            <Paper withBorder radius="lg" p="md">
-              <Group justify="space-between" align="center" wrap="wrap">
-                <Stack gap={2}>
-                  <Text fw={700}>Staff workspace</Text>
-                  <Text size="sm" c="dimmed">
-                    Open profile, payroll, and contact management in one larger
-                    admin panel.
-                  </Text>
-                </Stack>
-                <Button
-                  variant="light"
-                  color="lime"
-                  onClick={() => {
-                    setDetailsOpen(true);
-                  }}
-                >
-                  Open Staff Workspace
-                </Button>
-              </Group>
-            </Paper>
-          )}
-
           <Group grow>
             {mode === "edit" && (
               <Button
@@ -482,12 +470,6 @@ export default function UserUpsertModal({
           </Group>
         </Flex>
       </form>
-
-      <AdminStaffDetailsModal
-        opened={detailsOpen}
-        onClose={() => setDetailsOpen(false)}
-        staff={user ?? null}
-      />
 
       <Modal
         opened={confirmDeleteOpen}

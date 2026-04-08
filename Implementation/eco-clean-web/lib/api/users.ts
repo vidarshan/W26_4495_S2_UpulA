@@ -1,4 +1,4 @@
-import { PaginatedResponse, Staff, StaffRole, User } from "@/types";
+import { Staff, StaffRole, User } from "@/types";
 import { apiClient } from "./client";
 
 export function getStaff(params?: {
@@ -21,27 +21,24 @@ export function getStaff(params?: {
     sp.set("limit", String(params?.limit ?? 20));
   }
 
-  return apiClient<any>(`/api/users?${sp.toString()}`).then((res) => {
-    const raw = res?.data ?? res;
-
-    const filtered = (raw.data ?? raw)
-      .filter((u: any) => u.role === "STAFF")
-      .map(
-        (u: any): Staff => ({
-          id: u.id,
-          name: u.name ?? "",
-          email: u.email ?? "",
-          role: u.role,
-          createdAt: u.createdAt ?? new Date().toISOString(),
-        })
-      );
+  return apiClient<User[]>(`/api/users?${sp.toString()}`).then((res) => {
+    const rawUsers = Array.isArray(res) ? res : [];
+    const users = rawUsers.map(
+      (u): Staff => ({
+        id: u.id,
+        name: u.name ?? "",
+        email: u.email ?? "",
+        role: u.role,
+        createdAt: u.createdAt ?? new Date().toISOString(),
+      })
+    );
 
     return {
-      data: filtered,
-      meta: raw.meta ?? {
+      data: users,
+      meta: {
         page: 1,
-        limit: filtered.length,
-        total: filtered.length,
+        limit: users.length,
+        total: users.length,
         totalPages: 1,
       },
     };

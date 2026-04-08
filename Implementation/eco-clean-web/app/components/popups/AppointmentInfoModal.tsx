@@ -7,7 +7,6 @@ import {
   Box,
   Button,
   Divider,
-  Flex,
   Group,
   Image,
   Modal,
@@ -26,7 +25,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { notifications } from "@mantine/notifications";
 import {
   IoCalendar,
-  IoBriefcase,
   IoClose,
   IoDocumentText,
   IoLocation,
@@ -34,7 +32,6 @@ import {
   IoPerson,
   IoPricetag,
   IoTime,
-  IoTrashBin,
 } from "react-icons/io5";
 
 import Loader from "../UI/Loader";
@@ -690,23 +687,27 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
                 </>
               )}
 
-              <Flex mt="xs" gap="xs">
-                <Button
-                  color="red"
-                  variant="light"
-                  onClick={() => openConfirmCancel("APPOINTMENT")}
-                >
-                  Delete
-                </Button>
+              <Stack mt="xs" gap="xs">
+                <Group justify="space-between" wrap="wrap">
+                  <Button
+                    color="red"
+                    variant="light"
+                    onClick={() => openConfirmCancel("APPOINTMENT")}
+                  >
+                    Delete Appointment
+                  </Button>
 
-                <Button variant="default" onClick={handleClose} fullWidth>
-                  Cancel
-                </Button>
+                  <Group gap="xs" grow>
+                    <Button variant="default" onClick={handleClose}>
+                      Cancel
+                    </Button>
 
-                <Button type="submit" fullWidth disabled={!form.isDirty()}>
-                  Save
-                </Button>
-              </Flex>
+                    <Button type="submit" disabled={!form.isDirty()}>
+                      Save Changes
+                    </Button>
+                  </Group>
+                </Group>
+              </Stack>
             </Stack>
           </form>
         </Paper>
