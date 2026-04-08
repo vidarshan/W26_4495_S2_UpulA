@@ -233,12 +233,10 @@ export default function AdminPayStubPage({ params }: PageProps) {
             component={Link}
             href="/admin/pay-periods"
             variant="default"
-            leftSection={<IoArrowBack size={16} />}
           >
             Back to pay periods
           </Button>
           <Button
-            leftSection={<IoDownload size={16} />}
             onClick={handleDownloadPdf}
             loading={downloading}
             color="lime"

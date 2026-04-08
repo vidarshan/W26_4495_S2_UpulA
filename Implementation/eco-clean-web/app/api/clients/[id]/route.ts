@@ -27,8 +27,8 @@ export async function GET(
       );
     }
 
-    const client = await prisma.client.findUnique({
-      where: { id: clientId },
+    const client = await prisma.client.findFirst({
+      where: { id: clientId, deletedAt: null },
       include: {
         addresses: { orderBy: { isPrimary: "desc" } },
         notes: { orderBy: { createdAt: "desc" }, take: 1 },
@@ -97,8 +97,8 @@ export async function PATCH(
     }
 
     const result = await prisma.$transaction(async (tx) => {
-      const existing = await tx.client.findUnique({
-        where: { id: clientId },
+      const existing = await tx.client.findFirst({
+        where: { id: clientId, deletedAt: null },
         select: { id: true },
       });
 
@@ -187,6 +187,46 @@ export async function PATCH(
     return NextResponse.json({ data: result });
   } catch (error) {
     console.error("PATCH /api/clients/[id] error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
+  }
+}
+
+export async function DELETE(
+  _req: NextRequest,
+  context: { params: Promise<{ id: string }> },
+) {
+  try {
+    const { id: clientId } = await context.params;
+
+    if (!clientId) {
+      return NextResponse.json(
+        { error: "Client ID required" },
+        { status: 400 },
+      );
+    }
+
+    const existing = await prisma.client.findFirst({
+      where: { id: clientId, deletedAt: null },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      return NextResponse.json({ error: "Client not found" }, { status: 404 });
+    }
+
+    await prisma.client.update({
+      where: { id: clientId },
+      data: {
+        deletedAt: new Date(),
+      },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("DELETE /api/clients/[id] error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },

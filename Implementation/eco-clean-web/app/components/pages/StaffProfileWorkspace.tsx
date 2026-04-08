@@ -264,7 +264,6 @@ export default function StaffProfileWorkspace() {
         <Group justify="space-between" gap="sm" wrap="wrap">
           {!isEditing ? (
             <Button
-              leftSection={<IoPencil />}
               variant="light"
               color="lime"
               onClick={() => setIsEditing(true)}
@@ -275,7 +274,6 @@ export default function StaffProfileWorkspace() {
             <Group gap="xs" wrap="wrap">
               <Button
                 color="lime"
-                leftSection={<IoCheckmark />}
                 loading={saving}
                 onClick={handleSave}
               >
@@ -283,7 +281,6 @@ export default function StaffProfileWorkspace() {
               </Button>
               <Button
                 variant="default"
-                leftSection={<IoClose />}
                 onClick={() => setIsEditing(false)}
               >
                 Cancel

@@ -4,8 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { AppointmentStatus, Prisma, Role } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { parseAppDateTimeInput } from "@/lib/dateTime";
+import { UTApi } from "uploadthing/server";
 
 type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
+const utapi = new UTApi();
 
 type PatchBody = {
   startTime?: string;
@@ -419,6 +421,58 @@ export async function PATCH(
 
     return NextResponse.json(
       { error: "Failed to update appointment" },
+      { status: 500 },
+    );
+  }
+}
+
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+
+  if (!id) {
+    return NextResponse.json({ error: "Missing id" }, { status: 400 });
+  }
+
+  try {
+    const appointment = await prisma.appointment.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        images: {
+          select: {
+            fileKey: true,
+          },
+        },
+      },
+    });
+
+    if (!appointment) {
+      return NextResponse.json(
+        { error: "Appointment not found" },
+        { status: 404 },
+      );
+    }
+
+    const fileKeys = appointment.images
+      .map((image) => image.fileKey)
+      .filter((fileKey): fileKey is string => !!fileKey);
+
+    if (fileKeys.length > 0) {
+      await utapi.deleteFiles(fileKeys);
+    }
+
+    await prisma.appointment.delete({
+      where: { id },
+    });
+
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error("Failed to delete appointment:", err);
+    return NextResponse.json(
+      { error: "Failed to delete appointment" },
       { status: 500 },
     );
   }

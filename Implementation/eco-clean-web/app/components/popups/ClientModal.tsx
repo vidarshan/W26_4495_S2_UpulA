@@ -2,6 +2,7 @@
 
 import {
   createClient,
+  deleteClient,
   type ClientWithRelations,
   type CreateClientPayload,
   updateClient,
@@ -25,7 +26,7 @@ import {
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { notifications } from "@mantine/notifications";
 
 type AddressForm = {
@@ -112,6 +113,7 @@ export default function ClientPropertyModal({
   onSuccess,
 }: Props) {
   const queryClient = useQueryClient();
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   const form = useForm<ClientForm>({
     initialValues: DEFAULT_VALUES,
@@ -205,7 +207,42 @@ export default function ClientPropertyModal({
     },
   });
 
-  const isBusy = mutation.isPending || clientLoading || clientFetching;
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      if (!clientId) throw new Error("Missing client id");
+      return deleteClient(clientId);
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["clients"] }),
+        queryClient.invalidateQueries({ queryKey: ["client", clientId] }),
+      ]);
+
+      notifications.show({
+        title: "Client deleted",
+        message: "The client has been soft deleted and hidden from the app.",
+        color: "green",
+      });
+
+      onSuccess?.();
+      form.reset();
+      onClose();
+    },
+    onError: (error) => {
+      console.error(error);
+      notifications.show({
+        title: "Delete failed",
+        message: "Could not delete client. Please try again.",
+        color: "red",
+      });
+    },
+  });
+
+  const isBusy =
+    mutation.isPending ||
+    deleteMutation.isPending ||
+    clientLoading ||
+    clientFetching;
 
   const handleSubmit = (values: ClientForm) => {
     form.clearErrors();
@@ -586,6 +623,7 @@ export default function ClientPropertyModal({
 
             <Grid.Col span={12}>
               <Textarea
+                id="client-note-textarea"
                 placeholder="Type your note here..."
                 minRows={4}
                 autosize
@@ -596,6 +634,18 @@ export default function ClientPropertyModal({
           </Grid>
 
           <Group justify="flex-end">
+            {clientId ? (
+              <Button
+                color="red"
+                variant="light"
+                type="button"
+                disabled={isBusy}
+                loading={deleteMutation.isPending}
+                onClick={() => setConfirmDeleteOpen(true)}
+              >
+                Delete
+              </Button>
+            ) : null}
             <Button
               variant="default"
               type="button"
@@ -614,6 +664,39 @@ export default function ClientPropertyModal({
           </Group>
         </Stack>
       </form>
+
+      <Modal
+        opened={confirmDeleteOpen}
+        onClose={() => setConfirmDeleteOpen(false)}
+        title="Delete client"
+        centered
+      >
+        <Stack gap="md">
+          <Text size="sm">
+            Soft delete this client? They will be hidden from lists but
+            existing linked records will remain.
+          </Text>
+
+          <Group justify="flex-end">
+            <Button
+              variant="default"
+              onClick={() => setConfirmDeleteOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              color="red"
+              loading={deleteMutation.isPending}
+              onClick={() => {
+                deleteMutation.mutate();
+                setConfirmDeleteOpen(false);
+              }}
+            >
+              Delete
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Modal>
   );
 }

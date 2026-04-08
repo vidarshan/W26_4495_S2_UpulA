@@ -26,16 +26,19 @@ export async function GET(req: Request) {
 
     const skip = (page - 1) * limit;
 
-    const where = q
-      ? {
-          OR: [
-            { firstName: { contains: q, mode: "insensitive" as const } },
-            { lastName: { contains: q, mode: "insensitive" as const } },
-            { email: { contains: q, mode: "insensitive" as const } },
-            { phone: { contains: q, mode: "insensitive" as const } },
-          ],
-        }
-      : undefined;
+    const where = {
+      deletedAt: null,
+      ...(q
+        ? {
+            OR: [
+              { firstName: { contains: q, mode: "insensitive" as const } },
+              { lastName: { contains: q, mode: "insensitive" as const } },
+              { email: { contains: q, mode: "insensitive" as const } },
+              { phone: { contains: q, mode: "insensitive" as const } },
+            ],
+          }
+        : {}),
+    };
 
     const orderBy = {
       createdAt: sort === "oldest" ? ("asc" as const) : ("desc" as const),

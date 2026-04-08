@@ -129,6 +129,7 @@ export async function GET(req: Request) {
     // Filter by name or email, but only for users who have a Staff Profile
     const where = {
       role: "STAFF" as const,
+      deletedAt: null,
       staffProfile: { isNot: null },
       ...(q
         ? {

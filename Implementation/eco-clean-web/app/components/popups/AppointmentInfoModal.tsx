@@ -34,6 +34,7 @@ import {
   IoPerson,
   IoPricetag,
   IoTime,
+  IoTrashBin,
 } from "react-icons/io5";
 
 import Loader from "../UI/Loader";
@@ -51,6 +52,7 @@ import {
   Staff,
 } from "@/types";
 import { PaginatedResponse } from "@/types/api";
+import { queryKeys } from "@/lib/queryKeys";
 
 import classes from "./AppointmentInfoModal.module.css";
 type AppointmentCache = AppointmentWithRelations;
@@ -149,8 +151,13 @@ function ReadOnlyItem({
 }
 
 export default function AppointmentInfoModal({ onSuccess }: Props) {
-  const { appointmentOpen, closeAppointment, openEditJob, selectedApptId } =
-    useDashboardUI();
+  const {
+    appointmentOpen,
+    closeAppointment,
+    openEditJob,
+    openConfirmCancel,
+    selectedApptId,
+  } = useDashboardUI();
 
   const { data: appointment, isLoading } = useAppointment(selectedApptId);
   const qc = useQueryClient();
@@ -263,13 +270,18 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
       return;
     }
 
-    await updateAppointment(appointment.id, {
+    const updated = await updateAppointment(appointment.id, {
       startTime: startIso,
       endTime: endIso,
       status: form.values.status,
       staffIds: form.values.staff,
       note: form.values.note?.trim() || null,
     });
+
+    const detailKey = queryKeys.appointments.detail(appointment.id);
+    qc.setQueryData(detailKey, updated);
+    qc.invalidateQueries({ queryKey: detailKey });
+    qc.invalidateQueries({ queryKey: queryKeys.appointments.all });
 
     form.resetDirty();
     onSuccess?.();
@@ -282,7 +294,7 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
     });
   };
 
-  const apptKey = ["appointment", selectedApptId] as const;
+  const apptKey = queryKeys.appointments.detail(selectedApptId);
 
   const deleteImageMutation = useMutation({
     mutationFn: (imageId: string) => deleteAppointmentImage(imageId),
@@ -364,7 +376,6 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
                     radius="xl"
                     variant="filled"
                     size="sm"
-                    leftSection={<IoBriefcase />}
                     onClick={() => {
                       closeAppointment();
                       openEditJob();
@@ -395,6 +406,7 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
                     { value: "COMPLETED", label: "Completed" },
                     { value: "CANCELLED", label: "Cancelled" },
                   ]}
+                  allowDeselect={false}
                   {...form.getInputProps("status")}
                 />
               </SimpleGrid>
@@ -430,6 +442,7 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
               />
 
               <Textarea
+                id="appointment-note-textarea"
                 label="Latest Appointment Note"
                 description="This updates the current internal visit note."
                 autosize
@@ -678,6 +691,14 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
               )}
 
               <Flex mt="xs" gap="xs">
+                <Button
+                  color="red"
+                  variant="light"
+                  onClick={() => openConfirmCancel("APPOINTMENT")}
+                >
+                  Delete
+                </Button>
+
                 <Button variant="default" onClick={handleClose} fullWidth>
                   Cancel
                 </Button>

@@ -11,11 +11,12 @@ export async function verifyUser(email: string, password: string) {
       name: true,
       email: true,
       role: true,
+      deletedAt: true,
       password: true,
     },
   });
 
-  if (!user) {
+  if (!user || user.deletedAt) {
     return null;
   }
 

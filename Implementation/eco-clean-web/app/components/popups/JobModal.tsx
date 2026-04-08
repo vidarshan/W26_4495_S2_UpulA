@@ -932,7 +932,7 @@ export default function NewJobModal({
               <Flex direction="column" align="center">
                 <IoImage size={24} />
                 <Text mt="xs" size="xs">
-                  Drag note images here or click to upload
+                  Drag note images here or click to upload (4MB Max, up to 10 images)
                 </Text>
                 {isUploading && (
                   <Text mt="xs" size="xs" c="dimmed">
@@ -1223,7 +1223,6 @@ export default function NewJobModal({
             <Group align="center" justify="space-between">
               <Text fw={500}>Services</Text>
               <Button
-                leftSection={<IoAdd />}
                 size="xs"
                 type="button"
                 disabled={isBusy}
@@ -1385,7 +1384,6 @@ export default function NewJobModal({
             <Group align="center" justify="space-between" mt="sm">
               <Text fw={500}>Appointments</Text>
               <Button
-                leftSection={<IoAdd />}
                 size="xs"
                 type="button"
                 disabled={isBusy || form.values.jobType === "RECURRING"}
@@ -1403,7 +1401,6 @@ export default function NewJobModal({
           <Group align="center" justify="space-between">
             <Text fw={500}>Notes</Text>
             <Button
-              leftSection={<IoAdd />}
               size="xs"
               type="button"
               disabled={isBusy}

@@ -474,6 +474,7 @@ export default function JobEditModal({ onSuccess }: Props) {
                 />
 
                 <Textarea
+                  id="job-edit-visit-instructions"
                   label="Visit Instructions"
                   placeholder="Access notes, parking details, alarm codes, or special requests"
                   autosize
@@ -594,7 +595,6 @@ export default function JobEditModal({ onSuccess }: Props) {
                   type="button"
                   size="sm"
                   variant="light"
-                  leftSection={<IoAdd />}
                   onClick={addLineItem}
                   disabled={updateMutation.isPending}
                 >
@@ -673,6 +673,7 @@ export default function JobEditModal({ onSuccess }: Props) {
                     </Grid>
 
                     <Textarea
+                      id={`job-edit-line-item-description-${index}`}
                       mt="sm"
                       label="Description"
                       placeholder="Optional details"
@@ -690,11 +691,7 @@ export default function JobEditModal({ onSuccess }: Props) {
               <Button variant="default" onClick={handleClose}>
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                loading={updateMutation.isPending}
-                leftSection={<IoCalendar size={16} />}
-              >
+              <Button type="submit" loading={updateMutation.isPending}>
                 Save Job Changes
               </Button>
             </Group>

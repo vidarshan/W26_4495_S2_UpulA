@@ -27,6 +27,12 @@ export function cancelAppointment(id: string) {
   return updateAppointment(id, { status: "CANCELLED" });
 }
 
+export function deleteAppointment(id: string) {
+  return apiClient(`/api/appointments/${id}`, {
+    method: "DELETE",
+  });
+}
+
 export async function rescheduleAppointment(
   id: string,
   start: Date,

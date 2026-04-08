@@ -90,7 +90,6 @@ const ytd = statement.ytd || {};
     <Container py="xl">
       <Group justify="center" mb="md">
         <Button
-          leftSection={<IoDownload />}
           onClick={handleDownloadPdf}
         >
           Download PDF

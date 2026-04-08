@@ -100,7 +100,6 @@ export default function ClientsTable() {
         >
           <Button
             color="lime"
-            leftSection={<IoAdd size={16} />}
             onClick={() => {
               setSelectedClientId(undefined);
               setOpened(true);

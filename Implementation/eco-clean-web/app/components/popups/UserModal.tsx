@@ -1,6 +1,6 @@
 "use client";
 
-import { createUser, editUser } from "@/lib/api/users";
+import { createUser, deleteUser, editUser } from "@/lib/api/users";
 import {
   Alert,
   Badge,
@@ -88,6 +88,7 @@ export default function UserUpsertModal({
   const [generatedPassword, setGeneratedPassword] = useState("");
   const [copied, setCopied] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   const initialValues = useMemo<FormValues>(
     () => ({
@@ -206,10 +207,40 @@ export default function UserUpsertModal({
   });
 
   const isBusy = mutation.isPending;
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      if (!user?.id) throw new Error("Missing user id");
+      return deleteUser(user.id);
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["staff"], exact: false }),
+        queryClient.invalidateQueries({ queryKey: ["users"], exact: false }),
+      ]);
+
+      notifications.show({
+        title: "User deleted",
+        message: "The user has been soft deleted and can no longer log in.",
+        color: "green",
+      });
+
+      handleClose(true);
+    },
+    onError: (error: Error) => {
+      notifications.show({
+        title: "Delete failed",
+        message: error.message || "Could not delete the user.",
+        color: "red",
+      });
+    },
+  });
+
+  const isDeleting = deleteMutation.isPending;
+  const isBusyAny = isBusy || isDeleting;
   const isCreateComplete = mode === "create" && !!generatedPassword;
 
   const handleClose = (force = false) => {
-    if (isBusy && !force) return;
+    if (isBusyAny && !force) return;
 
     setGeneratedPassword("");
     setCopied(false);
@@ -262,9 +293,9 @@ export default function UserUpsertModal({
       title={mode === "create" ? "Add User" : "Edit User"}
       size={mode === "edit" ? "lg" : "sm"}
       centered
-      closeOnClickOutside={!isBusy}
-      closeOnEscape={!isBusy}
-      withCloseButton={!isBusy}
+      closeOnClickOutside={!isBusyAny}
+      closeOnEscape={!isBusyAny}
+      withCloseButton={!isBusyAny}
       classNames={{
         content: "app-modal__content",
         header: "app-modal__header",
@@ -306,12 +337,16 @@ export default function UserUpsertModal({
             </Group>
           </Paper>
 
-          {isBusy && (
+          {isBusyAny && (
             <Alert color="gray">
               <Group gap="xs">
                 <Loader size="sm" />
                 <Text size="sm">
-                  {mode === "create" ? "Creating user..." : "Saving changes..."}
+                  {isDeleting
+                    ? "Deleting user..."
+                    : mode === "create"
+                      ? "Creating user..."
+                      : "Saving changes..."}
                 </Text>
               </Group>
             </Alert>
@@ -325,7 +360,7 @@ export default function UserUpsertModal({
                 leftSection={<IoText />}
                 label="Name"
                 placeholder="Staff name"
-                disabled={isBusy || isCreateComplete}
+                disabled={isBusyAny || isCreateComplete}
                 {...form.getInputProps("name")}
               />
 
@@ -333,7 +368,7 @@ export default function UserUpsertModal({
                 leftSection={<IoText />}
                 label="Email"
                 placeholder="Staff email"
-                disabled={isBusy || isCreateComplete}
+                disabled={isBusyAny || isCreateComplete}
                 {...form.getInputProps("email")}
               />
 
@@ -342,7 +377,7 @@ export default function UserUpsertModal({
                 data={roleOptions}
                 value={form.values.role}
                 leftSection={<IoPeople />}
-                disabled={isBusy || isCreateComplete}
+                disabled={isBusyAny || isCreateComplete}
                 onChange={(v) =>
                   form.setFieldValue("role", (v as Role) || "STAFF")
                 }
@@ -427,6 +462,16 @@ export default function UserUpsertModal({
           )}
 
           <Group grow>
+            {mode === "edit" && (
+              <Button
+                color="red"
+                variant="light"
+                onClick={() => setConfirmDeleteOpen(true)}
+                loading={isDeleting}
+              >
+                Delete
+              </Button>
+            )}
             <Button variant="default" onClick={() => handleClose()}>
               Cancel
             </Button>
@@ -443,6 +488,39 @@ export default function UserUpsertModal({
         onClose={() => setDetailsOpen(false)}
         staff={user ?? null}
       />
+
+      <Modal
+        opened={confirmDeleteOpen}
+        onClose={() => setConfirmDeleteOpen(false)}
+        title="Delete user"
+        centered
+      >
+        <Stack gap="md">
+          <Text size="sm">
+            Soft delete this user? They will no longer appear in lists or be
+            able to log in.
+          </Text>
+
+          <Group justify="flex-end">
+            <Button
+              variant="default"
+              onClick={() => setConfirmDeleteOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              color="red"
+              loading={isDeleting}
+              onClick={() => {
+                deleteMutation.mutate();
+                setConfirmDeleteOpen(false);
+              }}
+            >
+              Delete
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Modal>
   );
 }

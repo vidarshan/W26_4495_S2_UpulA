@@ -132,3 +132,9 @@ export function createClient(payload: CreateClientPayload) {
     body: payload,
   });
 }
+
+export function deleteClient(id: string) {
+  return apiClient<{ success: true }>(`/api/clients/${id}`, {
+    method: "DELETE",
+  });
+}

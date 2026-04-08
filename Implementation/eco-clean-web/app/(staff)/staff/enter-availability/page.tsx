@@ -230,6 +230,7 @@ export default function EnterAvailabilityPage() {
                   {...form.getInputProps("effectiveDate")}
                 />
                 <Textarea
+                  id="availability-comments"
                   label="Comments"
                   placeholder="Optional notes"
                   minRows={2}

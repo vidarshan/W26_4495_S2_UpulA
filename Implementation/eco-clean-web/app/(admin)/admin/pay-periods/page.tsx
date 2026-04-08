@@ -330,7 +330,6 @@ export default function ManagePayPeriodsPage() {
       action={
         <Group gap="sm">
           <Button
-            leftSection={<IoDocumentText size={16} />}
             onClick={handleSubmit}
             loading={loading}
             disabled={!rows.length}
@@ -340,7 +339,6 @@ export default function ManagePayPeriodsPage() {
           </Button>
           <Button
             variant="light"
-            leftSection={<IoDownload size={16} />}
             onClick={exportToExcel}
             disabled={!rows.length}
           >

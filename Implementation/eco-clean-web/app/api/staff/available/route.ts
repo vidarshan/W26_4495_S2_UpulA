@@ -158,7 +158,7 @@ export async function GET(req: Request) {
     // ---------------------------------------------------
     const finalStaff = availableStaff.filter((a) => {
       const userId = a.staffProfile.userId;
-      return !leaveStaffIds.has(userId);
+      return !leaveStaffIds.has(userId) && !a.staffProfile.user.deletedAt;
     });
 
     // ---------------------------------------------------

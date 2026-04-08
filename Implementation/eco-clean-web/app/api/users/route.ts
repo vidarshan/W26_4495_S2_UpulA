@@ -18,6 +18,9 @@ export async function GET() {
 
   try {
     const users = await prisma.user.findMany({
+      where: {
+        deletedAt: null,
+      },
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
@@ -59,17 +62,17 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    let { name, email, role, position, hourlyRate } = body;
+    const { name: rawName, email: rawEmail, role, position, hourlyRate } = body;
 
-    if (!email) {
+    if (!rawEmail) {
       return NextResponse.json(
         { error: "Email is required" },
         { status: 400 }
       );
     }
 
-    email = email.trim().toLowerCase();
-    name = name?.trim() || "";
+    const email = String(rawEmail).trim().toLowerCase();
+    const name = typeof rawName === "string" ? rawName.trim() : "";
 
     // Check duplicate
     const existing = await prisma.user.findUnique({
@@ -133,11 +136,14 @@ export async function POST(req: Request) {
       temporaryPassword: tempPassword,
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("POST user failed:", error);
 
     return NextResponse.json(
-      { error: error.message || "Failed to create user" },
+      {
+        error:
+          error instanceof Error ? error.message : "Failed to create user",
+      },
       { status: 500 }
     );
   }

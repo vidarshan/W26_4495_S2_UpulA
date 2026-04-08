@@ -153,7 +153,6 @@ export default function ManagePayPeriodsPage() {
               </div>
 
               <Button
-                leftSection={<IoCalendar size={18} />}
                 color="lime"
                 loading={loading}
                 onClick={handleGenerate}
@@ -178,7 +177,6 @@ export default function ManagePayPeriodsPage() {
                 <Button
                   variant="light"
                   color="lime"
-                  leftSection={<IoRefresh size={16} />}
                   onClick={() => void fetchPeriods()}
                 >
                   Refresh

@@ -340,7 +340,6 @@ const Page = () => {
       <Container py="md">
         <Button
           variant="subtle"
-          leftSection={<IoArrowBack />}
           onClick={() => router.back()}
         >
           Back
@@ -592,7 +591,6 @@ const Page = () => {
 
         <SimpleGrid cols={2} spacing="sm">
           <Button
-            leftSection={<IoPlay />}
             radius="lg"
             color="lime"
             fullWidth
@@ -604,7 +602,6 @@ const Page = () => {
           </Button>
 
           <Button
-            leftSection={<IoPause />}
             radius="xl"
             color="lime"
             fullWidth
@@ -727,7 +724,6 @@ const Page = () => {
             <Button
               component="a"
               href={buildDirectionsUrl(address)}
-              leftSection={<IoMap />}
               radius="lg"
               color="lime"
               disabled={!address}
@@ -777,7 +773,6 @@ const Page = () => {
               component="a"
               radius="lg"
               color="lime"
-              leftSection={<IoCall />}
               href={phone ? `tel:${phone}` : undefined}
               disabled={!phone}
             >
@@ -788,7 +783,6 @@ const Page = () => {
               component="a"
               radius="lg"
               color="blue"
-              leftSection={<IoChatbubbleEllipses />}
               href={phone ? `sms:${phone}` : undefined}
               disabled={!phone}
             >
@@ -965,6 +959,7 @@ const Page = () => {
 
           <Stack gap="sm">
             <Textarea
+              id="visit-note-textarea"
               label="What should the team know?"
               placeholder="Add anything helpful from this visit."
               minRows={4}
@@ -1010,7 +1005,7 @@ const Page = () => {
               <Flex direction="column" align="center" py="xs">
                 <IoDocumentText size={24} />
                 <Text mt="xs" size="xs">
-                  Drag visit images here or click to upload
+                  Drag visit images here or click to upload (4MB Max, up to 10 images)
                 </Text>
                 {isUploading ? (
                   <Text mt="xs" size="xs" c="dimmed">

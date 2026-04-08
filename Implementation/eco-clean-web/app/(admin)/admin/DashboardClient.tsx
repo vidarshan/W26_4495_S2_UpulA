@@ -400,7 +400,6 @@ export default function DashboardClient() {
               <Button
                 variant="default"
                 radius="lg"
-                leftSection={<IoArrowBack />}
                 onClick={() => calendarRef.current?.getApi().prev()}
               >
                 Prev
@@ -528,7 +527,6 @@ export default function DashboardClient() {
               <Button
                 size="sm"
                 variant="filled"
-                leftSection={<IoRefresh />}
                 onClick={() => calendarRef.current?.getApi().refetchEvents()}
               >
                 Refresh

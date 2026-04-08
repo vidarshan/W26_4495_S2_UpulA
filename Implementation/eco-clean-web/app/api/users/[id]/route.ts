@@ -33,8 +33,8 @@ export async function GET(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id },
+  const user = await prisma.user.findFirst({
+    where: { id, deletedAt: null },
     select: {
       id: true,
       name: true,
@@ -90,6 +90,15 @@ export async function PATCH(
     );
   }
 
+  const existing = await prisma.user.findFirst({
+    where: { id, deletedAt: null },
+    select: { id: true },
+  });
+
+  if (!existing) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
   const user = await prisma.user.update({
     where: { id },
     data,
@@ -114,8 +123,20 @@ export async function DELETE(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  await prisma.user.delete({
-    where: { id: id },
+  const existing = await prisma.user.findFirst({
+    where: { id, deletedAt: null },
+    select: { id: true },
+  });
+
+  if (!existing) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
+  await prisma.user.update({
+    where: { id },
+    data: {
+      deletedAt: new Date(),
+    },
   });
 
   return NextResponse.json({ success: true });

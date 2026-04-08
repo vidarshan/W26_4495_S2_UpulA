@@ -93,7 +93,6 @@ export default function AiTaskAssistantCard({ data }: Props) {
             <Title order={4}>AI Overview</Title>
           </Group>
           <Button
-            leftSection={collapse ? <IoArrowUp /> : <IoArrowDown />}
             radius="xl"
             size="xs"
             variant="white"

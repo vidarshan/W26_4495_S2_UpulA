@@ -82,7 +82,6 @@ export default function StaffTable() {
         >
           <Button
             color="lime"
-            leftSection={<IoAdd size={16} />}
             onClick={() => {
               setMode("create");
               setSelectedUser(null);

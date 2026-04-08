@@ -628,6 +628,7 @@ function LeaveRequestCard(props: LeaveRequestCardProps) {
               Comments
             </Text>
             <Textarea
+              id="leave-comments"
               value={props.comments}
               onChange={(e) => props.setComments(e.currentTarget.value)}
               minRows={4}

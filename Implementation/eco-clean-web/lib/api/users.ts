@@ -124,3 +124,9 @@ export function editUser(
     body,
   });
 }
+
+export function deleteUser(id: string) {
+  return apiClient<{ success: true }>(`/api/users/${id}`, {
+    method: "DELETE",
+  });
+}

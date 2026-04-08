@@ -1,4 +1,4 @@
-import { cancelAppointment } from "@/lib/api/appointments";
+import { deleteAppointment } from "@/lib/api/appointments";
 import { cancelJob } from "@/lib/api/jobs";
 import { Modal, Button, Group, Text } from "@mantine/core";
 import { useState } from "react";
@@ -27,7 +27,7 @@ const ConfirmCancellationModal = ({ onSuccess }: Props) => {
     if (cancelMode === "JOB") {
       await cancelJob(selectedJobId!);
     } else if (cancelMode === "APPOINTMENT") {
-      await cancelAppointment(selectedApptId!);
+      await deleteAppointment(selectedApptId!);
     }
     onSuccess();
     setLoading(false);
@@ -54,7 +54,6 @@ const ConfirmCancellationModal = ({ onSuccess }: Props) => {
       <Group mt="xs" justify="flex-end">
         <Button
           color="gray"
-          leftSection={<IoClose />}
           onClick={closeConfirmCancel}
         >
           Cancel
@@ -62,7 +61,6 @@ const ConfirmCancellationModal = ({ onSuccess }: Props) => {
 
         <Button
           color="red"
-          leftSection={<IoTrashBin />}
           onClick={handleCancel}
           loading={loading}
         >
