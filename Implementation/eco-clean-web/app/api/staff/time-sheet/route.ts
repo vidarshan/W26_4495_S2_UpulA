@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthSession } from "@/lib/session";
+import { DateTime } from "luxon";
+import { APP_TZ } from "@/lib/dateTime";
 
 type SessionRow = {
   id: string;
@@ -26,33 +28,18 @@ type SessionRow = {
 
 function parseDateParam(value: string | null) {
   if (!value) return null;
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? null : d;
+  const dt = /^\d{4}-\d{2}-\d{2}$/.test(value)
+    ? DateTime.fromFormat(value, "yyyy-LL-dd", { zone: APP_TZ })
+    : DateTime.fromISO(value, { zone: "utc" }).setZone(APP_TZ);
+  return dt.isValid ? dt : null;
 }
 
-function startOfDay(date: Date) {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d;
+function addDays(date: DateTime, days: number) {
+  return date.plus({ days });
 }
 
-function endOfDay(date: Date) {
-  const d = new Date(date);
-  d.setHours(23, 59, 59, 999);
-  return d;
-}
-
-function addDays(date: Date, days: number) {
-  const d = new Date(date);
-  d.setDate(d.getDate() + days);
-  return d;
-}
-
-function toDateKey(date: Date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+function toDateKey(date: DateTime) {
+  return date.setZone(APP_TZ).toFormat("yyyy-LL-dd");
 }
 
 function formatClientName(client: {
@@ -75,7 +62,7 @@ function splitSessionAcrossDays(
   startedAt: Date,
   endedAt: Date,
   periodStart: Date,
-  periodEnd: Date
+  periodEnd: Date,
 ) {
   const result: { dateKey: string; minutes: number }[] = [];
 
@@ -84,14 +71,22 @@ function splitSessionAcrossDays(
 
   if (clippedEnd <= clippedStart) return result;
 
-  let cursor = startOfDay(clippedStart);
-  const lastDay = startOfDay(clippedEnd);
+  let cursor = DateTime.fromJSDate(clippedStart, { zone: APP_TZ }).startOf("day");
+  const lastDay = DateTime.fromJSDate(
+    new Date(clippedEnd.getTime() - 1),
+    { zone: APP_TZ },
+  ).startOf("day");
 
   while (cursor <= lastDay) {
-    const dayStart = startOfDay(cursor);
+    const dayStart = cursor.startOf("day");
     const dayEndExclusive = addDays(dayStart, 1);
 
-    const minutes = overlapMinutes(clippedStart, clippedEnd, dayStart, dayEndExclusive);
+    const minutes = overlapMinutes(
+      clippedStart,
+      clippedEnd,
+      dayStart.toJSDate(),
+      dayEndExclusive.toJSDate(),
+    );
 
     if (minutes > 0) {
       result.push({
@@ -124,8 +119,8 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const periodStart = startOfDay(startDate);
-  const periodEndExclusive = addDays(startOfDay(endDate), 1);
+  const periodStart = startDate.startOf("day").toJSDate();
+  const periodEndExclusive = endDate.startOf("day").plus({ days: 1 }).toJSDate();
 
   try {
     const workSessions = await prisma.appointmentWorkSession.findMany({

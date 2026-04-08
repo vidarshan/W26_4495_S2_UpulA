@@ -1,6 +1,7 @@
 export const runtime = 'nodejs';
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
+import { parseAppDateTimeInput } from '@/lib/dateTime';
 
 const VALID_LEAVE_TYPES = ["PAID_SICK", "VACATION", "PERSONAL", "UNPAID_SICK"];
 
@@ -53,13 +54,23 @@ export async function POST(
       );
     }
 
+    const parsedStartAt = parseAppDateTimeInput(String(startAt));
+    const parsedEndAt = parseAppDateTimeInput(String(endAt));
+
+    if (!parsedStartAt || !parsedEndAt || parsedEndAt <= parsedStartAt) {
+      return NextResponse.json(
+        { error: 'Invalid leave date range' },
+        { status: 400 },
+      );
+    }
+
     // 2. Create the leave record
     const leave = await prisma.leave.create({
       data: {
         staffId,
         type,
-        startAt: new Date(startAt),
-        endAt: new Date(endAt),
+        startAt: parsedStartAt,
+        endAt: parsedEndAt,
         reason,
       },
     });

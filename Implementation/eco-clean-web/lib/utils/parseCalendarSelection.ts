@@ -1,4 +1,6 @@
 import { CalendarSelection, ParsedSelection } from "@/types";
+import { APP_TZ } from "@/lib/dateTime";
+import { DateTime } from "luxon";
 
 export function parseCalendarSelection(
   selection: CalendarSelection,
@@ -6,6 +8,9 @@ export function parseCalendarSelection(
   const { start, end, startStr, endStr, allDay } = selection;
 
   if (!start || !end) return null;
+
+  const startLocal = DateTime.fromJSDate(start, { zone: APP_TZ });
+  const endLocal = DateTime.fromJSDate(end, { zone: APP_TZ });
 
   return {
     startDate: start,
@@ -20,11 +25,11 @@ export function parseCalendarSelection(
     startTimestamp: start.getTime(),
     endTimestamp: end.getTime(),
 
-    startDateOnly: start.toISOString().split("T")[0],
-    endDateOnly: end.toISOString().split("T")[0],
+    startDateOnly: startLocal.toFormat("yyyy-LL-dd"),
+    endDateOnly: endLocal.toFormat("yyyy-LL-dd"),
 
-    startTime: start.toTimeString().slice(0, 5),
-    endTime: end.toTimeString().slice(0, 5),
+    startTime: startLocal.toFormat("HH:mm"),
+    endTime: endLocal.toFormat("HH:mm"),
 
     durationInMinutes: (end.getTime() - start.getTime()) / (1000 * 60),
 

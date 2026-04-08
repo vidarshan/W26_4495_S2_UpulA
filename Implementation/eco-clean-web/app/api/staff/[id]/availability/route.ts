@@ -1,6 +1,7 @@
 export const runtime = 'nodejs';
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
+import { parseAppDateTimeInput } from '@/lib/dateTime';
 
 function isErrorWithCode(error: unknown): error is Error & { code: string } {
   return (
@@ -52,9 +53,10 @@ export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  try {
+  const { id: staffProfileId } = await params;
     const session = await getAuthSession();
 
+  try {
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -84,12 +86,23 @@ export async function POST(
       );
     }
 
-    // 🔥 Step 2: Create availability
+    // 2. Database Operation
+    // We spread the body (...body) because it now contains the
+    // boolean fields (monActive, monS1, etc.) instead of 'dayOfWeek'
+    const effectiveFrom = parseAppDateTimeInput(String(body.effectiveFrom));
+
+    if (!effectiveFrom) {
+      return NextResponse.json(
+        { error: 'Invalid effective date' },
+        { status: 400 },
+      );
+    }
+
     const newAvailability = await prisma.staffAvailability.create({
       data: {
-        staffProfileId,
-        effectiveFrom: new Date(body.effectiveFrom),
-
+        staffProfileId: staffProfileId,
+        effectiveFrom,
+        // These fields must match your NEW schema exactly
         monActive: body.monActive ?? false,
         monS1: body.monS1 ?? false,
         monS2: body.monS2 ?? false,
@@ -136,7 +149,6 @@ export async function POST(
  */
 export async function PATCH(
   req: Request,
-  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const body = await req.json();
@@ -155,7 +167,7 @@ export async function PATCH(
         ...updateData,
         // Safely handle the date conversion if it's being updated
         effectiveFrom: updateData.effectiveFrom
-          ? new Date(updateData.effectiveFrom)
+          ? parseAppDateTimeInput(String(updateData.effectiveFrom)) ?? undefined
           : undefined,
       },
     });

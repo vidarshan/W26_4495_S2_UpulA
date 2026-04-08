@@ -28,12 +28,53 @@ export function isoToHHmm(iso: string): string {
   return dt.toFormat("HH:mm");
 }
 
-function ensureDate(d: Date | string): Date {
-  if (d instanceof Date) return d;
+export function toAppDateKey(input: IsoOrDate): string {
+  return toDateTimeUtc(input).setZone(APP_TZ).toFormat("yyyy-LL-dd");
+}
 
-  // If it's "YYYY-MM-DD", parse as local date (no timezone drift)
-  const dt = DateTime.fromISO(d, { zone: APP_TZ });
-  return new Date(dt.year, dt.month - 1, dt.day);
+export function appDateKeyToDate(dateKey: string): Date {
+  const dt = DateTime.fromFormat(dateKey, "yyyy-LL-dd", { zone: APP_TZ });
+  return dt.startOf("day").toJSDate();
+}
+
+export function appNowDate(): Date {
+  return DateTime.now().setZone(APP_TZ).startOf("day").toJSDate();
+}
+
+export function addAppDays(date: Date, days: number): Date {
+  return DateTime.fromJSDate(date, { zone: APP_TZ })
+    .startOf("day")
+    .plus({ days })
+    .toJSDate();
+}
+
+export function formatAppDate(input: IsoOrDate, format = "dd/LL/yyyy"): string {
+  return toDateTimeUtc(input).setZone(APP_TZ).toFormat(format);
+}
+
+export function formatAppTime(input: IsoOrDate, format = "h:mm a"): string {
+  return toDateTimeUtc(input).setZone(APP_TZ).toFormat(format);
+}
+
+export function parseAppDateTimeInput(value: string): Date | null {
+  const dt = DateTime.fromISO(value, { setZone: true });
+  if (dt.isValid) {
+    return dt.toUTC().toJSDate();
+  }
+
+  const localDate = DateTime.fromFormat(value, "yyyy-LL-dd", { zone: APP_TZ });
+  if (localDate.isValid) {
+    return localDate.startOf("day").toUTC().toJSDate();
+  }
+
+  return null;
+}
+
+export function dateKeyAndHHmmToIso(dateKey: string, hhmm: string): string {
+  const [h, m] = hhmm.split(":").map(Number);
+  const base = DateTime.fromFormat(dateKey, "yyyy-LL-dd", { zone: APP_TZ });
+  const local = base.set({ hour: h, minute: m, second: 0, millisecond: 0 });
+  return local.toUTC().toISO()!;
 }
 
 export function dateOnlyAndHHmmToIso(dateOnly: Date, hhmm: string): string {

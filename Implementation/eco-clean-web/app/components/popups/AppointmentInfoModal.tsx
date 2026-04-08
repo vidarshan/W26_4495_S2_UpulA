@@ -50,6 +50,7 @@ import {
   JobClient,
   Staff,
 } from "@/types";
+import { PaginatedResponse } from "@/types/api";
 
 import classes from "./AppointmentInfoModal.module.css";
 type AppointmentCache = AppointmentWithRelations;
@@ -155,14 +156,16 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
   const qc = useQueryClient();
   console.log(appointment);
 
-  const { data: staffData, isLoading: staffLoading } = useQuery<Staff[]>({
+  const { data: staffData, isLoading: staffLoading } = useQuery<
+    PaginatedResponse<Staff>
+  >({
     queryKey: ["staff", "all"],
     queryFn: () => getStaff(),
     staleTime: 60_000,
   });
 
   const staffOptions = useMemo(() => {
-    return (staffData ?? []).map((s) => ({
+    return (staffData?.data ?? []).map((s) => ({
       value: s.id,
       label: s.name,
     }));

@@ -1,5 +1,6 @@
 'use client';
 
+import { APP_TZ, formatAppDate } from '@/lib/dateTime';
 import {
   Box,
   Button,
@@ -11,11 +12,11 @@ import {
   TextInput,
   Title,
   Card,
-  Stack,
   ScrollArea,
 } from '@mantine/core';
 import { useMemo, useState, useEffect } from 'react';
 import { useMediaQuery } from '@mantine/hooks';
+import { DateTime } from 'luxon';
 
 type StaffPayRow = {
   staffId: string;
@@ -99,11 +100,15 @@ export default function ManagePayPeriodsPage() {
       try {
         const res = await fetch('/api/timesheet-periods');
         const allPeriods = (await res.json()) as TimesheetPeriodOption[];
-        const now = new Date();
+        const now = DateTime.now().setZone(APP_TZ);
 
         const currentIndex = allPeriods.findIndex((p) => {
-          const start = new Date(p.startDate);
-          const end = new Date(p.endDate);
+          const start = DateTime.fromISO(p.startDate, { zone: 'utc' }).setZone(
+            APP_TZ,
+          );
+          const end = DateTime.fromISO(p.endDate, { zone: 'utc' }).setZone(
+            APP_TZ,
+          );
           return now >= start && now <= end;
         });
 
@@ -114,9 +119,7 @@ export default function ManagePayPeriodsPage() {
 
           const options = relevant.map((p) => ({
             value: p.id,
-            label: new Date(p.startDate)
-              .toLocaleDateString('en-GB')
-              .replace(/\//g, '-'),
+            label: formatAppDate(p.startDate),
           }));
 
           setPeriodOptions(options);

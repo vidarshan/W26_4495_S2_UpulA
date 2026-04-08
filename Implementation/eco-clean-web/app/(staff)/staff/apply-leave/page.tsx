@@ -5,7 +5,7 @@ import interactionPlugin, { DateClickArg } from "@fullcalendar/interaction";
 import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import { useEffect, useMemo, useState } from "react";
-
+import { DateTime } from "luxon";
 import {
   Alert,
   Box,
@@ -27,6 +27,17 @@ import {
 import { DatePickerInput, TimeInput } from "@mantine/dates";
 import { useMediaQuery } from "@mantine/hooks";
 import { useSession } from "next-auth/react";
+import { IoCalendarOutline, IoDocumentTextOutline } from "react-icons/io5";
+import {
+  APP_TZ,
+  addAppDays,
+  appDateKeyToDate,
+  appNowDate,
+  dateKeyAndHHmmToIso,
+  formatAppDate,
+  formatAppTime,
+  toAppDateKey,
+} from "@/lib/dateTime";
 
 type Mode = "balances" | "request";
 type Balance = { policy: string; hours: number };
@@ -63,11 +74,25 @@ type LeaveRequestCardProps = {
   isMobile: boolean;
 };
 
+function formatLeaveType(type: string) {
+  return type
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function getLeaveAccent(type: string) {
+  if (type === "VACATION") return "blue";
+  if (type.includes("SICK")) return "orange";
+  return "lime";
+}
+
 export default function ApplyLeavePage() {
   const isMobile = useMediaQuery("(max-width: 48em)");
   const [mode, setMode] = useState<Mode>("balances");
   const [selectedDate, setSelectedDate] = useState<string | null>(
-    new Date().toISOString().slice(0, 10),
+    toAppDateKey(new Date()),
   );
 
   const [leaveType, setLeaveType] = useState<LeaveDuration | null>("FULL_DAY");
@@ -161,6 +186,13 @@ export default function ApplyLeavePage() {
             (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24),
           ) || 1;
 
+  const leaveMarkers = useMemo(
+    () =>
+      new Set(
+        leaveData.map((record) => toAppDateKey(record.startAt)),
+      ),
+    [leaveData],
+  );
         return acc + days * 8;
       }, 0);
   }, [leaveData]);
@@ -200,15 +232,12 @@ export default function ApplyLeavePage() {
         throw new Error("Please select a date and reason.");
       }
 
-      const startAt = combineDateAndTime(selectedDate, startTime);
-      const endAt = combineDateAndTime(selectedDate, endTime);
-      const requestedHours = (endAt.getTime() - startAt.getTime()) / 3600000;
+      const startAt = dateKeyAndHHmmToIso(selectedDate, startTime);
+      const endAt = dateKeyAndHHmmToIso(selectedDate, endTime);
+      const startAtDt = DateTime.fromISO(startAt, { zone: "utc" });
+      const endAtDt = DateTime.fromISO(endAt, { zone: "utc" });
 
-      if (reason === "VACATION" && requestedHours > summary.vacationRemaining) {
-        throw new Error("Not enough vacation balance.");
-      }
-
-      if (endAt <= startAt) {
+      if (endAtDt <= startAtDt) {
         throw new Error("End time must be after start time.");
       }
 
@@ -217,8 +246,8 @@ export default function ApplyLeavePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           type: reason,
-          startAt: startAt.toISOString(),
-          endAt: endAt.toISOString(),
+          startAt,
+          endAt,
           reason: comments || reason,
         }),
       });
@@ -290,34 +319,38 @@ export default function ApplyLeavePage() {
                 </Text>
               </Group>
 
-              <Box
-                style={{
-                  overflowX: "auto",
-                }}
-              >
-                <Box
-                  style={{
-                    minWidth: isMobile ? 0 : 0,
+              <Paper withBorder radius="lg" p="xs">
+                <DatePicker
+                  value={selectedDate}
+                  onChange={setSelectedDate}
+                  minDate={addAppDays(appNowDate(), 14)}
+                  size="sm"
+                  styles={{
+                    calendarHeader: { marginBottom: 8 },
+                    monthCell: { padding: 2 },
                   }}
-                >
-                  <FullCalendar
-                    plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-                    initialView="dayGridMonth"
-                    headerToolbar={{
-                      left: "prev,next",
-                      center: "title",
-                      right: isMobile
-                        ? "dayGridMonth,timeGridWeek"
-                        : "dayGridMonth,timeGridWeek,timeGridDay",
-                    }}
-                    height="auto"
-                    events={calendarEvents}
-                    dateClick={onDateClick}
-                    selectable
-                    dayMaxEventRows={isMobile ? 2 : 3}
-                  />
-                </Box>
-              </Box>
+                  renderDay={(date) => {
+                    const hasLeave = leaveMarkers.has(date);
+                    const dayNumber = DateTime.fromFormat(date, "yyyy-LL-dd", {
+                      zone: APP_TZ,
+                    }).day;
+
+                    return (
+                      <Stack
+                        align="center"
+                        justify="center"
+                        gap={3}
+                        style={{ minHeight: 30 }}
+                      >
+                        <Text size="sm" lh={1}>
+                          {dayNumber}
+                        </Text>
+                        <BoxDot visible={hasLeave} />
+                      </Stack>
+                    );
+                  }}
+                />
+              </Paper>
             </Stack>
           </Card>
 
@@ -334,15 +367,14 @@ export default function ApplyLeavePage() {
 
                   <Divider />
 
-                  <Group grow>
-                    <Card withBorder p="md">
-                      <Text size="sm" c="dimmed">
-                        Vacation Remaining
-                      </Text>
-                      <Text fw={800} size="lg">
-                        {summary.vacationRemaining.toFixed(1)} hrs
-                      </Text>
-                    </Card>
+                  <DateInput
+                    label="Date"
+                    value={selectedDate ? appDateKeyToDate(selectedDate) : null}
+                    onChange={(value) =>
+                      setSelectedDate(value ? toAppDateKey(value) : null)
+                    }
+                    minDate={addAppDays(appNowDate(), 14)}
+                  />
 
                     <Card withBorder p="md">
                       <Text size="sm" c="dimmed">
@@ -380,14 +412,53 @@ export default function ApplyLeavePage() {
               />
             )}
 
-            <Card withBorder radius="md" p="lg">
-              <Stack gap={6}>
-                <Text fw={700}>Quick info</Text>
-                <Text size="sm" c="dimmed">
-                  Vacation is calculated from your remaining balance. Sick and
-                  personal leave availability can be adjusted to match your
-                  policy rules later.
-                </Text>
+            <Card withBorder radius="lg" p="lg" className="staff-app-surface">
+              <Stack gap="sm">
+                <Group justify="space-between" wrap="wrap">
+                  <Text fw={700}>Recent requests</Text>
+                  <ThemeIcon radius="xl" size="lg" variant="light" color="lime">
+                    <IoDocumentTextOutline size={18} />
+                  </ThemeIcon>
+                </Group>
+
+                {sortedLeaveData.length === 0 ? (
+                  <Text size="sm" c="dimmed">
+                    No leave requests recorded yet.
+                  </Text>
+                ) : (
+                  <Stack gap="sm">
+                    {sortedLeaveData.slice(0, 6).map((record, index) => (
+                      <Paper key={record.id} withBorder radius="lg" p="md">
+                        <Stack gap="xs">
+                          <Group justify="space-between" wrap="wrap" gap="xs">
+                            <Badge variant="light" color={getLeaveAccent(record.type)}>
+                              {formatLeaveType(record.type)}
+                            </Badge>
+                            <Text size="sm" c="dimmed">
+                              {formatAppDate(record.startAt)}
+                            </Text>
+                          </Group>
+
+                          <Text fw={600}>
+                            {formatAppTime(record.startAt)}{" "}
+                            to{" "}
+                            {formatAppTime(record.endAt)}
+                          </Text>
+
+                          {record.reason ? (
+                            <Text size="sm" c="dimmed">
+                              {record.reason}
+                            </Text>
+                          ) : null}
+
+                          {index < Math.min(sortedLeaveData.length, 6) - 1 ? (
+                            <Divider />
+                          ) : null}
+                        </Stack>
+                      </Paper>
+                    ))}
+                  </Stack>
+                )}
               </Stack>
             </Card>
           </Stack>

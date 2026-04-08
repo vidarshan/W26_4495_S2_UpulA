@@ -24,12 +24,14 @@ import {
 } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { DateTime } from "luxon";
 import {
   IoCalendarOutline,
   IoChevronDown,
   IoClipboardOutline,
   IoTimeOutline,
 } from "react-icons/io5";
+import { APP_TZ } from "@/lib/dateTime";
 
 type Week = 1 | 2;
 
@@ -58,10 +60,7 @@ type DaySession = {
 };
 
 function toDateKey(date: Date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+  return DateTime.fromJSDate(date, { zone: APP_TZ }).toFormat("yyyy-LL-dd");
 }
 
 function formatMinutesToHHMM(totalMinutes: number) {
@@ -118,10 +117,14 @@ export default function EnterTimePage() {
         const fetched: PayPeriod[] = await res.json();
         setAllPeriods(fetched);
 
-        const now = new Date();
+        const now = DateTime.now().setZone(APP_TZ);
         const currentIndex = fetched.findIndex((p) => {
-          const start = new Date(p.startDate);
-          const end = new Date(p.endDate);
+          const start = DateTime.fromISO(p.startDate, { zone: "utc" })
+            .setZone(APP_TZ)
+            .startOf("day");
+          const end = DateTime.fromISO(p.endDate, { zone: "utc" })
+            .setZone(APP_TZ)
+            .endOf("day");
           return now >= start && now <= end;
         });
 
@@ -132,9 +135,13 @@ export default function EnterTimePage() {
 
           const options = filtered.map((p) => ({
             value: p.id,
-            label: `${new Date(p.startDate).toLocaleDateString("en-GB")} to ${new Date(
-              p.endDate,
-            ).toLocaleDateString("en-GB")}`,
+            label: `${DateTime.fromISO(p.startDate, { zone: "utc" })
+              .setZone(APP_TZ)
+              .toFormat("dd/LL/yyyy")} to ${DateTime.fromISO(p.endDate, {
+              zone: "utc",
+            })
+              .setZone(APP_TZ)
+              .toFormat("dd/LL/yyyy")}`,
           }));
 
           setPayPeriodOptions(options);
@@ -144,9 +151,13 @@ export default function EnterTimePage() {
         } else {
           const options = fetched.map((p) => ({
             value: p.id,
-            label: `${new Date(p.startDate).toLocaleDateString("en-GB")} to ${new Date(
-              p.endDate,
-            ).toLocaleDateString("en-GB")}`,
+            label: `${DateTime.fromISO(p.startDate, { zone: "utc" })
+              .setZone(APP_TZ)
+              .toFormat("dd/LL/yyyy")} to ${DateTime.fromISO(p.endDate, {
+              zone: "utc",
+            })
+              .setZone(APP_TZ)
+              .toFormat("dd/LL/yyyy")}`,
           }));
           setPayPeriodOptions(options);
           setPayPeriodId(options[0]?.value ?? null);
@@ -205,10 +216,21 @@ export default function EnterTimePage() {
     try {
       setLoadingEntries(true);
 
+      const startDateParam = DateTime.fromISO(selected.startDate, {
+        zone: "utc",
+      })
+        .setZone(APP_TZ)
+        .toFormat("yyyy-LL-dd");
+      const endDateParam = DateTime.fromISO(selected.endDate, {
+        zone: "utc",
+      })
+        .setZone(APP_TZ)
+        .toFormat("yyyy-LL-dd");
+
       const res = await fetch(
         `/api/staff/time-sheet?startDate=${encodeURIComponent(
-          selected.startDate,
-        )}&endDate=${encodeURIComponent(selected.endDate)}`,
+          startDateParam,
+        )}&endDate=${encodeURIComponent(endDateParam)}`,
       );
 
       const result = await res.json();
@@ -241,29 +263,27 @@ export default function EnterTimePage() {
     const selected = allPeriods.find((p) => p.id === payPeriodId);
     if (!selected) return { 1: [], 2: [] as DayCell[] };
 
-    const startDate = new Date(selected.startDate);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const startDate = DateTime.fromISO(selected.startDate, { zone: "utc" })
+      .setZone(APP_TZ)
+      .startOf("day");
+    const todayKey = DateTime.now().setZone(APP_TZ).toFormat("yyyy-LL-dd");
 
     const generateWeek = (weekNum: number): DayCell[] => {
       const weekDays: DayCell[] = [];
       const offset = (weekNum - 1) * 7;
 
       for (let i = 0; i < 7; i++) {
-        const d = new Date(startDate);
-        d.setDate(d.getDate() + offset + i);
-        d.setHours(0, 0, 0, 0);
-
-        const isToday = d.getTime() === today.getTime();
-        const key = toDateKey(d);
+        const d = startDate.plus({ days: offset + i });
+        const key = d.toFormat("yyyy-LL-dd");
         const minutes = dayMinutes[key] ?? 0;
+        const isToday = key === todayKey;
 
         weekDays.push({
-          dow: d.toLocaleDateString("en-US", { weekday: "short" }),
+          dow: d.toFormat("ccc"),
           dateLabel: isToday
             ? "Today"
-            : d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-          fullDate: d,
+            : d.toFormat("LLL d"),
+          fullDate: d.toJSDate(),
           isToday,
           hours: formatMinutesToHHMM(minutes),
         });

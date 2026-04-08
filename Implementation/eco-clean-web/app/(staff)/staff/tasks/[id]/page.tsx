@@ -281,7 +281,7 @@ const Page = () => {
       if (!appointment?.id || !myStaffId) {
         throw new Error("Missing appointment or staff id");
       }
-      return completeAppointment(appointment.id);
+      return completeAppointment(appointment.id, myStaffId);
     },
     onSuccess: (updated) => {
       refreshAppointment(updated);

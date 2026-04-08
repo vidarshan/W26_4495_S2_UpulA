@@ -363,8 +363,7 @@ async function resetDatabase() {
   await prisma.payStatement.deleteMany();
   await prisma.timesheetDay.deleteMany();
   await prisma.timesheet.deleteMany();
-  // Keep manually created timesheet periods
-  // await prisma.timesheetPeriod.deleteMany();
+  await prisma.timesheetPeriod.deleteMany();
   await prisma.leave.deleteMany();
   await prisma.staffAvailability.deleteMany();
   await prisma.assignment.deleteMany();
@@ -387,6 +386,61 @@ async function resetDatabase() {
   await prisma.address.deleteMany();
   await prisma.client.deleteMany();
   await prisma.user.deleteMany();
+}
+
+async function createTimesheetPeriodsForYear(year: number) {
+  const yearStart = new Date(year, 0, 1);
+  const yearEnd = new Date(year, 11, 31);
+
+  const periods: Array<{
+    startDate: Date;
+    endDate: Date;
+    status: TimesheetPeriodStatus;
+  }> = [];
+
+  let currentStart = new Date(year, 0, 1);
+  const firstPeriodEnd = new Date(year, 0, 1);
+  let saturdaysFound = 0;
+
+  while (saturdaysFound < 2) {
+    if (firstPeriodEnd.getDay() === 6) {
+      saturdaysFound++;
+    }
+    if (saturdaysFound < 2) {
+      firstPeriodEnd.setDate(firstPeriodEnd.getDate() + 1);
+    }
+  }
+
+  periods.push({
+    startDate: new Date(currentStart),
+    endDate: new Date(firstPeriodEnd),
+    status: TimesheetPeriodStatus.LOCKED,
+  });
+
+  currentStart = addDays(firstPeriodEnd, 1);
+
+  while (currentStart <= yearEnd) {
+    let currentEnd = addDays(currentStart, 13);
+
+    if (currentEnd > yearEnd) {
+      currentEnd = new Date(yearEnd);
+    }
+
+    const status =
+      currentEnd < new Date() ? TimesheetPeriodStatus.LOCKED : TimesheetPeriodStatus.OPEN;
+
+    periods.push({
+      startDate: new Date(currentStart),
+      endDate: new Date(currentEnd),
+      status,
+    });
+
+    currentStart = addDays(currentEnd, 1);
+  }
+
+  await prisma.timesheetPeriod.createMany({ data: periods });
+
+  return periods.length;
 }
 
 async function createUsers() {
@@ -655,8 +709,8 @@ async function createJobsForClients(
   let lineItemsCreated = 0;
 
   const now = new Date();
-  const eightMonthsAgo = addDays(now, -240);
-  const fourMonthsAhead = addDays(now, 120);
+  const threeWeeksAgo = addDays(now, -21);
+  const threeWeeksAhead = addDays(now, 21);
 
   for (const client of clients) {
     const addresses = await prisma.address.findMany({
@@ -768,7 +822,7 @@ async function createJobsForClients(
       );
 
       for (let a = 0; a < appointmentsCount; a++) {
-        const startTime = randomDateBetween(eightMonthsAgo, fourMonthsAhead);
+        const startTime = randomDateBetween(threeWeeksAgo, threeWeeksAhead);
         const durationHours = pick([2, 2, 3, 3, 4, 5]);
         const endTime = addHours(startTime, durationHours);
         const status = deriveAppointmentStatus(startTime);
@@ -902,6 +956,114 @@ async function createJobsForClients(
     recurrencesCreated,
     lineItemsCreated,
   };
+}
+
+async function createCurrentTimeLogFixtures(staff: { id: string }[]) {
+  const jobs = await prisma.job.findMany({
+    orderBy: { createdAt: "desc" },
+    take: Math.max(2, Math.min(4, staff.length)),
+    select: { id: true },
+  });
+
+  if (!jobs.length || !staff.length) return 0;
+
+  const staffProfiles = await prisma.staffProfile.findMany({
+    where: { userId: { in: staff.map((s) => s.id) } },
+    select: { userId: true, hourlyRate: true },
+  });
+
+  const hourlyRateMap = new Map(
+    staffProfiles.map((profile) => [profile.userId, profile.hourlyRate]),
+  );
+
+  const today = startOfDay(new Date());
+  const yesterday = addDays(today, -1);
+
+  const fixtures = [
+    {
+      jobId: jobs[0].id,
+      staffId: staff[0].id,
+      startTime: addHours(today, 9),
+      endTime: addHours(today, 11),
+      startedAt: addMinutes(addHours(today, 9), 5),
+      endedAt: addMinutes(addHours(today, 11), -10),
+      status: AppointmentStatus.COMPLETED,
+    },
+    {
+      jobId: jobs[Math.min(1, jobs.length - 1)].id,
+      staffId: staff[Math.min(1, staff.length - 1)].id,
+      startTime: addHours(yesterday, 13),
+      endTime: addHours(yesterday, 15),
+      startedAt: addMinutes(addHours(yesterday, 13), 2),
+      endedAt: addMinutes(addHours(yesterday, 15), -6),
+      status: AppointmentStatus.COMPLETED,
+    },
+    {
+      jobId: jobs[0].id,
+      staffId: staff[0].id,
+      startTime: addHours(today, 15),
+      endTime: addHours(today, 17),
+      startedAt: null,
+      endedAt: null,
+      status: AppointmentStatus.SCHEDULED,
+    },
+  ];
+
+  let created = 0;
+
+  for (const fixture of fixtures) {
+    const appointment = await prisma.appointment.create({
+      data: {
+        jobId: fixture.jobId,
+        startTime: fixture.startTime,
+        endTime: fixture.endTime,
+        status: fixture.status,
+        completedAt:
+          fixture.status === AppointmentStatus.COMPLETED
+            ? addMinutes(fixture.endedAt ?? fixture.endTime, 5)
+            : null,
+        timeSpent:
+          fixture.startedAt && fixture.endedAt
+            ? Math.max(
+                1,
+                Math.round(
+                  (fixture.endedAt.getTime() - fixture.startedAt.getTime()) / 60000,
+                ),
+              )
+            : null,
+        assignments: {
+          create: [
+            {
+              staffId: fixture.staffId,
+              status:
+                fixture.status === AppointmentStatus.COMPLETED
+                  ? AssignmentStatus.COMPLETED
+                  : AssignmentStatus.PENDING,
+              plannedStart: fixture.startTime,
+              plannedEnd: fixture.endTime,
+              hourlyRateAtTime: hourlyRateMap.get(fixture.staffId) ?? 0,
+              breakMinutes: 0,
+            },
+          ],
+        },
+      },
+    });
+
+    if (fixture.startedAt) {
+      await prisma.appointmentWorkSession.create({
+        data: {
+          appointmentId: appointment.id,
+          staffId: fixture.staffId,
+          startedAt: fixture.startedAt,
+          endedAt: fixture.endedAt,
+        },
+      });
+    }
+
+    created++;
+  }
+
+  return created;
 }
 
 async function createLeaves(staff: { id: string }[]) {
@@ -1307,11 +1469,13 @@ async function main() {
   console.log(`\n🌱 Eco Clean seed started in "${mode}" mode...\n`);
 
   await resetDatabase();
+  const periodsCreated = await createTimesheetPeriodsForYear(new Date().getFullYear());
 
   const users = await createUsers();
   const staffProfileCounts = await createStaffProfiles(users.staff);
   const clients = await createClients();
   const counts = await createJobsForClients(clients, users.staff);
+  const currentTimeFixtures = await createCurrentTimeLogFixtures(users.staff);
   const leaveCount = await createLeaves(users.staff);
   const payrollCounts = await createTimesheetsAndPayroll(
     users.staff,
@@ -1335,12 +1499,14 @@ async function main() {
     visitNotes: counts.visitNotesCreated,
     appointmentImages: counts.appointmentImagesCreated,
     workSessions: counts.workSessionsCreated,
+    currentTimeFixtures,
     jobNotes: counts.jobNotesCreated,
     jobNoteImages: counts.jobNoteImagesCreated,
     recurrences: counts.recurrencesCreated,
     lineItems: counts.lineItemsCreated,
     leaves: leaveCount,
     timesheetPeriodsUsed: payrollCounts.existingPeriodsUsed,
+    timesheetPeriodsCreated: periodsCreated,
     timesheets: payrollCounts.timesheetsCreated,
     timesheetDays: payrollCounts.timesheetDaysCreated,
     payStatements: payrollCounts.payStatementsCreated,

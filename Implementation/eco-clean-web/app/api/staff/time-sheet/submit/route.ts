@@ -2,34 +2,26 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthSession } from "@/lib/session";
 import { TimesheetStatus, TimesheetPeriodStatus } from "@prisma/client";
+import { DateTime } from "luxon";
+import { APP_TZ } from "@/lib/dateTime";
 
 type SubmitBody = {
   periodId?: string;
   notes?: string | null;
 };
 
-function startOfDay(date: Date) {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d;
+function addDays(date: DateTime, days: number) {
+  return date.plus({ days });
 }
 
-function addDays(date: Date, days: number) {
-  const d = new Date(date);
-  d.setDate(d.getDate() + days);
-  return d;
-}
-
-function toDateKey(date: Date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+function toDateKey(date: DateTime) {
+  return date.setZone(APP_TZ).toFormat("yyyy-LL-dd");
 }
 
 function fromDateKey(dateKey: string) {
-  const [y, m, d] = dateKey.split("-").map(Number);
-  return new Date(y, m - 1, d, 0, 0, 0, 0);
+  return DateTime.fromFormat(dateKey, "yyyy-LL-dd", { zone: APP_TZ })
+    .startOf("day")
+    .toJSDate();
 }
 
 function overlapMinutes(
@@ -65,18 +57,21 @@ function splitSessionAcrossDays(
     return result;
   }
 
-  let cursor = startOfDay(clippedStart);
-  const lastDay = startOfDay(new Date(clippedEnd.getTime() - 1));
+  let cursor = DateTime.fromJSDate(clippedStart, { zone: APP_TZ }).startOf("day");
+  const lastDay = DateTime.fromJSDate(
+    new Date(clippedEnd.getTime() - 1),
+    { zone: APP_TZ },
+  ).startOf("day");
 
   while (cursor <= lastDay) {
-    const dayStart = startOfDay(cursor);
+    const dayStart = cursor.startOf("day");
     const dayEndExclusive = addDays(dayStart, 1);
 
     const minutes = overlapMinutes(
       clippedStart,
       clippedEnd,
-      dayStart,
-      dayEndExclusive,
+      dayStart.toJSDate(),
+      dayEndExclusive.toJSDate(),
     );
 
     if (minutes > 0) {
@@ -137,8 +132,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const periodStart = startOfDay(new Date(period.startDate));
-    const periodEndExclusive = addDays(startOfDay(new Date(period.endDate)), 1);
+    const periodStart = DateTime.fromJSDate(new Date(period.startDate), {
+      zone: "utc",
+    })
+      .setZone(APP_TZ)
+      .startOf("day")
+      .toJSDate();
+    const periodEndExclusive = DateTime.fromJSDate(new Date(period.endDate), {
+      zone: "utc",
+    })
+      .setZone(APP_TZ)
+      .startOf("day")
+      .plus({ days: 1 })
+      .toJSDate();
 
     const workSessions = await prisma.appointmentWorkSession.findMany({
       where: {

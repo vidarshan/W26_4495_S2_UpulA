@@ -3,15 +3,7 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { AppointmentStatus, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-
-function colorFromString(input: string) {
-  let hash = 0;
-  for (let i = 0; i < input.length; i++) {
-    hash = input.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const hue = Math.abs(hash) % 360;
-  return `hsl(${hue}, 60%, 35%)`;
-}
+import { parseAppDateTimeInput } from "@/lib/dateTime";
 
 export async function GET(req: NextRequest) {
   try {
@@ -31,13 +23,10 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const rangeStart = new Date(startParam);
-    const rangeEnd = new Date(endParam);
+    const rangeStart = parseAppDateTimeInput(startParam);
+    const rangeEnd = parseAppDateTimeInput(endParam);
 
-    if (
-      Number.isNaN(rangeStart.getTime()) ||
-      Number.isNaN(rangeEnd.getTime())
-    ) {
+    if (!rangeStart || !rangeEnd) {
       return NextResponse.json(
         { error: "Invalid date range" },
         { status: 400 },
@@ -166,12 +155,22 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const parsedStartTime = parseAppDateTimeInput(String(startTime));
+    const parsedEndTime = parseAppDateTimeInput(String(endTime));
+
+    if (!parsedStartTime || !parsedEndTime || parsedEndTime <= parsedStartTime) {
+      return NextResponse.json(
+        { error: "Invalid appointment time range" },
+        { status: 400 },
+      );
+    }
+
     const appointmentId = await prisma.$transaction(async (tx) => {
       const appt = await tx.appointment.create({
         data: {
           jobId,
-          startTime: new Date(startTime),
-          endTime: new Date(endTime),
+          startTime: parsedStartTime,
+          endTime: parsedEndTime,
           status: status || "SCHEDULED",
         },
       });
@@ -182,8 +181,8 @@ export async function POST(req: NextRequest) {
             appointmentId: appt.id,
             staffId: sid,
             status: "PENDING",
-            plannedStart: new Date(startTime),
-            plannedEnd: new Date(endTime),
+            plannedStart: parsedStartTime,
+            plannedEnd: parsedEndTime,
           })),
         });
       }

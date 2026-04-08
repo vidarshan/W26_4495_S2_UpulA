@@ -5,8 +5,23 @@ import { normalizeAddressLocation } from "@/lib/staffLocation";
 import { AppointmentStatus, Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 
+type CompleteAppointmentBody = {
+  staffId?: string;
+};
+
+function parseBody(raw: string): CompleteAppointmentBody {
+  if (!raw) return {};
+
+  const parsed: unknown = JSON.parse(raw);
+  if (typeof parsed === "string") {
+    return JSON.parse(parsed) as CompleteAppointmentBody;
+  }
+
+  return (parsed ?? {}) as CompleteAppointmentBody;
+}
+
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
@@ -15,6 +30,26 @@ export async function POST(
     if (!appointmentId) {
       return NextResponse.json(
         { error: "Missing appointment id" },
+        { status: 400 },
+      );
+    }
+
+    let body: CompleteAppointmentBody = {};
+    try {
+      const raw = await req.text();
+      body = parseBody(raw);
+    } catch {
+      body = {};
+    }
+
+    const staffId =
+      typeof body.staffId === "string" && body.staffId.trim().length > 0
+        ? body.staffId.trim()
+        : undefined;
+
+    if (!staffId) {
+      return NextResponse.json(
+        { error: "staffId is required" },
         { status: 400 },
       );
     }
@@ -66,6 +101,7 @@ export async function POST(
       const activeSession = await tx.appointmentWorkSession.findFirst({
         where: {
           appointmentId,
+          staffId,
           endedAt: null,
         },
         orderBy: {

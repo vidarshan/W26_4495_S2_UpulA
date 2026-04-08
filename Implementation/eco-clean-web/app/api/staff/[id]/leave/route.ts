@@ -1,7 +1,7 @@
 export const runtime = 'nodejs';
 import { prisma } from '@/lib/prisma';
-import { getAuthSession } from '@/lib/session';
 import { NextResponse } from 'next/server';
+import { parseAppDateTimeInput } from '@/lib/dateTime';
 
 /**
  * GET: Retrieve all leave records for a specific staff member.
@@ -52,56 +52,22 @@ export async function POST(
       );
     }
 
-    const start = new Date(startAt);
-    const end = new Date(endAt);
+    const parsedStartAt = parseAppDateTimeInput(String(startAt));
+    const parsedEndAt = parseAppDateTimeInput(String(endAt));
 
-    if (end <= start) {
+    if (!parsedStartAt || !parsedEndAt || parsedEndAt <= parsedStartAt) {
       return NextResponse.json(
-        { error: 'End time must be after start time' },
+        { error: 'Invalid leave date range' },
         { status: 400 },
       );
     }
 
-    // 🔥 Calculate requested hours properly
-    const msPerDay = 1000 * 60 * 60 * 24;
-    const days =
-      Math.ceil((end.getTime() - start.getTime()) / msPerDay) || 1;
-
-    const requestedHours = days * 8;
-
-    // 🔥 Fetch existing leaves
-    const existingLeaves = await prisma.leave.findMany({
-      where: { staffId },
-    });
-
-    const calculateHours = (s: Date, e: Date) => {
-      const d =
-        Math.ceil((e.getTime() - s.getTime()) / msPerDay) || 1;
-      return d * 8;
-    };
-
-    const vacationUsed = existingLeaves
-      .filter((l) => l.type === "VACATION")
-      .reduce((acc, l) => acc + calculateHours(l.startAt, l.endAt), 0);
-
-    const VACATION_LIMIT = 80;
-    const remaining = VACATION_LIMIT - vacationUsed;
-
-    // 🚨 GUARDRAIL
-    if (type === "VACATION" && requestedHours > remaining) {
-      return NextResponse.json(
-        { error: "Not enough vacation balance" },
-        { status: 400 },
-      );
-    }
-
-    // ✅ Create leave
     const leave = await prisma.leave.create({
       data: {
         staffId,
-        type,
-        startAt: start,
-        endAt: end,
+        type, // e.g., "SICK", "VACATION"
+        startAt: parsedStartAt,
+        endAt: parsedEndAt,
         reason,
       },
     });

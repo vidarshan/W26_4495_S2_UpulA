@@ -116,9 +116,10 @@ export function pauseAppointment(id: string, staffId?: string) {
   });
 }
 
-export function completeAppointment(id: string) {
+export function completeAppointment(id: string, staffId?: string) {
   return apiClient(`/api/appointments/${id}/complete`, {
     method: "POST",
+    body: { staffId },
   });
 }
 

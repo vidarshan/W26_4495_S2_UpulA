@@ -16,6 +16,8 @@ import {
 import { DateInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
 import { useSession } from "next-auth/react";
+import { useState } from "react";
+import { addAppDays, appNowDate, toAppDateKey } from "@/lib/dateTime";
 import { useEffect } from "react";
 
 type DayAvailability = {
@@ -158,6 +160,21 @@ export default function EnterAvailabilityPage() {
             minDate={new Date(new Date().getTime() + 7 * 24 * 3600)}
           />
 
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+              <DateInput
+                label="Effective Date"
+                placeholder="When does this start?"
+                minDate={addAppDays(appNowDate(), 7)}
+                {...form.getInputProps("effectiveDate")}
+              />
+              <Textarea
+                label="Comments"
+                placeholder="Optional notes"
+                minRows={2}
+                autosize
+                {...form.getInputProps("comments")}
+              />
+            </SimpleGrid>
           {/* THE SHIFT GRID */}
           <Box>
             <Text fw={600} mb={10}>

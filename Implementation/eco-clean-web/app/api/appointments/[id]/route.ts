@@ -3,6 +3,7 @@ export const runtime = "nodejs";
 import { prisma } from "@/lib/prisma";
 import { AppointmentStatus, Prisma, Role } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
+import { parseAppDateTimeInput } from "@/lib/dateTime";
 
 type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
 
@@ -183,27 +184,29 @@ export async function PATCH(
   }
 
   const appointmentData: Prisma.AppointmentUpdateInput = {};
+  let parsedStartTime: Date | null = null;
+  let parsedEndTime: Date | null = null;
 
   if (startTime && endTime) {
-    const s = new Date(startTime);
-    const e = new Date(endTime);
+    parsedStartTime = parseAppDateTimeInput(startTime);
+    parsedEndTime = parseAppDateTimeInput(endTime);
 
-    if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) {
+    if (!parsedStartTime || !parsedEndTime) {
       return NextResponse.json(
         { error: "Invalid startTime/endTime" },
         { status: 400 },
       );
     }
 
-    if (e <= s) {
+    if (parsedEndTime <= parsedStartTime) {
       return NextResponse.json(
         { error: "endTime must be after startTime" },
         { status: 400 },
       );
     }
 
-    appointmentData.startTime = s;
-    appointmentData.endTime = e;
+    appointmentData.startTime = parsedStartTime;
+    appointmentData.endTime = parsedEndTime;
   }
 
   if (status) {
@@ -276,7 +279,19 @@ export async function PATCH(
               data: toCreate.map((staffId) => ({
                 appointmentId: id,
                 staffId,
+                ...(parsedStartTime ? { plannedStart: parsedStartTime } : {}),
+                ...(parsedEndTime ? { plannedEnd: parsedEndTime } : {}),
               })),
+            });
+          }
+
+          if (parsedStartTime && parsedEndTime) {
+            await tx.assignment.updateMany({
+              where: { appointmentId: id },
+              data: {
+                plannedStart: parsedStartTime,
+                plannedEnd: parsedEndTime,
+              },
             });
           }
         } else {
