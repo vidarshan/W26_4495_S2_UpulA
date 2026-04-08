@@ -133,31 +133,26 @@ export async function PATCH(
     // UPSERT TD1
     // -------------------------
     if (tax) {
- await prisma.tD1.upsert({
-  where: { staffProfileId },
-  update: {
-    federalClaimAmount: body.federalClaimAmount,
-    quebecClaimAmount: body.quebecClaimAmount,
-
-    additionalFederalTaxPerPay: body.additionalFederalTaxPerPay ?? 0,
-    additionalQuebecTaxPerPay: body.additionalQuebecTaxPerPay ?? 0,
-
-    isExempt: body.isExempt ?? false,
-    sin: body.sin,
-  },
-  create: {
-    staffProfileId,
-
-    federalClaimAmount: body.federalClaimAmount ?? 16452,
-    quebecClaimAmount: body.quebecClaimAmount ?? 0,
-
-    additionalFederalTaxPerPay: body.additionalFederalTaxPerPay ?? 0,
-    additionalQuebecTaxPerPay: body.additionalQuebecTaxPerPay ?? 0,
-
-    isExempt: body.isExempt ?? false,
-    sin: body.sin,
-  },
-});
+      await prisma.tD1.upsert({
+        where: { staffProfileId },
+        update: {
+          federalClaimAmount: tax.federalClaimAmount ?? 16452,
+          quebecClaimAmount: tax.quebecClaimAmount ?? 0,
+          additionalFederalTaxPerPay: tax.additionalFederalTaxPerPay ?? 0,
+          additionalQuebecTaxPerPay: tax.additionalQuebecTaxPerPay ?? 0,
+          isExempt: tax.isExempt ?? false,
+          sin: tax.sin,
+        },
+        create: {
+          staffProfileId,
+          federalClaimAmount: tax.federalClaimAmount ?? 16452,
+          quebecClaimAmount: tax.quebecClaimAmount ?? 0,
+          additionalFederalTaxPerPay: tax.additionalFederalTaxPerPay ?? 0,
+          additionalQuebecTaxPerPay: tax.additionalQuebecTaxPerPay ?? 0,
+          isExempt: tax.isExempt ?? false,
+          sin: tax.sin,
+        },
+      });
     }
 
     return NextResponse.json({ success: true });

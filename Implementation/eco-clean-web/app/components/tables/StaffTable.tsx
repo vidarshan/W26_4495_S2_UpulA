@@ -2,7 +2,10 @@
 
 import { useStaff } from "@/hooks/useStaff";
 import {
+  Badge,
   Box,
+  Button,
+  Card,
   Flex,
   Group,
   Pagination,
@@ -10,18 +13,18 @@ import {
   Select,
   Table,
   TextInput,
-  Button,
 } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
-import { useCallback, useMemo, useState } from "react";
-import { IoFilterOutline, IoSearchOutline } from "react-icons/io5";
+import { useCallback, useState } from "react";
+import { IoAdd, IoFilterOutline, IoSearchOutline } from "react-icons/io5";
 import Loader from "../UI/Loader";
-import { formatDateTime } from "@/lib/utils/formatDateTime";
 import UserUpsertModal from "../popups/UserModal";
 import { Staff } from "@/types";
 
 export default function StaffTable() {
-  const isNarrow = useMediaQuery("(max-width: 62em)");
+  const isNarrow = useMediaQuery("(max-width: 62em)", false, {
+    getInitialValueInEffect: true,
+  });
   const [sort, setSort] = useState<"newest" | "oldest">("newest");
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
@@ -35,7 +38,6 @@ export default function StaffTable() {
     paginate: true,
   });
 
-  const staff = data?.data ?? [];
   const meta = data?.meta;
 
   const [opened, setOpened] = useState(false);
@@ -47,34 +49,11 @@ export default function StaffTable() {
     setPage(1);
   };
 
-  const openAdd = useCallback(() => {
-    setMode("create");
-    setSelectedUser(null);
-    setOpened(true);
-  }, []);
-
   const openEdit = useCallback((u: Staff) => {
     setMode("edit");
     setSelectedUser(u);
     setOpened(true);
   }, []);
-
-  const rows = useMemo(
-    () =>
-      staff.map((u) => (
-        <Table.Tr
-          key={u.id}
-          onClick={() => openEdit(u)}
-          style={{ cursor: "pointer" }}
-        >
-          <Table.Td>{u.name}</Table.Td>
-          <Table.Td>{u.role}</Table.Td>
-          <Table.Td>{u.email}</Table.Td>
-          <Table.Td>{new Date(u.createdAt).toLocaleDateString()}</Table.Td>
-        </Table.Tr>
-      )),
-    [openEdit, staff],
-  );
 
   return (
     <Box>
@@ -86,15 +65,42 @@ export default function StaffTable() {
         user={selectedUser}
       />
 
-      <Group justify="space-between" gap="sm" mb="md" align="end">
-        <Box></Box>
-        <Group gap="sm" wrap="wrap" style={{ width: isNarrow ? "100%" : "auto" }}>
+      <Group justify="space-between" gap="md" mb="md" align="flex-start">
+        <Group gap="xs">
+          <Badge color="lime" variant="light" radius="xl">
+            Employee records
+          </Badge>
+          <Badge color="gray" variant="light" radius="xl">
+            {(data?.data ?? []).length} shown
+          </Badge>
+        </Group>
+
+        <Group
+          gap="sm"
+          wrap="wrap"
+          style={{ width: isNarrow ? "100%" : "auto" }}
+        >
+          <Button
+            color="lime"
+            leftSection={<IoAdd size={16} />}
+            onClick={() => {
+              setMode("create");
+              setSelectedUser(null);
+              setOpened(true);
+            }}
+          >
+            Add user
+          </Button>
+
           <TextInput
             placeholder="Search users"
             leftSection={<IoSearchOutline size={16} />}
             radius="xl"
             onChange={(e) => handleSearch(e.target.value)}
-            style={{ flex: isNarrow ? 1 : undefined, minWidth: isNarrow ? 220 : undefined }}
+            style={{
+              flex: isNarrow ? 1 : undefined,
+              minWidth: isNarrow ? 220 : undefined,
+            }}
           />
           <Select
             placeholder="Sort by"
@@ -117,19 +123,41 @@ export default function StaffTable() {
         <Loader />
       ) : (
         <>
-          <ScrollArea mih="60vh" offsetScrollbars>
-            <Table striped highlightOnHover withRowBorders miw={620}>
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>Name</Table.Th>
-                  <Table.Th>Role</Table.Th>
-                  <Table.Th>Email</Table.Th>
-                  <Table.Th>Joined</Table.Th>
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>{rows}</Table.Tbody>
-            </Table>
-          </ScrollArea>
+          <Card
+            withBorder
+            radius="lg"
+            padding={0}
+            bg="rgba(255, 255, 255, 0.74)"
+          >
+            <ScrollArea mih="60vh" offsetScrollbars>
+              <Table striped highlightOnHover withRowBorders miw={620}>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>Name</Table.Th>
+                    <Table.Th>Role</Table.Th>
+                    <Table.Th>Email</Table.Th>
+                    <Table.Th>Joined</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {(data?.data ?? []).map((u) => (
+                    <Table.Tr
+                      key={u.id}
+                      onClick={() => openEdit(u)}
+                      style={{ cursor: "pointer" }}
+                    >
+                      <Table.Td>{u.name}</Table.Td>
+                      <Table.Td>{u.role}</Table.Td>
+                      <Table.Td>{u.email}</Table.Td>
+                      <Table.Td>
+                        {new Date(u.createdAt).toLocaleDateString()}
+                      </Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </ScrollArea>
+          </Card>
 
           <Flex mt="sm" w="100%" justify={isNarrow ? "center" : "flex-end"}>
             {meta?.totalPages ? (

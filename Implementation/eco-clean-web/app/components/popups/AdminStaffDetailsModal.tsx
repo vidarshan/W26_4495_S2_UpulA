@@ -1,290 +1,636 @@
 "use client";
 
 import {
-    Modal,
-    Stack,
-    Title,
-    Text,
-    Group,
-    Badge,
-    Paper,
-    Button,
-    Divider,
-    Grid,
+  ActionIcon,
+  Alert,
+  Badge,
+  Button,
+  Grid,
+  Group,
+  Loader,
+  Modal,
+  NumberInput,
+  Paper,
+  SegmentedControl,
+  SimpleGrid,
+  Stack,
+  Checkbox,
+  Text,
+  TextInput,
+  ThemeIcon,
+  Title,
 } from "@mantine/core";
-import { IoCallOutline, IoHomeOutline, IoPersonOutline } from "react-icons/io5";
-import { useState } from "react"
-import { ActionIcon, TextInput, NumberInput } from "@mantine/core";
-import { IoPencilOutline } from "react-icons/io5";
+import {
+  IoCallOutline,
+  IoCashOutline,
+  IoHomeOutline,
+  IoMailOutline,
+  IoPencilOutline,
+  IoPersonOutline,
+  IoShieldOutline,
+  IoCardOutline,
+} from "react-icons/io5";
+import { notifications } from "@mantine/notifications";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import FinancialDetailsModal from "../popups/FinancialDetailsModal";
 
 type Props = {
-    opened: boolean;
-    onClose: () => void;
-    staff: any; // we’ll type later
+  opened: boolean;
+  onClose: () => void;
+  staff: {
+    id: string;
+    name?: string | null;
+    email?: string | null;
+    role?: string | null;
+    staffProfile?: {
+      staffId?: string | null;
+      position?: string | null;
+      hourlyRate?: number | null;
+      phoneNumber?: string | null;
+      staffAddress?: {
+        street1?: string | null;
+        street2?: string | null;
+        city?: string | null;
+        province?: string | null;
+        postalCode?: string | null;
+        country?: string | null;
+      } | null;
+      emergencyContact?: {
+        name?: string | null;
+        phoneNumber?: string | null;
+        relationship?: string | null;
+      } | null;
+    } | null;
+  } | null;
 };
 
 export default function AdminStaffDetailsModal({
-    opened,
-    onClose,
-    staff,
+  opened,
+  onClose,
+  staff,
 }: Props) {
-    console.log("MODAL STAFF:", staff);
+  const [isSaving, setIsSaving] = useState(false);
+  const [activeView, setActiveView] = useState<"overview" | "financial">(
+    "overview",
+  );
 
-    const [isSaving, setIsSaving] = useState(false);
-    const [editingField, setEditingField] = useState<
-        "position" | "rate" | null
-    >(null);
-    const [financialOpen, setFinancialOpen] = useState(false);
+  const fetchStaffDetails = async (id: string) => {
+    const res = await fetch(`/api/admin/staff/${id}`);
+    if (!res.ok) throw new Error("Failed");
+    return res.json();
+  };
 
-    const fetchStaffDetails = async (id: string) => {
-        console.log("FETCHING STAFF ID:", id); // 👈 ADD THIS
+  const { data } = useQuery({
+    queryKey: ["admin-staff", staff?.id],
+    queryFn: () => fetchStaffDetails(staff.id),
+    enabled: !!staff?.id && opened,
+  });
 
-        const res = await fetch(`/api/admin/staff/${id}`);
-        if (!res.ok) throw new Error("Failed");
+  const queryClient = useQueryClient();
+  const profile = data?.staffProfile ?? staff?.staffProfile;
+  const address = profile?.staffAddress;
+  const emergency = profile?.emergencyContact;
 
-        return res.json();
-    };
+  const { data: financials, isLoading: financialsLoading } = useQuery({
+    queryKey: ["admin-staff-financials", staff?.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/staff/${staff?.id}/financials`, {
+        cache: "no-store",
+      });
+      if (!res.ok) throw new Error("Failed to load financial details");
+      return res.json() as Promise<{
+        bankDetails?: {
+          bankName?: string | null;
+          accountHolder?: string | null;
+          institutionNo?: string | null;
+          transitNo?: string | null;
+          accountNo?: string | null;
+        } | null;
+        td1?: {
+          sin?: string | null;
+          federalClaimAmount?: number | null;
+          additionalFederalTaxPerPay?: number | null;
+          quebecClaimAmount?: number | null;
+          isExempt?: boolean | null;
+        } | null;
+      }>;
+    },
+    enabled: !!staff?.id && opened,
+  });
 
-    const { data, isLoading } = useQuery({
-        queryKey: ["admin-staff", staff?.id],
-        queryFn: () => fetchStaffDetails(staff.id),
-        enabled: !!staff?.id,
+  const [position, setPosition] = useState("");
+  const [rate, setRate] = useState(0);
+  const [bank, setBank] = useState({
+    bankName: "",
+    accountHolder: "",
+    institutionNo: "",
+    transitNo: "",
+    accountNo: "",
+  });
+  const [tax, setTax] = useState({
+    sin: "",
+    federalClaimAmount: 0,
+    additionalFederalTaxPerPay: 0,
+    quebecClaimAmount: 0,
+    isExempt: false,
+  });
+
+  useEffect(() => {
+    setPosition(profile?.position || "");
+    setRate(profile?.hourlyRate || 0);
+  }, [profile?.position, profile?.hourlyRate, opened]);
+
+  useEffect(() => {
+    setBank({
+      bankName: financials?.bankDetails?.bankName || "",
+      accountHolder: financials?.bankDetails?.accountHolder || "",
+      institutionNo: financials?.bankDetails?.institutionNo || "",
+      transitNo: financials?.bankDetails?.transitNo || "",
+      accountNo: financials?.bankDetails?.accountNo || "",
     });
+    setTax({
+      sin: financials?.td1?.sin || "",
+      federalClaimAmount: financials?.td1?.federalClaimAmount || 0,
+      additionalFederalTaxPerPay:
+        financials?.td1?.additionalFederalTaxPerPay || 0,
+      quebecClaimAmount: financials?.td1?.quebecClaimAmount || 0,
+      isExempt: financials?.td1?.isExempt || false,
+    });
+  }, [financials, opened]);
 
-    const queryClient = useQueryClient();
+  const handleSave = async () => {
+    try {
+      setIsSaving(true);
 
-    const profile = data?.staffProfile ?? staff?.staffProfile;
-    const address = profile?.staffAddress;
-    const emergency = profile?.emergencyContact;
+      const response = await fetch(`/api/admin/staff/${staff.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          position,
+          hourlyRate: rate,
+        }),
+      });
 
-    const [position, setPosition] = useState(profile?.position || "");
-    const [rate, setRate] = useState(profile?.hourlyRate || 0);
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error || "Failed to update staff details");
+      }
 
+      await queryClient.invalidateQueries({
+        queryKey: ["admin-staff", staff.id],
+      });
 
-    const handleSave = async () => {
-        try {
-            setIsSaving(true);
+      notifications.show({
+        title: "Staff details updated",
+        message: "Position and rate were saved successfully.",
+        color: "green",
+      });
+    } catch (err) {
+      console.error(err);
+      notifications.show({
+        title: "Save failed",
+        message: err instanceof Error ? err.message : "Please try again.",
+        color: "red",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
-            await fetch(`/api/admin/staff/${staff.id}`, {
-                method: "PATCH",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    position,
-                    hourlyRate: rate,
-                }),
-            });
+  const handleSaveFinancial = async () => {
+    try {
+      setIsSaving(true);
 
+      const response = await fetch(`/api/admin/staff/${staff?.id}/financials`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bank,
+          tax,
+        }),
+      });
 
-            queryClient.invalidateQueries({
-                queryKey: ["admin-staff", staff.id],
-            });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error || "Failed to update financial details");
+      }
 
-            console.log("Saved!");
+      await queryClient.invalidateQueries({
+        queryKey: ["admin-staff-financials", staff?.id],
+      });
 
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setIsSaving(false);
-        }
-    };
+      notifications.show({
+        title: "Financial details updated",
+        message: "Bank and TD1 details were saved successfully.",
+        color: "green",
+      });
+    } catch (err) {
+      console.error(err);
+      notifications.show({
+        title: "Save failed",
+        message: err instanceof Error ? err.message : "Please try again.",
+        color: "red",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
-    const handleFinancial = () => {
-        console.log("Open financial details");
-    };
+  return (
+    <Modal
+      opened={opened}
+      onClose={onClose}
+      title="Staff Details"
+      size="xl"
+      centered
+      classNames={{
+        content: "app-modal__content",
+        header: "app-modal__header",
+        title: "app-modal__title",
+        body: "app-modal__body",
+      }}
+    >
+      <Stack gap="md">
+        <Paper withBorder radius="xl" p="lg">
+          <Group justify="space-between" align="flex-start" wrap="wrap">
+            <Group align="flex-start" wrap="nowrap" gap="md">
+              <ThemeIcon size={48} radius="xl" color="lime" variant="light">
+                <IoPersonOutline size={22} />
+              </ThemeIcon>
+              <Stack gap={4}>
+                <Title order={4}>{staff?.name || "Staff member"}</Title>
+                <Text size="sm" c="dimmed">
+                  Review staffing, contact, and payroll-related details in one
+                  place.
+                </Text>
+              </Stack>
+            </Group>
 
+            <Group gap="xs">
+              <Badge radius="xl">{staff?.role || "STAFF"}</Badge>
+              {profile?.staffId ? (
+                <Badge variant="light" radius="xl" color="gray">
+                  ID: {profile.staffId}
+                </Badge>
+              ) : null}
+            </Group>
+          </Group>
+        </Paper>
 
-    return (
-        <Modal
-            opened={opened}
-            onClose={onClose}
-            title="Staff Details"
-            size="lg"
-            centered
-        >
-            <Stack gap="md">
-                {/* HEADER */}
-                <Stack gap={4}>
-                    <Title order={4}>{staff?.name}</Title>
+        <SegmentedControl
+          fullWidth
+          color="lime"
+          radius="xl"
+          value={activeView}
+          onChange={(value) => setActiveView(value as "overview" | "financial")}
+          data={[
+            { label: "Overview", value: "overview" },
+            { label: "Financial", value: "financial" },
+          ]}
+        />
 
-                    <Group gap="xs">
-                        <Badge>{staff?.role}</Badge>
-
-                        {profile?.staffId && (
-                            <Badge variant="light">ID: {profile.staffId}</Badge>
-                        )}
-                    </Group>
-                </Stack>
-
-                <Divider />
-
-                {/* BASIC INFO */}
-                <Paper withBorder p="md" radius="md">
-                    <Stack gap="xs">
-                        <Text fw={600}>Basic Info</Text>
-
-                        <Text size="sm">Email: {staff?.email}</Text>
-                        {/* POSITION */}
-                        <Group gap="xs">
-                            <Text size="sm">Position:</Text>
-
-                            {editingField === "position" ? (
-                                <TextInput
-                                    value={position}
-                                    onChange={(e) => setPosition(e.currentTarget.value)}
-                                    size="xs"
-                                    autoFocus
-                                    onBlur={() => setEditingField(null)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter") setEditingField(null);
-                                    }}
-                                />
-                            ) : (
-                                <>
-                                    <Text size="sm">{position || "—"}</Text>
-                                    <ActionIcon
-                                        size="xs"
-                                        variant="subtle"
-                                        onClick={() => setEditingField("position")}
-                                    >
-                                        <IoPencilOutline size={14} />
-                                    </ActionIcon>
-                                </>
-                            )}
-                        </Group>
-
-                        {/* HOURLY RATE */}
-                        <Group gap="xs">
-                            <Text size="sm">Hourly Rate:</Text>
-
-                            {editingField === "rate" ? (
-                                <NumberInput
-                                    value={rate}
-                                    onChange={(val) => setRate(Number(val) || 0)}
-                                    size="xs"
-                                    min={0}
-                                    decimalScale={2}
-                                    autoFocus
-                                    onBlur={() => setEditingField(null)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter") setEditingField(null);
-                                    }}
-                                />
-                            ) : (
-                                <>
-                                    <Text size="sm">${rate.toFixed(2)}</Text>
-                                    <ActionIcon
-                                        size="xs"
-                                        variant="subtle"
-                                        onClick={() => setEditingField("rate")}
-                                    >
-                                        <IoPencilOutline size={14} />
-                                    </ActionIcon>
-                                </>
-                            )}
-                        </Group>
-                    </Stack>
-                </Paper>
-
-                {/* CONTACT */}
-                <Paper withBorder p="md" radius="md">
-                    <Stack gap="xs">
-                        <Group justify="space-between">
-                            <Text fw={600}>Contact</Text>
-
-                        </Group>
-
-                        <Text size="sm">
-                            <IoCallOutline />{" "}
-                            {profile?.phoneNumber || "No contact number"}
-                        </Text>
-                    </Stack>
-                </Paper>
-
-                {/* ADDRESS + EMERGENCY */}
-                <Grid>
-                    <Grid.Col span={6}>
-                        <Paper withBorder p="md" radius="md">
-                            <Stack gap="xs">
-                                <Group justify="space-between">
-                                    <Text fw={600}>Address</Text>
-
-                                </Group>
-
-                                {address ? (
-                                    <>
-                                        <Text size="sm">{address.street1}</Text>
-                                        <Text size="sm">{address.street2}</Text>
-                                        <Text size="sm">
-                                            {address.city}, {address.province}
-                                        </Text>
-                                        <Text size="sm">{address.postalCode}</Text>
-                                        <Text size="sm">{address.country}</Text>
-                                    </>
-                                ) : (
-                                    <Text size="sm" c="dimmed">
-                                        No address
-                                    </Text>
-                                )}
-                            </Stack>
-                        </Paper>
-                    </Grid.Col>
-
-                    <Grid.Col span={6}>
-                        <Paper withBorder p="md" radius="md">
-                            <Stack gap="xs">
-                                <Group justify="space-between">
-                                    <Text fw={600}>Emergency</Text>
-
-                                </Group>
-
-                                {emergency ? (
-                                    <>
-                                        <Text size="sm">{emergency.name}</Text>
-                                        <Text size="sm">{emergency.phoneNumber}</Text>
-                                        <Text size="sm">{emergency.relationship}</Text>
-                                    </>
-                                ) : (
-                                    <Text size="sm" c="dimmed">
-                                        No emergency contact
-                                    </Text>
-                                )}
-                            </Stack>
-                        </Paper>
-                    </Grid.Col>
-                </Grid>
-                <Group mt="md" justify="space-between">
-                    {/* LEFT SIDE */}
-                    <Button
-                        variant="light"
-                        color="blue"
-                        onClick={() => setFinancialOpen(true)}
-                    >
-                        Financial Details
-                    </Button>
-
-                    {/* RIGHT SIDE */}
-                    <Group>
-                        <Button variant="default" onClick={onClose}>
-                            Cancel
-                        </Button>
-
-                        <Button loading={isSaving} onClick={handleSave}>
-                            Save
-                        </Button>
-                    </Group>
+        {activeView === "overview" ? (
+          <>
+            <Paper withBorder radius="xl" p="lg">
+              <Stack gap="md">
+                <Group gap="sm">
+                  <ThemeIcon radius="xl" size="lg" variant="light" color="blue">
+                    <IoShieldOutline size={18} />
+                  </ThemeIcon>
+                  <Stack gap={2}>
+                    <Text fw={700}>Role and pay</Text>
+                    <Text size="sm" c="dimmed">
+                      This section controls role-adjacent profile values used in
+                      staffing and payroll.
+                    </Text>
+                  </Stack>
                 </Group>
+
+                <Grid>
+                  <Grid.Col span={{ base: 12, sm: 6 }}>
+                    <TextInput
+                      label="Position"
+                      value={position}
+                      onChange={(e) => setPosition(e.currentTarget.value)}
+                      rightSection={
+                        <ActionIcon variant="subtle" color="gray">
+                          <IoPencilOutline size={14} />
+                        </ActionIcon>
+                      }
+                    />
+                  </Grid.Col>
+                  <Grid.Col span={{ base: 12, sm: 6 }}>
+                    <NumberInput
+                      label="Hourly Rate"
+                      value={rate}
+                      onChange={(val) => setRate(Number(val) || 0)}
+                      min={0}
+                      decimalScale={2}
+                      prefix="$"
+                      rightSectionPointerEvents="none"
+                    />
+                  </Grid.Col>
+                </Grid>
+
+                <SimpleStatGrid
+                  items={[
+                    {
+                      label: "Email",
+                      value: staff?.email || "—",
+                      icon: <IoMailOutline size={16} />,
+                    },
+                    {
+                      label: "Phone",
+                      value: profile?.phoneNumber || "No contact number",
+                      icon: <IoCallOutline size={16} />,
+                    },
+                    {
+                      label: "Position",
+                      value: position || "—",
+                      icon: <IoPersonOutline size={16} />,
+                    },
+                    {
+                      label: "Hourly Rate",
+                      value: `$${Number(rate || 0).toFixed(2)}`,
+                      icon: <IoCashOutline size={16} />,
+                    },
+                  ]}
+                />
+              </Stack>
+            </Paper>
+
+            <Grid>
+              <Grid.Col span={{ base: 12, md: 12 }}>
+                <Paper withBorder radius="xl" p="lg">
+                  <Stack gap="md">
+                    <Group gap="sm">
+                      <ThemeIcon
+                        radius="xl"
+                        size="lg"
+                        variant="light"
+                        color="orange"
+                      >
+                        <IoHomeOutline size={18} />
+                      </ThemeIcon>
+                      <Stack gap={2}>
+                        <Text fw={700}>Address</Text>
+                        <Text size="sm" c="dimmed">
+                          Current home address on file.
+                        </Text>
+                      </Stack>
+                    </Group>
+
+                    {address ? (
+                      <Stack gap={6}>
+                        <Text size="sm" fw={600}>
+                          {address.street1}
+                        </Text>
+                        {address.street2 ? (
+                          <Text size="sm">{address.street2}</Text>
+                        ) : null}
+                        <Text size="sm">
+                          {address.city}, {address.province}
+                        </Text>
+                        <Text size="sm">{address.postalCode}</Text>
+                        <Text size="sm">{address.country}</Text>
+                      </Stack>
+                    ) : (
+                      <Text size="sm" c="dimmed">
+                        No address on file.
+                      </Text>
+                    )}
+                  </Stack>
+                </Paper>
+              </Grid.Col>
+
+              <Grid.Col span={{ base: 12, md: 12 }}>
+                <Paper withBorder radius="xl" p="lg">
+                  <Stack gap="md">
+                    <Group gap="sm">
+                      <ThemeIcon
+                        radius="xl"
+                        size="lg"
+                        variant="light"
+                        color="grape"
+                      >
+                        <IoCallOutline size={18} />
+                      </ThemeIcon>
+                      <Stack gap={2}>
+                        <Text fw={700}>Emergency Contact</Text>
+                        <Text size="sm" c="dimmed">
+                          Primary contact in case something goes wrong on shift.
+                        </Text>
+                      </Stack>
+                    </Group>
+
+                    {emergency ? (
+                      <SimpleStatGrid
+                        items={[
+                          {
+                            label: "Name",
+                            value: emergency.name || "—",
+                            icon: <IoPersonOutline size={16} />,
+                          },
+                          {
+                            label: "Phone",
+                            value: emergency.phoneNumber || "—",
+                            icon: <IoCallOutline size={16} />,
+                          },
+                          {
+                            label: "Relationship",
+                            value: emergency.relationship || "—",
+                            icon: <IoShieldOutline size={16} />,
+                          },
+                        ]}
+                      />
+                    ) : (
+                      <Text size="sm" c="dimmed">
+                        No emergency contact on file.
+                      </Text>
+                    )}
+                  </Stack>
+                </Paper>
+              </Grid.Col>
+            </Grid>
+          </>
+        ) : (
+          <Paper withBorder radius="xl" p="lg">
+            <Stack gap="md">
+              <Group gap="sm">
+                <ThemeIcon radius="xl" size="lg" variant="light" color="teal">
+                  <IoCardOutline size={18} />
+                </ThemeIcon>
+                <Stack gap={2}>
+                  <Text fw={700}>Financial Details</Text>
+                  <Text size="sm" c="dimmed">
+                    Update direct deposit and TD1 settings without opening
+                    another modal.
+                  </Text>
+                </Stack>
+              </Group>
+
+              {financialsLoading ? (
+                <Alert color="gray">
+                  <Group gap="xs">
+                    <Loader size="sm" />
+                    <Text size="sm">Loading financial details...</Text>
+                  </Group>
+                </Alert>
+              ) : null}
+
+              <Paper withBorder radius="lg" p="md">
+                <Stack gap="md">
+                  <Text fw={700}>Bank details</Text>
+                  <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                    <TextInput
+                      label="Bank Name"
+                      value={bank.bankName}
+                      onChange={(e) =>
+                        setBank({ ...bank, bankName: e.currentTarget.value })
+                      }
+                    />
+                    <TextInput
+                      label="Account Holder"
+                      value={bank.accountHolder}
+                      onChange={(e) =>
+                        setBank({
+                          ...bank,
+                          accountHolder: e.currentTarget.value,
+                        })
+                      }
+                    />
+                    <TextInput
+                      label="Institution Number"
+                      value={bank.institutionNo}
+                      onChange={(e) =>
+                        setBank({
+                          ...bank,
+                          institutionNo: e.currentTarget.value,
+                        })
+                      }
+                    />
+                    <TextInput
+                      label="Transit Number"
+                      value={bank.transitNo}
+                      onChange={(e) =>
+                        setBank({ ...bank, transitNo: e.currentTarget.value })
+                      }
+                    />
+                    <TextInput
+                      label="Account Number"
+                      value={bank.accountNo}
+                      onChange={(e) =>
+                        setBank({ ...bank, accountNo: e.currentTarget.value })
+                      }
+                    />
+                  </SimpleGrid>
+                </Stack>
+              </Paper>
+
+              <Paper withBorder radius="lg" p="md">
+                <Stack gap="md">
+                  <Text fw={700}>TD1 tax details</Text>
+                  <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                    <TextInput
+                      label="SIN"
+                      value={tax.sin}
+                      onChange={(e) =>
+                        setTax({ ...tax, sin: e.currentTarget.value })
+                      }
+                    />
+                    <NumberInput
+                      label="Federal Claim Amount"
+                      value={tax.federalClaimAmount}
+                      onChange={(value) =>
+                        setTax({
+                          ...tax,
+                          federalClaimAmount: Number(value) || 0,
+                        })
+                      }
+                    />
+                    <NumberInput
+                      label="Additional Federal Tax Per Pay"
+                      value={tax.additionalFederalTaxPerPay}
+                      onChange={(value) =>
+                        setTax({
+                          ...tax,
+                          additionalFederalTaxPerPay: Number(value) || 0,
+                        })
+                      }
+                    />
+                    <NumberInput
+                      label="Quebec Claim Amount"
+                      value={tax.quebecClaimAmount}
+                      onChange={(value) =>
+                        setTax({
+                          ...tax,
+                          quebecClaimAmount: Number(value) || 0,
+                        })
+                      }
+                    />
+                    <Checkbox
+                      mt="xl"
+                      label="Exempt from tax"
+                      checked={tax.isExempt}
+                      onChange={(e) =>
+                        setTax({ ...tax, isExempt: e.currentTarget.checked })
+                      }
+                    />
+                  </SimpleGrid>
+                </Stack>
+              </Paper>
             </Stack>
-            <FinancialDetailsModal
-                opened={financialOpen}
-                onClose={() => setFinancialOpen(false)}
-                staffId={staff.id}
-            />
-        </Modal>
+          </Paper>
+        )}
 
+        <Group justify="space-between" wrap="wrap">
+          <Text size="sm" c="dimmed"></Text>
 
-    );
+          <Group>
+            <Button variant="default" onClick={onClose}>
+              Close
+            </Button>
+            <Button
+              loading={isSaving}
+              onClick={
+                activeView === "financial" ? handleSaveFinancial : handleSave
+              }
+            >
+              Save
+            </Button>
+          </Group>
+        </Group>
+      </Stack>
+    </Modal>
+  );
+}
+
+function SimpleStatGrid({
+  items,
+}: {
+  items: { label: string; value: string; icon: React.ReactNode }[];
+}) {
+  return (
+    <Grid>
+      {items.map((item) => (
+        <Grid.Col key={item.label} span={{ base: 12, sm: 6 }}>
+          <Paper withBorder radius="lg" p="md">
+            <Group align="flex-start" wrap="nowrap">
+              <ThemeIcon radius="xl" size="lg" variant="light" color="gray">
+                {item.icon}
+              </ThemeIcon>
+              <Stack gap={2}>
+                <Text size="xs" fw={700} c="dimmed">
+                  {item.label}
+                </Text>
+                <Text fw={700}>{item.value}</Text>
+              </Stack>
+            </Group>
+          </Paper>
+        </Grid.Col>
+      ))}
+    </Grid>
+  );
 }

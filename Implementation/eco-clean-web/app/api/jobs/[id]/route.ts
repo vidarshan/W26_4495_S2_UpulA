@@ -3,6 +3,7 @@ export const runtime = "nodejs";
 import { prisma } from "@/lib/prisma";
 import { LineItem } from "@/lib/api/jobs";
 import { NextRequest, NextResponse } from "next/server";
+import { parseAppDateTimeInput } from "@/lib/dateTime";
 
 function must(condition: unknown, msg: string) {
   if (!condition) throw new Error(msg);
@@ -148,6 +149,10 @@ export async function PATCH(
     const clientId = mustString(body.clientId, "Missing clientId");
     const addressId = mustString(body.addressId, "Missing addressId");
     const isAnytime = !!body.isAnytime;
+    const recurrenceBody =
+      body.recurrence && typeof body.recurrence === "object"
+        ? (body.recurrence as Record<string, unknown>)
+        : null;
     const lineItems = normalizeLineItems(body.lineItems, jobId);
 
     must(lineItems.length > 0, "At least one valid line item is required");
@@ -170,11 +175,45 @@ export async function PATCH(
     const updatedJob = await prisma.$transaction(async (tx) => {
       const existing = await tx.job.findUnique({
         where: { id: jobId },
-        select: { id: true },
+        select: { id: true, type: true },
       });
 
       if (!existing) {
         throw new Error("Job not found");
+      }
+
+      if (existing.type === "RECURRING") {
+        must(recurrenceBody, "Recurring jobs require recurrence settings");
+        must(
+          recurrenceBody.frequency === "weekly" ||
+            recurrenceBody.frequency === "monthly",
+          "Invalid recurrence frequency",
+        );
+        must(
+          typeof recurrenceBody.interval === "number" &&
+            recurrenceBody.interval >= 1,
+          "recurrence.interval must be >= 1",
+        );
+        must(
+          recurrenceBody.endType === "after" || recurrenceBody.endType === "on",
+          "Invalid recurrence endType",
+        );
+
+        if (recurrenceBody.endType === "after") {
+          must(
+            typeof recurrenceBody.endsAfter === "number" &&
+              recurrenceBody.endsAfter >= 1,
+            "recurrence.endsAfter must be >= 1",
+          );
+        }
+
+        if (recurrenceBody.endType === "on") {
+          must(
+            typeof recurrenceBody.endsOn === "string" &&
+              recurrenceBody.endsOn.trim().length > 0,
+            "recurrence.endsOn is required",
+          );
+        }
       }
 
       await tx.job.update({
@@ -194,6 +233,45 @@ export async function PATCH(
 
       await tx.jobLineItem.deleteMany({ where: { jobId } });
       await tx.jobLineItem.createMany({ data: lineItems });
+
+      if (existing.type === "RECURRING" && recurrenceBody) {
+        const endsOn =
+          recurrenceBody.endType === "on" &&
+          typeof recurrenceBody.endsOn === "string"
+            ? parseAppDateTimeInput(recurrenceBody.endsOn)
+            : null;
+
+        if (recurrenceBody.endType === "on" && !endsOn) {
+          throw new Error("Invalid recurrence.endsOn");
+        }
+
+        await tx.recurrence.upsert({
+          where: { jobId },
+          update: {
+            frequency: recurrenceBody.frequency as string,
+            interval: recurrenceBody.interval as number,
+            endType: recurrenceBody.endType as string,
+            endsAfter:
+              recurrenceBody.endType === "after"
+                ? ((recurrenceBody.endsAfter as number | null | undefined) ??
+                  null)
+                : null,
+            endsOn,
+          },
+          create: {
+            jobId,
+            frequency: recurrenceBody.frequency as string,
+            interval: recurrenceBody.interval as number,
+            endType: recurrenceBody.endType as string,
+            endsAfter:
+              recurrenceBody.endType === "after"
+                ? ((recurrenceBody.endsAfter as number | null | undefined) ??
+                  null)
+                : null,
+            endsOn,
+          },
+        });
+      }
 
       return tx.job.findUnique({
         where: { id: jobId },

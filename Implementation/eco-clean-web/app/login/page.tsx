@@ -2,7 +2,6 @@
 
 import {
   Alert,
-  Badge,
   Box,
   Button,
   Card,
@@ -59,7 +58,7 @@ export default function LoginPage() {
       mih="100vh"
       style={{
         background:
-          "radial-gradient(circle at top left, rgba(14, 165, 233, 0.18), transparent 24%), radial-gradient(circle at bottom right, rgba(34, 197, 94, 0.16), transparent 22%), linear-gradient(180deg, #f8fafc 0%, #eef6f4 100%)",
+          "radial-gradient(circle at top left, rgba(132, 204, 22, 0.18), transparent 24%), radial-gradient(circle at bottom right, rgba(163, 230, 53, 0.16), transparent 22%), linear-gradient(180deg, #f8fafc 0%, #f3f7ec 100%)",
       }}
     >
       <Container size="sm" py="xl" h="100vh">
@@ -84,8 +83,8 @@ export default function LoginPage() {
                   style={{
                     borderRadius: "24px",
                     background:
-                      "linear-gradient(180deg, rgba(240, 253, 250, 1), rgba(239, 246, 255, 1))",
-                    boxShadow: "inset 0 0 0 1px rgba(148, 163, 184, 0.18)",
+                      "linear-gradient(180deg, rgba(247, 254, 231, 1), rgba(255, 255, 255, 1))",
+                    boxShadow: "inset 0 0 0 1px rgba(132, 204, 22, 0.18)",
                   }}
                 >
                   <Image
@@ -102,6 +101,9 @@ export default function LoginPage() {
                 <Title order={1} fz="2rem">
                   Log In
                 </Title>
+                <Text size="sm" c="dimmed">
+                  Sign in to continue to the Eco Clean workspace.
+                </Text>
               </Stack>
 
               {error && (

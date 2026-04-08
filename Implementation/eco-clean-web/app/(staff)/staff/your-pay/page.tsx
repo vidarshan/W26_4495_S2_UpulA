@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import {
+  Badge,
   Box,
   Button,
   Card,
@@ -28,30 +29,71 @@ import { useRouter } from "next/navigation";
 
 import { Collapse, Select } from "@mantine/core";
 
-const COLORS = ["#1f6b8f", "#eb7a2f", "#2e7d32"];
+const COLORS = ["#84cc16", "#f59e0b", "#475569"];
+
+type PayBreakdown = {
+  regularAmount?: number;
+  otAmount?: number;
+  transportAllowance?: number;
+  federalTax?: number;
+  quebecTax?: number;
+  ei?: number;
+  qpp?: number;
+  qpip?: number;
+  other?: number;
+};
+
+type PayPeriodRecord = {
+  id: string;
+  payPeriodStart: string;
+  payPeriodEnd: string;
+  payDate?: string;
+  grossEarnings?: number;
+  totalDeductions?: number;
+  netEarnings?: number;
+  breakdown?: PayBreakdown;
+};
+
+type PayOverviewResponse = {
+  employeeName: string;
+  employeeId: string;
+  latest?: PayPeriodRecord;
+  ytd?: {
+    gross?: number;
+    deductions?: number;
+    net?: number;
+  };
+  all?: PayPeriodRecord[];
+};
+
+type PayCompareResponse = {
+  summary: string;
+  keyDrivers: string[];
+  increases: string[];
+  decreases: string[];
+  recommendation?: string;
+};
 
 export default function YourPayPage() {
-  const { data: session } = useSession();
-  const [data, setData] = useState<any>(null);
+  useSession();
+  const [data, setData] = useState<PayOverviewResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [opened, setOpened] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<PayCompareResponse | null>(null);
   const router = useRouter();
 
-  const [periodA, setPeriodA] = useState<any>(null);
-  const [periodB, setPeriodB] = useState<any>(null);
+  const [periodA, setPeriodA] = useState<PayPeriodRecord | null>(null);
+  const [periodB, setPeriodB] = useState<PayPeriodRecord | null>(null);
 
-  const [history, setHistory] = useState<any[]>([]);
+  const [history, setHistory] = useState<PayPeriodRecord[]>([]);
 
   useEffect(() => {
     async function fetchPayData() {
       try {
-        const userId = session?.user?.id;
-
         const res = await fetch(`/api/staff/pay-statements/latest`);
 
         const res2 = await fetch("/api/staff/pay-statements/latest");
-        const historyData = await res2.json();
+        const historyData = (await res2.json()) as PayOverviewResponse;
 
         setHistory(historyData.all || []);
 
@@ -63,7 +105,7 @@ export default function YourPayPage() {
 
         if (!res.ok) throw new Error("Failed to fetch");
 
-        const result = await res.json();
+        const result = (await res.json()) as PayOverviewResponse;
         console.log("📦 PAY DATA:", result);
 
         setData(result);
@@ -75,12 +117,12 @@ export default function YourPayPage() {
     }
 
     fetchPayData();
-  }, [session]);
+  }, []);
 
   if (loading) {
     return (
       <Center h="100vh">
-        <Loader size="xl" color="#125f82" />
+        <Loader size="xl" color="lime" />
       </Center>
     );
   }
@@ -139,13 +181,39 @@ export default function YourPayPage() {
   }));
 
   return (
-    <Container size="lg" py="xl">
-      <Title ta="center" mb="lg">
-        Pay Statement
-      </Title>
+    <Container size="lg" py="xl" className="staff-app-page">
+      <Card
+        withBorder
+        radius="lg"
+        p="lg"
+        mb="lg"
+        className="staff-app-surface staff-app-surface--hero"
+      >
+        <Group justify="space-between" align="flex-start" gap="md">
+          <Box>
+            <Text size="xs" fw={700} c="#64748b" tt="uppercase" style={{ letterSpacing: "0.08em" }}>
+              Pay overview
+            </Text>
+            <Title order={2} mt={6}>
+              Your Pay
+            </Title>
+            <Text size="sm" c="dimmed" mt={4}>
+              Review your latest statement, track year-to-date totals, and compare periods from one place.
+            </Text>
+          </Box>
 
-      {/* 🔥 EMPLOYEE BLOCK */}
-      <Card withBorder radius="md" p="md" mb="lg">
+          <Group gap="xs">
+            <Badge variant="light" color="lime">
+              Latest statement
+            </Badge>
+            <Badge variant="light" color="gray">
+              {history.length} records
+            </Badge>
+          </Group>
+        </Group>
+      </Card>
+
+      <Card withBorder radius="lg" p="md" mb="lg" className="staff-app-surface">
         <Group justify="space-between">
           <Box>
             <Text fw={700}>Employee</Text>
@@ -167,7 +235,7 @@ export default function YourPayPage() {
       <Grid gutter="xl">
         {/* 🔥 CHART */}
         <Grid.Col span={{ base: 12, md: 6 }}>
-          <Card p="lg" withBorder radius="md">
+          <Card p="lg" withBorder radius="lg" className="staff-app-surface">
             <Title order={4} ta="center" mb="md">
               Earnings Distribution
             </Title>
@@ -214,7 +282,16 @@ export default function YourPayPage() {
               ytd={ytd.deductions}
             />
 
-            <Card withBorder p="md" radius="md" bg="#e6f4ea">
+            <Card
+              withBorder
+              p="md"
+              radius="lg"
+              style={{
+                background:
+                  "linear-gradient(180deg, rgba(247, 254, 231, 0.96), rgba(255, 255, 255, 0.98))",
+                borderColor: "rgba(132, 204, 22, 0.28)",
+              }}
+            >
               <Group justify="space-between">
                 <Text fw={700} size="lg">
                   Net Earnings
@@ -237,11 +314,11 @@ export default function YourPayPage() {
         </Grid.Col>
       </Grid>
 
-      <Card withBorder radius="md" mt="xl">
+      <Card withBorder radius="lg" mt="xl" className="staff-app-surface">
         <Group justify="space-between">
           <Text fw={700}>AI Pay Insights</Text>
 
-          <Button variant="subtle" onClick={() => setOpened((o) => !o)}>
+          <Button variant="light" color="lime" onClick={() => setOpened((o) => !o)}>
             {opened ? "Hide" : "Compare Pay Periods"}
           </Button>
         </Group>
@@ -277,6 +354,7 @@ export default function YourPayPage() {
             </Group>
 
             <Button
+              color="lime"
               onClick={async () => {
                 const res = await fetch("/api/ai/payroll/compare", {
                   method: "POST",
@@ -295,7 +373,7 @@ export default function YourPayPage() {
 
             {/* Result */}
             {result && (
-              <Card withBorder mt="md">
+              <Card withBorder mt="md" radius="lg" className="staff-app-surface">
                 <Text fw={700}>Summary</Text>
                 <Text mb="sm">{result.summary}</Text>
 
@@ -308,7 +386,7 @@ export default function YourPayPage() {
                   Increases
                 </Text>
                 {result.increases.map((d: string, i: number) => (
-                  <Text key={i} c="green">
+                  <Text key={i} c="lime.8">
                     + {d}
                   </Text>
                 ))}
@@ -341,15 +419,10 @@ export default function YourPayPage() {
         <Stack align="center" gap="md">
           <Button
             size="lg"
-            radius="md"
+            radius="lg"
             w={320}
-            styles={{
-              root: {
-                height: 58,
-                backgroundColor: "#125f82",
-                fontSize: "1.1rem",
-              },
-            }}
+            color="lime"
+            styles={{ root: { height: 58, fontSize: "1.1rem" } }}
             onClick={() => router.push("/staff/pay-stub/latest")}
           >
             Current Statement
@@ -357,7 +430,7 @@ export default function YourPayPage() {
 
           <Button
             size="lg"
-            radius="md"
+            radius="lg"
             w={320}
             variant="outline"
             onClick={() => router.push("/staff/pay-history")}
@@ -383,7 +456,7 @@ function SummaryBlock({
   ytd?: number;
 }) {
   return (
-    <Card withBorder p="md" radius="md">
+    <Card withBorder p="md" radius="lg" className="staff-app-surface">
       <Group justify="space-between">
         <Text fw={700}>{title}</Text>
         <Text fw={700}>${total.toFixed(2)}</Text>

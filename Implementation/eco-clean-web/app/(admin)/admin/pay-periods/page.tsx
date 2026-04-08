@@ -7,10 +7,9 @@ import {
   Group,
   NumberInput,
   Paper,
-  ScrollArea,
   Select,
+  SimpleGrid,
   Stack,
-  Table,
   Text,
 } from "@mantine/core";
 import { useEffect, useMemo, useState } from "react";
@@ -23,7 +22,6 @@ import {
   IoPeopleOutline,
 } from "react-icons/io5";
 import AdminPageFrame from "@/app/components/admin/AdminPageFrame";
-import AdminStaffWorkspaceNav from "@/app/components/admin/AdminStaffWorkspaceNav";
 import { calculatePayroll } from "@/lib/payroll/calculatePayroll";
 
 type StaffPayRow = {
@@ -319,6 +317,7 @@ export default function ManagePayPeriodsPage() {
             onClick={handleSubmit}
             loading={loading}
             disabled={!rows.length}
+            color="lime"
           >
             Generate statements
           </Button>
@@ -351,26 +350,27 @@ export default function ManagePayPeriodsPage() {
       ]}
     >
       <Stack gap="lg">
-        <AdminStaffWorkspaceNav />
-
         <Stack gap="lg">
           <Paper
             withBorder
             radius="lg"
             p="md"
             className="admin-page-frame__stat"
+            style={{
+              background:
+                "linear-gradient(180deg, rgba(247, 254, 231, 0.78), rgba(255, 255, 255, 0.96))",
+            }}
           >
             <Group justify="space-between" align="flex-end" gap="md">
               <Box maw={520}>
                 <Text fw={700} c="#0f172a">
-                  Timesheet period
+                  Payroll run setup
                 </Text>
                 <Text size="sm" c="dimmed" mt={4}>
-                  Use a completed period to pull approved time into payroll
-                  calculations.
+                  Choose one approved period, review the imported staff rows, then generate statements from this same screen.
                 </Text>
               </Box>
-              <Badge size="lg" variant="light" color="teal">
+              <Badge size="lg" variant="light" color="lime">
                 {selectedPeriodLabel}
               </Badge>
             </Group>
@@ -387,236 +387,224 @@ export default function ManagePayPeriodsPage() {
           <Paper
             withBorder
             radius="lg"
-            p={0}
+            p="md"
             className="admin-page-frame__surface"
           >
-            <ScrollArea h={560} type="auto">
-              <Table.ScrollContainer minWidth={2200}>
-                <Table
-                  withTableBorder
-                  withColumnBorders
-                  striped
-                  highlightOnHover
-                >
-                  <Table.Thead>
-                    <Table.Tr>
-                      <Table.Th>Staff ID</Table.Th>
-                      <Table.Th>Staff name</Table.Th>
-                      <Table.Th>Regular hours</Table.Th>
-                      <Table.Th>Regular rate</Table.Th>
-                      <Table.Th>Regular amount</Table.Th>
-                      <Table.Th>OT hours</Table.Th>
-                      <Table.Th>OT rate</Table.Th>
-                      <Table.Th>OT amount</Table.Th>
-                      <Table.Th>Transport</Table.Th>
-                      <Table.Th>Federal</Table.Th>
-                      <Table.Th>Quebec</Table.Th>
-                      <Table.Th>EI</Table.Th>
-                      <Table.Th>QPP</Table.Th>
-                      <Table.Th>QPP2</Table.Th>
-                      <Table.Th>QPIP</Table.Th>
-                      <Table.Th>Health</Table.Th>
-                      <Table.Th>Other</Table.Th>
-                      <Table.Th>Reset</Table.Th>
-                      <Table.Th>Deductions</Table.Th>
-                      <Table.Th>Gross</Table.Th>
-                      <Table.Th>Net</Table.Th>
-                    </Table.Tr>
-                  </Table.Thead>
+            <Stack gap="md">
+              <Box>
+                <Text fw={700} c="#0f172a">
+                  Payroll rows
+                </Text>
+                <Text size="sm" c="#475569" mt={4}>
+                  Each employee row is grouped into smaller edit sections so you can work without a wide spreadsheet view.
+                </Text>
+              </Box>
 
-                  <Table.Tbody>
-                    {!rows.length ? (
-                      <Table.Tr>
-                        <Table.Td colSpan={21}>
-                          <Text ta="center" c="dimmed" py="xl">
-                            {loadingRows
-                              ? "Loading approved payroll rows..."
-                              : "No approved staff rows available for this period."}
-                          </Text>
-                        </Table.Td>
-                      </Table.Tr>
-                    ) : (
-                      rows.map((row, index) => (
-                        <Table.Tr key={`${row.staffId}-${index}`}>
-                          <Table.Td>{row.staffId}</Table.Td>
-                          <Table.Td>{row.staffName}</Table.Td>
-                          <Table.Td>
-                            <NumberInput
-                              value={row.regularHours}
-                              min={0}
-                              onChange={(value) =>
-                                updateRow(
-                                  index,
-                                  "regularHours",
-                                  Number(value) || 0,
-                                )
-                              }
-                            />
-                          </Table.Td>
-                          <Table.Td>
-                            <NumberInput
-                              value={row.regularRate}
-                              min={0}
-                              onChange={(value) =>
-                                updateRow(
-                                  index,
-                                  "regularRate",
-                                  Number(value) || 0,
-                                )
-                              }
-                            />
-                          </Table.Td>
-                          <Table.Td>{formatMoney(row.regularAmount)}</Table.Td>
-                          <Table.Td>
-                            <NumberInput
-                              value={row.otHours}
-                              min={0}
-                              onChange={(value) =>
-                                updateRow(index, "otHours", Number(value) || 0)
-                              }
-                            />
-                          </Table.Td>
-                          <Table.Td>
-                            <NumberInput
-                              value={row.otRate}
-                              min={0}
-                              onChange={(value) =>
-                                updateRow(index, "otRate", Number(value) || 0)
-                              }
-                            />
-                          </Table.Td>
-                          <Table.Td>{formatMoney(row.otAmount)}</Table.Td>
-                          <Table.Td>
-                            <NumberInput
-                              value={row.transportAllowance}
-                              min={0}
-                              onChange={(value) =>
-                                updateRow(
-                                  index,
-                                  "transportAllowance",
-                                  Number(value) || 0,
-                                )
-                              }
-                            />
-                          </Table.Td>
-                          <Table.Td>
-                            <NumberInput
-                              value={row.federalTax}
-                              onChange={(value) =>
-                                updateManualDeduction(
-                                  index,
-                                  "federalTax",
-                                  Number(value) || 0,
-                                )
-                              }
-                            />
-                          </Table.Td>
-                          <Table.Td>
-                            <NumberInput
-                              value={row.quebecTax}
-                              onChange={(value) =>
-                                updateManualDeduction(
-                                  index,
-                                  "quebecTax",
-                                  Number(value) || 0,
-                                )
-                              }
-                            />
-                          </Table.Td>
-                          <Table.Td>
-                            <NumberInput
-                              value={row.ei}
-                              onChange={(value) =>
-                                updateManualDeduction(
-                                  index,
-                                  "ei",
-                                  Number(value) || 0,
-                                )
-                              }
-                            />
-                          </Table.Td>
-                          <Table.Td>
-                            <NumberInput
-                              value={row.qpp}
-                              onChange={(value) =>
-                                updateManualDeduction(
-                                  index,
-                                  "qpp",
-                                  Number(value) || 0,
-                                )
-                              }
-                            />
-                          </Table.Td>
-                          <Table.Td>
-                            <NumberInput
-                              value={row.qpp2}
-                              onChange={(value) =>
-                                updateManualDeduction(
-                                  index,
-                                  "qpp2",
-                                  Number(value) || 0,
-                                )
-                              }
-                            />
-                          </Table.Td>
-                          <Table.Td>
-                            <NumberInput
-                              value={row.qpip}
-                              onChange={(value) =>
-                                updateManualDeduction(
-                                  index,
-                                  "qpip",
-                                  Number(value) || 0,
-                                )
-                              }
-                            />
-                          </Table.Td>
-                          <Table.Td>
-                            <NumberInput
-                              value={row.health}
-                              onChange={(value) =>
-                                updateRow(index, "health", Number(value) || 0)
-                              }
-                            />
-                          </Table.Td>
-                          <Table.Td>
-                            <NumberInput
-                              value={row.other}
-                              onChange={(value) =>
-                                updateRow(index, "other", Number(value) || 0)
-                              }
-                            />
-                          </Table.Td>
-                          <Table.Td>
-                            <Button
-                              size="xs"
-                              variant="light"
-                              onClick={() => resetSuggestedDeductions(index)}
-                            >
-                              Reset
-                            </Button>
-                          </Table.Td>
-                          <Table.Td>{formatMoney(row.deductions)}</Table.Td>
-                          <Table.Td>{formatMoney(row.grossEarnings)}</Table.Td>
-                          <Table.Td>{formatMoney(row.netEarnings)}</Table.Td>
-                        </Table.Tr>
-                      ))
-                    )}
+              {!rows.length ? (
+                <Text ta="center" c="dimmed" py="xl">
+                  {loadingRows
+                    ? "Loading approved payroll rows..."
+                    : "No approved staff rows available for this period."}
+                </Text>
+              ) : (
+                <Stack gap="md">
+                  {rows.map((row, index) => (
+                    <Paper key={`${row.staffId}-${index}`} withBorder p="md" className="admin-page-frame__stat">
+                      <Stack gap="md">
+                        <Group justify="space-between" align="flex-start" gap="md">
+                          <div>
+                            <Text fw={700} c="#0f172a">
+                              {row.staffName}
+                            </Text>
+                            <Text size="sm" c="dimmed">
+                              {row.staffId}
+                            </Text>
+                          </div>
+                          <Button
+                            size="xs"
+                            variant="light"
+                            color="lime"
+                            onClick={() => resetSuggestedDeductions(index)}
+                          >
+                            Reset deductions
+                          </Button>
+                        </Group>
 
-                    {rows.length ? (
-                      <Table.Tr>
-                        <Table.Td colSpan={18}>
-                          <Text fw={700}>Totals</Text>
-                        </Table.Td>
-                        <Table.Td>{formatMoney(totals.deductions)}</Table.Td>
-                        <Table.Td>{formatMoney(totals.gross)}</Table.Td>
-                        <Table.Td>{formatMoney(totals.net)}</Table.Td>
-                      </Table.Tr>
-                    ) : null}
-                  </Table.Tbody>
-                </Table>
-              </Table.ScrollContainer>
-            </ScrollArea>
+                        <SimpleGrid cols={{ base: 1, xl: 3 }} spacing="md">
+                          <Paper withBorder p="md" radius="lg">
+                            <Stack gap="sm">
+                              <Text fw={700} c="#0f172a">
+                                Earnings
+                              </Text>
+                              <NumberInput
+                                label="Regular hours"
+                                value={row.regularHours}
+                                min={0}
+                                onChange={(value) =>
+                                  updateRow(index, "regularHours", Number(value) || 0)
+                                }
+                              />
+                              <NumberInput
+                                label="Regular rate"
+                                value={row.regularRate}
+                                min={0}
+                                onChange={(value) =>
+                                  updateRow(index, "regularRate", Number(value) || 0)
+                                }
+                              />
+                              <NumberInput
+                                label="OT hours"
+                                value={row.otHours}
+                                min={0}
+                                onChange={(value) =>
+                                  updateRow(index, "otHours", Number(value) || 0)
+                                }
+                              />
+                              <NumberInput
+                                label="OT rate"
+                                value={row.otRate}
+                                min={0}
+                                onChange={(value) =>
+                                  updateRow(index, "otRate", Number(value) || 0)
+                                }
+                              />
+                              <NumberInput
+                                label="Transport"
+                                value={row.transportAllowance}
+                                min={0}
+                                onChange={(value) =>
+                                  updateRow(index, "transportAllowance", Number(value) || 0)
+                                }
+                              />
+                            </Stack>
+                          </Paper>
+
+                          <Paper withBorder p="md" radius="lg">
+                            <Stack gap="sm">
+                              <Text fw={700} c="#0f172a">
+                                Payroll deductions
+                              </Text>
+                              <NumberInput
+                                label="Federal"
+                                value={row.federalTax}
+                                onChange={(value) =>
+                                  updateManualDeduction(index, "federalTax", Number(value) || 0)
+                                }
+                              />
+                              <NumberInput
+                                label="Quebec"
+                                value={row.quebecTax}
+                                onChange={(value) =>
+                                  updateManualDeduction(index, "quebecTax", Number(value) || 0)
+                                }
+                              />
+                              <NumberInput
+                                label="EI"
+                                value={row.ei}
+                                onChange={(value) =>
+                                  updateManualDeduction(index, "ei", Number(value) || 0)
+                                }
+                              />
+                              <NumberInput
+                                label="QPP"
+                                value={row.qpp}
+                                onChange={(value) =>
+                                  updateManualDeduction(index, "qpp", Number(value) || 0)
+                                }
+                              />
+                              <NumberInput
+                                label="QPP2"
+                                value={row.qpp2}
+                                onChange={(value) =>
+                                  updateManualDeduction(index, "qpp2", Number(value) || 0)
+                                }
+                              />
+                              <NumberInput
+                                label="QPIP"
+                                value={row.qpip}
+                                onChange={(value) =>
+                                  updateManualDeduction(index, "qpip", Number(value) || 0)
+                                }
+                              />
+                            </Stack>
+                          </Paper>
+
+                          <Paper withBorder p="md" radius="lg">
+                            <Stack gap="sm">
+                              <Text fw={700} c="#0f172a">
+                                Other and totals
+                              </Text>
+                              <NumberInput
+                                label="Health"
+                                value={row.health}
+                                onChange={(value) =>
+                                  updateRow(index, "health", Number(value) || 0)
+                                }
+                              />
+                              <NumberInput
+                                label="Other"
+                                value={row.other}
+                                onChange={(value) =>
+                                  updateRow(index, "other", Number(value) || 0)
+                                }
+                              />
+                              <SimpleGrid cols={1} spacing="xs" mt="xs">
+                                <Paper withBorder p="sm" radius="lg">
+                                  <Text size="xs" c="dimmed">Regular amount</Text>
+                                  <Text fw={700} mt={4}>{formatMoney(row.regularAmount)}</Text>
+                                </Paper>
+                                <Paper withBorder p="sm" radius="lg">
+                                  <Text size="xs" c="dimmed">OT amount</Text>
+                                  <Text fw={700} mt={4}>{formatMoney(row.otAmount)}</Text>
+                                </Paper>
+                                <Paper withBorder p="sm" radius="lg">
+                                  <Text size="xs" c="dimmed">Deductions</Text>
+                                  <Text fw={700} mt={4}>{formatMoney(row.deductions)}</Text>
+                                </Paper>
+                                <Paper withBorder p="sm" radius="lg">
+                                  <Text size="xs" c="dimmed">Gross</Text>
+                                  <Text fw={700} mt={4}>{formatMoney(row.grossEarnings)}</Text>
+                                </Paper>
+                                <Paper
+                                  withBorder
+                                  p="sm"
+                                  radius="lg"
+                                  style={{
+                                    borderColor: "rgba(132, 204, 22, 0.24)",
+                                    background:
+                                      "linear-gradient(180deg, rgba(247, 254, 231, 0.9), rgba(255, 255, 255, 0.98))",
+                                  }}
+                                >
+                                  <Text size="xs" c="dimmed">Net</Text>
+                                  <Text fw={800} mt={4}>{formatMoney(row.netEarnings)}</Text>
+                                </Paper>
+                              </SimpleGrid>
+                            </Stack>
+                          </Paper>
+                        </SimpleGrid>
+                      </Stack>
+                    </Paper>
+                  ))}
+
+                  <Paper withBorder p="md" className="admin-page-frame__stat">
+                    <SimpleGrid cols={{ base: 1, md: 3 }} spacing="md">
+                      <div>
+                        <Text size="xs" c="dimmed">Total deductions</Text>
+                        <Text fw={700} mt={4}>{formatMoney(totals.deductions)}</Text>
+                      </div>
+                      <div>
+                        <Text size="xs" c="dimmed">Gross payroll</Text>
+                        <Text fw={700} mt={4}>{formatMoney(totals.gross)}</Text>
+                      </div>
+                      <div>
+                        <Text size="xs" c="dimmed">Net payroll</Text>
+                        <Text fw={800} mt={4}>{formatMoney(totals.net)}</Text>
+                      </div>
+                    </SimpleGrid>
+                  </Paper>
+                </Stack>
+              )}
+            </Stack>
           </Paper>
         </Stack>
       </Stack>

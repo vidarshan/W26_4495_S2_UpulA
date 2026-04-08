@@ -16,9 +16,9 @@ const TopBar = ({ back, onClick, title, onRefresh, refreshing }: Props) => {
         <Flex py={10} px="sm" align="center" className="staff-topbar__inner">
           <ThemeIcon
             variant="light"
-            color="gray"
-            radius="xl"
-            size="xl"
+            color="lime"
+            radius="lg"
+            size={40}
             onClick={onClick}
             className="staff-topbar__nav-icon"
           >
@@ -34,9 +34,9 @@ const TopBar = ({ back, onClick, title, onRefresh, refreshing }: Props) => {
           <Flex align="center" gap="xs">
             <ThemeIcon
               variant="light"
-              color="gray"
-              radius="xl"
-              size="xl"
+              color="lime"
+              radius="lg"
+              size={40}
               onClick={onClick}
               className="staff-topbar__nav-icon"
             >
@@ -49,8 +49,8 @@ const TopBar = ({ back, onClick, title, onRefresh, refreshing }: Props) => {
           </Flex>
 
           <ActionIcon
-            radius="xl"
-            size="lg"
+            radius="lg"
+            size={40}
             variant="light"
             aria-label="Refresh appointments"
             onClick={onRefresh}

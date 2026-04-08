@@ -29,8 +29,8 @@ import {
 } from "react-icons/io5";
 
 const PANEL_RADIUS = 18;
-const ITEM_RADIUS = 14;
-const ICON_RADIUS = 12;
+const ITEM_RADIUS = 16;
+const ICON_RADIUS = 14;
 
 type NavItem = {
   href: string;
@@ -60,7 +60,7 @@ function MenuItem({
       style={(theme) => ({
         display: "block",
         width: "100%",
-        padding: "9px 11px",
+        padding: "10px 12px",
         borderRadius: ITEM_RADIUS,
         background: active ? alpha(theme.colors.lime[0], 0.9) : "transparent",
         border: `1px solid ${
@@ -72,7 +72,7 @@ function MenuItem({
     >
       <Group gap="xs" wrap="nowrap">
         <ThemeIcon
-          size={32}
+          size={36}
           radius={ICON_RADIUS}
           variant={active ? "filled" : "light"}
           color={active ? "lime" : "gray"}
@@ -177,7 +177,7 @@ export default function StaffShell({
           },
           content: {
             background:
-              "linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.98))",
+              "linear-gradient(180deg, rgba(247, 254, 231, 0.34), rgba(255, 255, 255, 0.98))",
           },
         }}
       >
@@ -191,7 +191,7 @@ export default function StaffShell({
             <Group justify="space-between" align="center" wrap="nowrap">
               <Group gap="sm" wrap="nowrap">
                 <ThemeIcon
-                  size={36}
+                  size={40}
                   radius={ICON_RADIUS}
                   variant="light"
                   color="lime"
@@ -201,6 +201,9 @@ export default function StaffShell({
                 <Box>
                   <Text size="sm" fw={700} c="dark.9">
                     Eco Clean
+                  </Text>
+                  <Text size="xs" c="dimmed">
+                    Staff workspace
                   </Text>
                 </Box>
               </Group>
@@ -219,7 +222,7 @@ export default function StaffShell({
               style={(theme) => ({
                 display: "block",
                 width: "100%",
-                padding: "9px 11px",
+                padding: "10px 12px",
                 borderRadius: ITEM_RADIUS,
                 background: alpha(theme.colors.red[0], 0.75),
                 border: `1px solid ${alpha(theme.colors.red[2], 0.55)}`,
@@ -227,7 +230,7 @@ export default function StaffShell({
             >
               <Group gap="xs" wrap="nowrap">
                 <ThemeIcon
-                  size={32}
+                  size={36}
                   radius={ICON_RADIUS}
                   variant="light"
                   color="red"

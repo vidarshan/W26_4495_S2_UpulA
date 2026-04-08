@@ -1,4 +1,4 @@
-import type { Metadata, Viewport } from "next";
+import type { Viewport } from "next";
 import Providers from "./providers/providers";
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
@@ -10,6 +10,7 @@ import { QueryProvider } from "@/lib/query-provider";
 import {
   ColorSchemeScript,
   MantineProvider,
+  createTheme,
   mantineHtmlProps,
 } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
@@ -19,7 +20,7 @@ export const metadata = {
   title: "Eco Clean",
   applicationName: "Eco Clean",
   manifest: "/manifest.webmanifest",
-  themeColor: "#0ea5e9",
+  themeColor: "#84cc16",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -45,6 +46,93 @@ const comicNeue = Comic_Neue({
   variable: "--font-comic-neue",
 });
 
+const theme = createTheme({
+  defaultRadius: "lg",
+  primaryColor: "lime",
+  fontFamily: "Comic Neue, sans-serif",
+  headings: {
+    fontFamily: "Comic Neue, sans-serif",
+  },
+  components: {
+    Button: {
+      defaultProps: {
+        radius: "lg",
+        size: "md",
+        color: "lime",
+      },
+    },
+    Badge: {
+      defaultProps: {
+        radius: "lg",
+        size: "md",
+      },
+    },
+    Paper: {
+      defaultProps: {
+        radius: "lg",
+      },
+    },
+    ThemeIcon: {
+      defaultProps: {
+        radius: "lg",
+      },
+    },
+    Card: {
+      defaultProps: {
+        radius: "lg",
+      },
+    },
+    ActionIcon: {
+      defaultProps: {
+        radius: "lg",
+        size: "md",
+      },
+    },
+    TextInput: {
+      defaultProps: {
+        radius: "lg",
+        size: "md",
+      },
+    },
+    PasswordInput: {
+      defaultProps: {
+        radius: "lg",
+        size: "md",
+      },
+    },
+    Select: {
+      defaultProps: {
+        radius: "lg",
+        size: "md",
+      },
+    },
+    NumberInput: {
+      defaultProps: {
+        radius: "lg",
+        size: "md",
+      },
+    },
+    SegmentedControl: {
+      defaultProps: {
+        radius: "lg",
+        size: "md",
+      },
+    },
+    DatePickerInput: {
+      defaultProps: {
+        radius: "lg",
+        size: "md",
+      },
+    },
+    TimeInput: {
+      defaultProps: {
+        radius: "lg",
+        size: "md",
+      },
+    },
+  },
+});
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -56,7 +144,7 @@ export default function RootLayout({
         <ColorSchemeScript />
       </head>
       <body className={`${comicNeue.variable} antialiased`}>
-        <MantineProvider theme={{ defaultRadius: "lg", primaryColor: "lime" }}>
+        <MantineProvider theme={theme}>
           <Notifications position="top-right" />
           <QueryProvider>
             <PWARegister />

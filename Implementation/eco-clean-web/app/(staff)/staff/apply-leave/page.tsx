@@ -89,7 +89,9 @@ function getLeaveAccent(type: string) {
 }
 
 export default function ApplyLeavePage() {
-  const isMobile = useMediaQuery("(max-width: 48em)");
+  const isMobile = useMediaQuery("(max-width: 48em)", false, {
+    getInitialValueInEffect: true,
+  });
   const [mode, setMode] = useState<Mode>("balances");
   const [selectedDate, setSelectedDate] = useState<string | null>(
     toAppDateKey(new Date()),
@@ -376,15 +378,25 @@ export default function ApplyLeavePage() {
                     minDate={addAppDays(appNowDate(), 14)}
                   />
 
+                  <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
                     <Card withBorder p="md">
                       <Text size="sm" c="dimmed">
-                        Sick Used
+                        Vacation remaining
+                      </Text>
+                      <Text fw={800} size="lg">
+                        {summary.vacationRemaining.toFixed(1)} hrs
+                      </Text>
+                    </Card>
+
+                    <Card withBorder p="md">
+                      <Text size="sm" c="dimmed">
+                        Sick used
                       </Text>
                       <Text fw={800} size="lg">
                         {summary.sickUsed.toFixed(1)} hrs
                       </Text>
                     </Card>
-                  </Group>
+                  </SimpleGrid>
                 </Stack>
               </Card>
             ) : (

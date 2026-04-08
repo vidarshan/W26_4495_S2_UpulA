@@ -25,11 +25,10 @@ import {
   IoAlertCircleOutline,
   IoBriefcaseOutline,
   IoCalendarClearOutline,
+  IoCashOutline,
   IoHomeOutline,
   IoLogOutOutline,
-  IoCashOutline,
   IoPeopleOutline,
-  IoPeopleSharp,
   IoTimeOutline,
 } from "react-icons/io5";
 import ClientPropertyModal from "../../components/popups/ClientModal";
@@ -44,19 +43,14 @@ const SHELL_RADIUS = 18;
 const ITEM_RADIUS = 16;
 const ICON_RADIUS = 14;
 
-const STAFF_WORKSPACE_PATHS = [
-  "/admin/manage-staff",
-  "/admin/pay-periods",
-  "/admin/timesheets",
-  "/admin/pay/",
-];
-
 export default function DashboardShell({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const isMobile = useMediaQuery("(max-width: 62em)");
+  const isMobile = useMediaQuery("(max-width: 62em)", false, {
+    getInitialValueInEffect: true,
+  });
   const pathname = usePathname();
   const { selectedInfo } = useDashboardUI();
 
@@ -69,10 +63,6 @@ export default function DashboardShell({
   const [error, setError] = useState<string | null>(null);
 
   const expanded = isMobile || hovered;
-  const isStaffWorkspace = STAFF_WORKSPACE_PATHS.some((path) =>
-    pathname.startsWith(path),
-  );
-
   const closeAllOverlays = useCallback(() => {
     setMobileOpened(false);
     setClientPopoverOpened(false);
@@ -136,53 +126,29 @@ export default function DashboardShell({
       active: pathname.startsWith("/admin/employees"),
     },
     {
-      href: "/admin/manage-staff",
-      label: "Staff Ops",
-      description: "Leave, payroll, and time",
-      icon: <IoPeopleSharp size={18} />,
-      active: isStaffWorkspace,
-    },
-  ];
-
-  const staffWorkspaceItems = [
-    {
-      href: "/admin/manage-staff",
-      label: "Overview",
-      icon: <IoPeopleSharp size={16} />,
-      active: pathname === "/admin/manage-staff",
+      href: "/admin/manage-staff/leave-approval",
+      label: "Leave",
+      description: "Requests and approvals",
+      icon: <IoCalendarClearOutline size={18} />,
+      active: pathname.startsWith("/admin/manage-staff/leave-approval"),
     },
     {
       href: "/admin/pay-periods",
-      label: "Pay Periods",
-      icon: <IoCashOutline size={16} />,
-      active: pathname.startsWith("/admin/pay-periods"),
+      label: "Payroll",
+      description: "Statements and pay runs",
+      icon: <IoCashOutline size={18} />,
+      active:
+        pathname.startsWith("/admin/pay-periods") ||
+        pathname.startsWith("/admin/pay/"),
     },
     {
       href: "/admin/timesheets",
       label: "Timesheets",
-      icon: <IoTimeOutline size={16} />,
+      description: "Time review and approval",
+      icon: <IoTimeOutline size={18} />,
       active: pathname.startsWith("/admin/timesheets"),
     },
-    {
-      href: "/admin/manage-staff/leave-approval",
-      label: "Leave",
-      icon: <IoCalendarClearOutline size={16} />,
-      active: pathname.startsWith("/admin/manage-staff/leave-approval"),
-    },
   ];
-
-  // <Tooltip label="Manage Staff" position="right" withArrow>
-  //             <NavLink
-  //               onClick={() => setOpened(false)}
-  //               component={Link}
-  //               href="/admin/manage-staff"
-  //               bdrs="md"
-  //               leftSection={<IoPeopleSharp />}
-  //               active={pathname.startsWith("/admin/staff-profile")}
-  //               disabled={isSigningOut}
-  //             />
-  //           </Tooltip>
-
   return (
     <AppShell
       padding={{ base: "sm", md: "md" }}
@@ -214,7 +180,7 @@ export default function DashboardShell({
             <Group justify="space-between" wrap="nowrap">
               <Group gap="sm" wrap="nowrap">
                 <ThemeIcon
-                  size={38}
+                  size={40}
                   radius={ICON_RADIUS}
                   variant="light"
                   color="lime"
@@ -257,8 +223,9 @@ export default function DashboardShell({
           if (!isMobile) setHovered(false);
         }}
         style={(theme) => ({
-          background: alpha(theme.white, 0.95),
-          borderRight: `1px solid ${alpha(theme.colors.gray[3], 0.82)}`,
+          background:
+            "linear-gradient(180deg, rgba(247, 254, 231, 0.5), rgba(255, 255, 255, 0.96))",
+          borderRight: `1px solid ${alpha(theme.colors.lime[2], 0.42)}`,
           boxShadow: `10px 0 30px ${alpha(theme.black, 0.04)}`,
           overflow: "hidden",
           transition: "width 220ms ease, padding 220ms ease",
@@ -270,7 +237,10 @@ export default function DashboardShell({
             radius={SHELL_RADIUS}
             p={expanded ? "md" : "xs"}
             style={(theme) => ({
-              border: `1px solid ${alpha(theme.colors.gray[3], 0.9)}`,
+              background:
+                "linear-gradient(180deg, rgba(247, 254, 231, 0.9), rgba(255, 255, 255, 0.96))",
+              border: `1px solid ${alpha(theme.colors.lime[2], 0.45)}`,
+              boxShadow: `0 12px 28px ${alpha(theme.black, 0.05)}`,
               transition: "padding 220ms ease",
             })}
           >
@@ -280,7 +250,7 @@ export default function DashboardShell({
             >
               <Group gap="sm" wrap="nowrap">
                 <ThemeIcon
-                  size="lg"
+                  size={40}
                   radius={ICON_RADIUS}
                   variant="light"
                   color="lime"
@@ -307,6 +277,9 @@ export default function DashboardShell({
                     <Text fw={800} size="md" c="dark.9">
                       Eco Clean
                     </Text>
+                    <Text size="xs" c="dimmed">
+                      Admin workspace
+                    </Text>
                   </Box>
                 )}
               </Group>
@@ -326,13 +299,18 @@ export default function DashboardShell({
                   display: "block",
                   width: "100%",
                   borderRadius: ITEM_RADIUS,
-                  padding: expanded ? "12px 14px" : "10px",
-
+                  padding: expanded ? "12px 14px" : "10px 12px",
+                  background: item.active
+                    ? alpha(theme.colors.lime[0], 0.9)
+                    : alpha(theme.white, 0.64),
                   border: `1px solid ${
                     item.active
                       ? alpha(theme.colors.lime[4], 0.32)
-                      : "transparent"
+                      : alpha(theme.colors.gray[3], 0.42)
                   }`,
+                  boxShadow: item.active
+                    ? `0 10px 24px ${alpha(theme.colors.lime[9], 0.08)}`
+                    : "none",
                   transition:
                     "background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease, padding 220ms ease",
                   opacity: isSigningOut ? 0.6 : 1,
@@ -345,7 +323,7 @@ export default function DashboardShell({
                   wrap="nowrap"
                 >
                   <ThemeIcon
-                    size={38}
+                    size={40}
                     radius={ICON_RADIUS}
                     variant={item.active ? "filled" : "light"}
                     color={item.active ? "lime" : "gray"}
@@ -376,94 +354,6 @@ export default function DashboardShell({
               </UnstyledButton>
             ))}
           </Stack>
-
-          {isStaffWorkspace ? (
-            <Paper
-              radius={SHELL_RADIUS}
-              p={expanded ? "md" : "xs"}
-              mt="md"
-              className="staff-workspace-panel"
-              style={(theme) => ({
-                border: `1px solid ${alpha(theme.colors.teal[2], 0.55)}`,
-                transition: "padding 220ms ease",
-              })}
-            >
-              <Stack gap="xs">
-                <Box
-                  style={{
-                    maxHeight: expanded ? 72 : 0,
-                    opacity: expanded ? 1 : 0,
-                    overflow: "hidden",
-                    transition: "max-height 180ms ease, opacity 140ms ease",
-                  }}
-                >
-                  <Text size="xs" fw={800} tt="uppercase" c="teal.8">
-                    Staff Workspace
-                  </Text>
-                  <Text size="xs" c="dimmed" mt={4}>
-                    Payroll and time administration
-                  </Text>
-                </Box>
-
-                {staffWorkspaceItems.map((item) => (
-                  <UnstyledButton
-                    key={item.href}
-                    component={Link}
-                    href={item.href}
-                    onClick={() => setMobileOpened(false)}
-                    className="staff-workspace-panel__item"
-                    style={(theme) => ({
-                      display: "block",
-                      width: "100%",
-                      borderRadius: 14,
-                      padding: expanded ? "10px 12px" : "10px",
-                      background: item.active
-                        ? alpha(theme.colors.teal[0], 0.9)
-                        : "transparent",
-                      border: `1px solid ${
-                        item.active
-                          ? alpha(theme.colors.teal[3], 0.45)
-                          : "transparent"
-                      }`,
-                      transition:
-                        "background-color 150ms ease, border-color 150ms ease, padding 220ms ease",
-                    })}
-                  >
-                    <Group
-                      gap={expanded ? "sm" : 0}
-                      justify={expanded ? "flex-start" : "center"}
-                      wrap="nowrap"
-                    >
-                      <ThemeIcon
-                        size={34}
-                        radius="md"
-                        variant={item.active ? "filled" : "light"}
-                        color={item.active ? "teal" : "gray"}
-                      >
-                        {item.icon}
-                      </ThemeIcon>
-
-                      <Box
-                        style={{
-                          minWidth: 0,
-                          maxWidth: expanded ? 160 : 0,
-                          opacity: expanded ? 1 : 0,
-                          overflow: "hidden",
-                          transform: `translateX(${expanded ? "0" : "-8px"})`,
-                          transition:
-                            "max-width 180ms ease, opacity 140ms ease, transform 180ms ease",
-                        }}
-                      >
-                        <Text fw={700} size="sm" c="dark.9" truncate>
-                          {item.label}
-                        </Text>
-                      </Box>
-                    </Group>
-                  </UnstyledButton>
-                ))}
-              </Stack>
-            </Paper>
-          ) : null}
         </AppShell.Section>
 
         <AppShell.Section>
@@ -481,9 +371,10 @@ export default function DashboardShell({
                 display: "block",
                 width: "100%",
                 borderRadius: ITEM_RADIUS,
-                padding: expanded ? "12px 14px" : "10px",
+                padding: expanded ? "12px 14px" : "10px 12px",
                 background: alpha(theme.colors.red[0], 0.75),
                 border: `1px solid ${alpha(theme.colors.red[2], 0.55)}`,
+                boxShadow: `0 10px 24px ${alpha(theme.black, 0.04)}`,
                 transition:
                   "background-color 150ms ease, border-color 150ms ease, padding 220ms ease",
                 opacity: isSigningOut ? 0.7 : 1,
@@ -496,7 +387,7 @@ export default function DashboardShell({
                 wrap="nowrap"
               >
                 <ThemeIcon
-                  size={38}
+                  size={40}
                   radius={ICON_RADIUS}
                   variant="light"
                   color="red"
@@ -537,7 +428,7 @@ export default function DashboardShell({
               mb="md"
               icon={<IoAlertCircleOutline size={18} />}
               color="red"
-              radius="md"
+              radius="lg"
               variant="light"
               withCloseButton
               onClose={() => setError(null)}

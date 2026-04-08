@@ -68,7 +68,7 @@ export default function AdminPageFrame({
                     {stat.value}
                   </Text>
                 </Box>
-                <ThemeIcon size={38} radius="lg" variant="light" color="gray">
+                <ThemeIcon size={40} radius="lg" variant="light" color="gray">
                   <stat.icon size={18} />
                 </ThemeIcon>
               </Group>

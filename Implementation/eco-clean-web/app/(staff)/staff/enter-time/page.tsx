@@ -83,7 +83,9 @@ function toLocalDateTimeInputValue(dateString: string | null) {
 }
 
 export default function EnterTimePage() {
-  const isMobile = useMediaQuery("(max-width: 48em)");
+  const isMobile = useMediaQuery("(max-width: 48em)", false, {
+    getInitialValueInEffect: true,
+  });
   const [allPeriods, setAllPeriods] = useState<PayPeriod[]>([]);
   const [payPeriodOptions, setPayPeriodOptions] = useState<
     { value: string; label: string }[]

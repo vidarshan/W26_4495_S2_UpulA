@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  Badge,
+  Button,
   Table,
   TextInput,
   Group,
@@ -14,9 +16,7 @@ import {
 } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 
-import { useRouter } from "next/navigation";
-
-import { IoFilterOutline, IoSearchOutline } from "react-icons/io5";
+import { IoAdd, IoFilterOutline, IoSearchOutline } from "react-icons/io5";
 import Loader from "../UI/Loader";
 import { useClients } from "@/hooks/useClient";
 import { useState } from "react";
@@ -27,8 +27,9 @@ import { Client } from "@/types";
 export const getClientName = (c: Client) => `${c.firstName} ${c.lastName}`;
 
 export default function ClientsTable() {
-  const isNarrow = useMediaQuery("(max-width: 62em)");
-  const router = useRouter();
+  const isNarrow = useMediaQuery("(max-width: 62em)", false, {
+    getInitialValueInEffect: true,
+  });
   const [opened, setOpened] = useState(false);
   const queryClient = useQueryClient();
   const [query, setQuery] = useState("");
@@ -82,15 +83,41 @@ export default function ClientsTable() {
           queryClient.invalidateQueries({ queryKey: ["clients"] });
         }}
       />
-      <Group justify="space-between" mb="md" align="end">
-        <Box></Box>
-        <Group gap="sm" wrap="wrap" style={{ width: isNarrow ? "100%" : "auto" }}>
+      <Group justify="space-between" mb="md" align="flex-start" gap="md">
+        <Group gap="xs">
+          <Badge color="lime" variant="light" radius="xl">
+            Client records
+          </Badge>
+          <Badge color="gray" variant="light" radius="xl">
+            {clients.length} shown
+          </Badge>
+        </Group>
+
+        <Group
+          gap="sm"
+          wrap="wrap"
+          style={{ width: isNarrow ? "100%" : "auto" }}
+        >
+          <Button
+            color="lime"
+            leftSection={<IoAdd size={16} />}
+            onClick={() => {
+              setSelectedClientId(undefined);
+              setOpened(true);
+            }}
+          >
+            Add client
+          </Button>
+
           <TextInput
             placeholder="Search clients"
             radius="xl"
             leftSection={<IoSearchOutline size={16} />}
             onChange={(e) => handleSearch(e.target.value)}
-            style={{ flex: isNarrow ? 1 : undefined, minWidth: isNarrow ? 220 : undefined }}
+            style={{
+              flex: isNarrow ? 1 : undefined,
+              minWidth: isNarrow ? 220 : undefined,
+            }}
           />
 
           <Select

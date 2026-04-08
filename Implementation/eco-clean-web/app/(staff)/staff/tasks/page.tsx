@@ -208,7 +208,12 @@ const Page = () => {
       <AppointmentReminderWatcher appointments={tasks} />
       <LocalNotificationDemo />
       <Stack gap="lg" p="md">
-        <Card radius="xl" withBorder p="lg" className="staff-app-surface">
+        <Card
+          radius="lg"
+          withBorder
+          p="lg"
+          className="staff-app-surface staff-app-surface--hero"
+        >
           <Stack gap="md">
             <Group justify="space-between" align="end" gap="md">
               <Box>
@@ -219,10 +224,10 @@ const Page = () => {
               </Box>
 
               <Group gap="xs" wrap="wrap">
-                <Badge variant="light" color="lime" radius="xl">
+                <Badge variant="light" color="lime">
                   {upcomingCount} active
                 </Badge>
-                <Badge variant="light" color="gray" radius="xl">
+                <Badge variant="light" color="gray">
                   {dayTasks.length} total
                 </Badge>
               </Group>
@@ -258,7 +263,7 @@ const Page = () => {
                     return (
                       <Indicator
                         size={4}
-                        color="blue"
+                        color="lime"
                         position="bottom-center"
                         disabled={!hasAppointments}
                       >
@@ -286,7 +291,7 @@ const Page = () => {
           {isLoading ? (
             <Card radius="lg" withBorder p="lg" className="staff-app-surface">
               <Flex direction="column" align="center" justify="center" py="md">
-                <Loader size="sm" />
+                <Loader size="sm" color="lime" />
                 <Text size="sm" fw={600} mt="sm">
                   Loading tasks...
                 </Text>
@@ -332,10 +337,10 @@ const Page = () => {
                         radius="lg"
                         color={
                           task.status === "COMPLETED"
-                            ? "green"
+                            ? "lime"
                             : task.status === "CANCELLED"
                               ? "red"
-                              : "blue"
+                              : "lime"
                         }
                         variant="light"
                       >
@@ -345,7 +350,7 @@ const Page = () => {
 
                     <Stack gap="xs">
                       <Group gap="xs" wrap="nowrap">
-                        <ThemeIcon radius="lg" variant="light" color="green">
+                        <ThemeIcon radius="lg" variant="light" color="lime">
                           <IoTimeOutline size={14} />
                         </ThemeIcon>
                         <Text size="sm">
@@ -354,7 +359,7 @@ const Page = () => {
                       </Group>
 
                       <Group gap="xs" wrap="nowrap">
-                        <ThemeIcon radius="lg" variant="light" color="blue">
+                        <ThemeIcon radius="lg" variant="light" color="gray">
                           <IoPersonOutline size={14} />
                         </ThemeIcon>
                         <Text size="sm">
@@ -363,7 +368,7 @@ const Page = () => {
                       </Group>
 
                       <Group gap="xs" wrap="nowrap" align="start">
-                        <ThemeIcon radius="lg" variant="light" color="teal">
+                        <ThemeIcon radius="lg" variant="light" color="lime">
                           <IoLocationOutline size={14} />
                         </ThemeIcon>
                         <Text size="sm" c="dimmed">

@@ -28,7 +28,6 @@ import {
   IoPersonOutline,
 } from "react-icons/io5";
 import AdminPageFrame from "@/app/components/admin/AdminPageFrame";
-import AdminStaffWorkspaceNav from "@/app/components/admin/AdminStaffWorkspaceNav";
 
 type PayBreakdown = {
   regularRate?: number | null;
@@ -242,6 +241,7 @@ export default function AdminPayStubPage({ params }: PageProps) {
             leftSection={<IoDownloadOutline size={16} />}
             onClick={handleDownloadPdf}
             loading={downloading}
+            color="lime"
           >
             Download PDF
           </Button>
@@ -254,8 +254,6 @@ export default function AdminPayStubPage({ params }: PageProps) {
       ]}
     >
       <Stack gap="lg">
-        <AdminStaffWorkspaceNav />
-
         <Stack gap="lg">
           <Paper withBorder radius="lg" p="lg" className="admin-page-frame__stat">
             <Grid gutter="md">
@@ -305,11 +303,11 @@ export default function AdminPayStubPage({ params }: PageProps) {
                       height: 72,
                       borderRadius: 20,
                       background:
-                        "linear-gradient(180deg, rgba(236, 253, 245, 0.98), rgba(240, 249, 255, 0.98))",
+                        "linear-gradient(180deg, rgba(247, 254, 231, 0.98), rgba(255, 255, 255, 0.98))",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      border: "1px solid rgba(16, 185, 129, 0.2)",
+                      border: "1px solid rgba(132, 204, 22, 0.24)",
                     }}
                   >
                     <Image src="/logo.png" alt="Eco Clean" width={44} height={44} />
@@ -449,7 +447,7 @@ export default function AdminPayStubPage({ params }: PageProps) {
                 <Text fw={800} size="lg" c="#0f172a">
                   Net earnings
                 </Text>
-                <Text fw={800} size="1.6rem" c="#0f766e">
+                <Text fw={800} size="1.6rem" c="#4d7c0f">
                   {formatMoney(data.netEarnings)}
                 </Text>
               </Group>

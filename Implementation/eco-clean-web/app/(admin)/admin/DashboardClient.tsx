@@ -56,9 +56,10 @@ import { useCalendarStore, useDashboardUI } from "@/stores/store";
 import { Staff } from "@/types";
 import { DateTime } from "luxon";
 
-
 export default function DashboardClient() {
-  const isNarrow = useMediaQuery("(max-width: 62em)");
+  const isNarrow = useMediaQuery("(max-width: 62em)", false, {
+    getInitialValueInEffect: true,
+  });
   const qc = useQueryClient();
   const calendarRef = useRef<FullCalendar | null>(null);
 
@@ -150,9 +151,9 @@ export default function DashboardClient() {
   };
 
   const handleSelectAllow = useCallback((selectInfo: DateSelectArg) => {
-    const start = DateTime.fromJSDate(selectInfo.start, { zone: "utc" }).setZone(
-      APP_TZ,
-    );
+    const start = DateTime.fromJSDate(selectInfo.start, {
+      zone: "utc",
+    }).setZone(APP_TZ);
     const end = DateTime.fromJSDate(selectInfo.end, { zone: "utc" })
       .setZone(APP_TZ)
       .minus({ millisecond: 1 });
@@ -347,7 +348,23 @@ export default function DashboardClient() {
         <ConfirmCancellationModal onSuccess={refreshCalendar} />
       )}
 
-      <h1>Dashboard</h1>
+      <Box mb="lg">
+        <Text
+          size="xs"
+          fw={700}
+          tt="uppercase"
+          c="#64748b"
+          style={{ letterSpacing: "0.08em" }}
+        >
+          Admin overview
+        </Text>
+        <Text fw={800} size="2rem" lh={1.1} mt={4} c="#0f172a">
+          Dashboard
+        </Text>
+        <Text size="sm" c="#475569" mt={6}>
+          Manage appointments, scan workload, and adjust the schedule directly from the calendar.
+        </Text>
+      </Box>
 
       <Box>
         <Paper
@@ -365,12 +382,14 @@ export default function DashboardClient() {
             mb="lg"
           >
             <Box>
-              <Text fw={800} size="xl">
+              <Text fw={700} size="lg" c="#0f172a">
+                Schedule controls
+              </Text>
+              <Text fw={700} size="lg" mt={6}>
                 {currentTitle}
               </Text>
               <Text size="sm" c="dimmed">
-                Manage appointments, scan workload, and adjust the schedule
-                directly from the calendar.
+                Use this panel to move through the calendar, switch views, and refine what is shown.
               </Text>
             </Box>
 
@@ -492,6 +511,7 @@ export default function DashboardClient() {
                 label="Jump to date"
                 placeholder="Pick a date"
                 clearable
+                size="sm"
                 value={jumpDate}
                 onChange={(value) => {
                   setJumpDate(value);
@@ -636,8 +656,7 @@ export default function DashboardClient() {
                   | "LATE"
                   | undefined;
                 const timeLabel = eventInfo.timeText;
-                const isMonthView =
-                  eventInfo.view.type === "dayGridMonth";
+                const isMonthView = eventInfo.view.type === "dayGridMonth";
 
                 if (isMonthView) {
                   return (

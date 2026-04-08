@@ -12,7 +12,6 @@ import {
   Select,
   SimpleGrid,
   Stack,
-  Table,
   Text,
 } from "@mantine/core";
 import {
@@ -22,7 +21,6 @@ import {
   IoTimeOutline,
 } from "react-icons/io5";
 import AdminPageFrame from "@/app/components/admin/AdminPageFrame";
-import AdminStaffWorkspaceNav from "@/app/components/admin/AdminStaffWorkspaceNav";
 
 type TimesheetPeriod = {
   id: string;
@@ -123,7 +121,7 @@ function statusColor(status: string | null) {
     case "SUBMITTED":
       return "blue";
     case "APPROVED":
-      return "green";
+      return "lime";
     case "LOCKED":
       return "grape";
     case "OPEN":
@@ -290,8 +288,6 @@ export default function AdminTimesheetOverviewPage() {
       ]}
     >
       <Stack gap="lg">
-        <AdminStaffWorkspaceNav />
-
         <Stack gap="lg">
           {error ? (
             <Alert color="red" title="Something went wrong">
@@ -304,16 +300,16 @@ export default function AdminTimesheetOverviewPage() {
               <Group justify="space-between" align="flex-end" gap="md">
                 <div>
                   <Text fw={700} c="#0f172a">
-                    Timesheet period
+                    Timesheet review window
                   </Text>
                   <Text size="sm" c="dimmed" mt={4}>
-                    Review one payroll period at a time and inspect staff-level day details below.
+                    Review one period at a time, then approve submitted staff timesheets from the employee cards below.
                   </Text>
                 </div>
 
                 {overview?.period ? (
                   <Group gap="sm">
-                    <Badge color={overview.period.status === "LOCKED" ? "grape" : "green"}>
+                    <Badge color={overview.period.status === "LOCKED" ? "grape" : "lime"}>
                       {overview.period.status}
                     </Badge>
                     <Badge variant="light" color="gray">
@@ -343,7 +339,7 @@ export default function AdminTimesheetOverviewPage() {
 
           {loadingOverview ? (
             <Group justify="center" py="xl">
-              <Loader />
+              <Loader color="lime" />
             </Group>
           ) : overview ? (
             <Stack gap="lg">
@@ -420,7 +416,7 @@ export default function AdminTimesheetOverviewPage() {
                           {employee.timesheetId && employee.timesheetStatus === "SUBMITTED" ? (
                             <Button
                               size="xs"
-                              color="green"
+                              color="lime"
                               loading={approvingId === employee.timesheetId}
                               onClick={() => handleApprove(employee.timesheetId!)}
                             >
@@ -480,103 +476,130 @@ export default function AdminTimesheetOverviewPage() {
                         <>
                           <Divider />
 
-                          <Table.ScrollContainer minWidth={1100}>
-                            <Table striped highlightOnHover withTableBorder>
-                              <Table.Thead>
-                                <Table.Tr>
-                                  <Table.Th>Date</Table.Th>
-                                  <Table.Th>Planned</Table.Th>
-                                  <Table.Th>Actual</Table.Th>
-                                  <Table.Th>Variance</Table.Th>
-                                  <Table.Th>Hourly rate</Table.Th>
-                                  <Table.Th>Timesheet note</Table.Th>
-                                  <Table.Th>Assignment details</Table.Th>
-                                </Table.Tr>
-                              </Table.Thead>
-                              <Table.Tbody>
-                                {employee.days.length === 0 ? (
-                                  <Table.Tr>
-                                    <Table.Td colSpan={7}>
-                                      <Text c="dimmed">
-                                        No data for this employee in the selected period.
-                                      </Text>
-                                    </Table.Td>
-                                  </Table.Tr>
-                                ) : (
-                                  employee.days.map((day) => (
-                                    <Table.Tr key={`${employee.staffId}-${day.date}`}>
-                                      <Table.Td>{day.date}</Table.Td>
-                                      <Table.Td>{formatMinutes(day.plannedMinutes)}</Table.Td>
-                                      <Table.Td>{formatMinutes(day.actualMinutes)}</Table.Td>
-                                      <Table.Td>
-                                        <Text c={`${varianceColor(day.varianceMinutes)}.6`} fw={600}>
-                                          {day.varianceMinutes > 0 ? "+" : day.varianceMinutes < 0 ? "-" : ""}
-                                          {formatMinutes(day.varianceMinutes)}
+                          {employee.days.length === 0 ? (
+                            <Text c="dimmed">
+                              No data for this employee in the selected period.
+                            </Text>
+                          ) : (
+                            <Stack gap="md">
+                              {employee.days.map((day) => (
+                                <Paper
+                                  key={`${employee.staffId}-${day.date}`}
+                                  withBorder
+                                  radius="lg"
+                                  p="md"
+                                  className="admin-page-frame__stat"
+                                >
+                                  <Stack gap="md">
+                                    <Group justify="space-between" align="flex-start" gap="md">
+                                      <div>
+                                        <Text fw={700} c="#0f172a">
+                                          {day.date}
                                         </Text>
-                                      </Table.Td>
-                                      <Table.Td>
-                                        {day.hourlyRate != null ? `$${day.hourlyRate.toFixed(2)}` : "—"}
-                                      </Table.Td>
-                                      <Table.Td>{day.notes || "—"}</Table.Td>
-                                      <Table.Td>
-                                        {day.assignments.length === 0 ? (
-                                          <Text size="sm" c="dimmed">
-                                            No planned assignments
-                                          </Text>
-                                        ) : (
-                                          <Stack gap="xs">
-                                            {day.assignments.map((assignment) => (
-                                              <Paper
-                                                key={assignment.id}
-                                                withBorder
-                                                radius="lg"
-                                                p="sm"
-                                                className="admin-page-frame__stat"
-                                              >
-                                                <Group justify="space-between" align="flex-start">
-                                                  <div>
-                                                    <Text fw={600}>{assignment.jobTitle}</Text>
-                                                    <Text size="sm" c="dimmed">
-                                                      {assignment.clientName}
-                                                    </Text>
-                                                    <Text size="sm" c="dimmed">
-                                                      {assignment.addressLine || "No address"}
-                                                    </Text>
-                                                  </div>
-                                                  <Badge variant="light">{assignment.status}</Badge>
-                                                </Group>
+                                        <Text size="sm" c="dimmed" mt={4}>
+                                          {day.notes || "No timesheet note"}
+                                        </Text>
+                                      </div>
 
-                                                <Text size="sm" mt={8}>
-                                                  Planned: {formatDateTime(assignment.plannedStart)} →{" "}
-                                                  {formatDateTime(assignment.plannedEnd)}
-                                                </Text>
-                                                <Text size="sm">
-                                                  Planned minutes: {formatMinutes(assignment.plannedMinutes)}
-                                                </Text>
-                                                <Text size="sm">Break: {assignment.breakMinutes} min</Text>
-                                                <Text size="sm">
-                                                  Assignment rate:{" "}
-                                                  {assignment.hourlyRateAtTime != null
-                                                    ? `$${assignment.hourlyRateAtTime.toFixed(2)}`
-                                                    : "—"}
-                                                </Text>
+                                      <Text c={`${varianceColor(day.varianceMinutes)}.6`} fw={700}>
+                                        {day.varianceMinutes > 0 ? "+" : day.varianceMinutes < 0 ? "-" : ""}
+                                        {formatMinutes(day.varianceMinutes)}
+                                      </Text>
+                                    </Group>
 
-                                                {assignment.notes ? (
-                                                  <Text size="sm" mt={6} c="dimmed">
-                                                    Note: {assignment.notes}
-                                                  </Text>
-                                                ) : null}
-                                              </Paper>
-                                            ))}
-                                          </Stack>
-                                        )}
-                                      </Table.Td>
-                                    </Table.Tr>
-                                  ))
-                                )}
-                              </Table.Tbody>
-                            </Table>
-                          </Table.ScrollContainer>
+                                    <SimpleGrid cols={{ base: 2, lg: 4 }} spacing="sm">
+                                      <Paper withBorder p="sm" radius="lg">
+                                        <Text size="xs" c="dimmed">
+                                          Planned
+                                        </Text>
+                                        <Text fw={700} mt={4}>
+                                          {formatMinutes(day.plannedMinutes)}
+                                        </Text>
+                                      </Paper>
+                                      <Paper withBorder p="sm" radius="lg">
+                                        <Text size="xs" c="dimmed">
+                                          Actual
+                                        </Text>
+                                        <Text fw={700} mt={4}>
+                                          {formatMinutes(day.actualMinutes)}
+                                        </Text>
+                                      </Paper>
+                                      <Paper withBorder p="sm" radius="lg">
+                                        <Text size="xs" c="dimmed">
+                                          Hourly rate
+                                        </Text>
+                                        <Text fw={700} mt={4}>
+                                          {day.hourlyRate != null ? `$${day.hourlyRate.toFixed(2)}` : "—"}
+                                        </Text>
+                                      </Paper>
+                                      <Paper withBorder p="sm" radius="lg">
+                                        <Text size="xs" c="dimmed">
+                                          Assignments
+                                        </Text>
+                                        <Text fw={700} mt={4}>
+                                          {day.assignments.length}
+                                        </Text>
+                                      </Paper>
+                                    </SimpleGrid>
+
+                                    {day.assignments.length === 0 ? (
+                                      <Text size="sm" c="dimmed">
+                                        No planned assignments
+                                      </Text>
+                                    ) : (
+                                      <Stack gap="xs">
+                                        {day.assignments.map((assignment) => (
+                                          <Paper
+                                            key={assignment.id}
+                                            withBorder
+                                            radius="lg"
+                                            p="sm"
+                                            className="admin-page-frame__surface"
+                                          >
+                                            <Group justify="space-between" align="flex-start" gap="md">
+                                              <div>
+                                                <Text fw={600}>{assignment.jobTitle}</Text>
+                                                <Text size="sm" c="dimmed">
+                                                  {assignment.clientName}
+                                                </Text>
+                                                <Text size="sm" c="dimmed">
+                                                  {assignment.addressLine || "No address"}
+                                                </Text>
+                                              </div>
+                                              <Badge variant="light">{assignment.status}</Badge>
+                                            </Group>
+
+                                            <SimpleGrid cols={{ base: 1, md: 2 }} spacing="xs" mt="sm">
+                                              <Text size="sm">
+                                                Planned: {formatDateTime(assignment.plannedStart)} →{" "}
+                                                {formatDateTime(assignment.plannedEnd)}
+                                              </Text>
+                                              <Text size="sm">
+                                                Planned minutes: {formatMinutes(assignment.plannedMinutes)}
+                                              </Text>
+                                              <Text size="sm">Break: {assignment.breakMinutes} min</Text>
+                                              <Text size="sm">
+                                                Assignment rate:{" "}
+                                                {assignment.hourlyRateAtTime != null
+                                                  ? `$${assignment.hourlyRateAtTime.toFixed(2)}`
+                                                  : "—"}
+                                              </Text>
+                                            </SimpleGrid>
+
+                                            {assignment.notes ? (
+                                              <Text size="sm" mt={6} c="dimmed">
+                                                Note: {assignment.notes}
+                                              </Text>
+                                            ) : null}
+                                          </Paper>
+                                        ))}
+                                      </Stack>
+                                    )}
+                                  </Stack>
+                                </Paper>
+                              ))}
+                            </Stack>
+                          )}
                         </>
                       ) : null}
                     </Stack>

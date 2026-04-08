@@ -57,6 +57,13 @@ export type UpdateJobPayload = {
   addressId: string;
   isAnytime: boolean;
   visitInstructions?: string | null;
+  recurrence?: {
+    frequency: "weekly" | "monthly";
+    interval: number;
+    endType: "after" | "on";
+    endsAfter?: number | null;
+    endsOn?: string | null;
+  } | null;
   lineItems: Array<{
     name: string;
     quantity: number;

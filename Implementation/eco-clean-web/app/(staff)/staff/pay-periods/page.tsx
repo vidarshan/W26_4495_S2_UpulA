@@ -93,7 +93,9 @@ export default function ManagePayPeriodsPage() {
   const [rows, setRows] = useState<StaffPayRow[]>(initialRows);
   const [loading, setLoading] = useState(false);
 
-  const isMobile = useMediaQuery('(max-width: 768px)');
+  const isMobile = useMediaQuery('(max-width: 768px)', false, {
+    getInitialValueInEffect: true,
+  });
 
   useEffect(() => {
     async function loadPeriods() {
