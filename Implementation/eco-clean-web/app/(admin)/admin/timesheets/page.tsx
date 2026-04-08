@@ -14,6 +14,7 @@ import {
   Stack,
   Text,
 } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
 import {
   IoCalendarOutline,
   IoCheckmarkDoneOutline,
@@ -215,7 +216,11 @@ export default function AdminTimesheetOverviewPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        alert(data.error || "Failed to approve");
+        notifications.show({
+          title: "Approval failed",
+          message: data.error || "Failed to approve timesheet.",
+          color: "red",
+        });
         return;
       }
 
@@ -229,7 +234,11 @@ export default function AdminTimesheetOverviewPage() {
       }
     } catch (err) {
       console.error(err);
-      alert("Something went wrong");
+      notifications.show({
+        title: "Something went wrong",
+        message: "Unable to approve the timesheet right now.",
+        color: "red",
+      });
     } finally {
       setApprovingId(null);
     }

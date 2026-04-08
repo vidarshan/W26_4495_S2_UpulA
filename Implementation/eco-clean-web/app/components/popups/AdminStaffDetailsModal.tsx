@@ -69,6 +69,7 @@ export default function AdminStaffDetailsModal({
   onClose,
   staff,
 }: Props) {
+  const staffId = staff?.id ?? null;
   const [isSaving, setIsSaving] = useState(false);
   const [activeView, setActiveView] = useState<"overview" | "financial">(
     "overview",
@@ -81,9 +82,12 @@ export default function AdminStaffDetailsModal({
   };
 
   const { data } = useQuery({
-    queryKey: ["admin-staff", staff?.id],
-    queryFn: () => fetchStaffDetails(staff.id),
-    enabled: !!staff?.id && opened,
+    queryKey: ["admin-staff", staffId],
+    queryFn: () => {
+      if (!staffId) throw new Error("Missing staff id");
+      return fetchStaffDetails(staffId);
+    },
+    enabled: !!staffId && opened,
   });
 
   const queryClient = useQueryClient();
@@ -92,9 +96,11 @@ export default function AdminStaffDetailsModal({
   const emergency = profile?.emergencyContact;
 
   const { data: financials, isLoading: financialsLoading } = useQuery({
-    queryKey: ["admin-staff-financials", staff?.id],
+    queryKey: ["admin-staff-financials", staffId],
     queryFn: async () => {
-      const res = await fetch(`/api/admin/staff/${staff?.id}/financials`, {
+      if (!staffId) throw new Error("Missing staff id");
+
+      const res = await fetch(`/api/admin/staff/${staffId}/financials`, {
         cache: "no-store",
       });
       if (!res.ok) throw new Error("Failed to load financial details");
@@ -115,7 +121,7 @@ export default function AdminStaffDetailsModal({
         } | null;
       }>;
     },
-    enabled: !!staff?.id && opened,
+    enabled: !!staffId && opened,
   });
 
   const [position, setPosition] = useState("");
@@ -160,9 +166,11 @@ export default function AdminStaffDetailsModal({
 
   const handleSave = async () => {
     try {
+      if (!staffId) throw new Error("Missing staff id");
+
       setIsSaving(true);
 
-      const response = await fetch(`/api/admin/staff/${staff.id}`, {
+      const response = await fetch(`/api/admin/staff/${staffId}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -179,7 +187,7 @@ export default function AdminStaffDetailsModal({
       }
 
       await queryClient.invalidateQueries({
-        queryKey: ["admin-staff", staff.id],
+        queryKey: ["admin-staff", staffId],
       });
 
       notifications.show({
@@ -201,9 +209,11 @@ export default function AdminStaffDetailsModal({
 
   const handleSaveFinancial = async () => {
     try {
+      if (!staffId) throw new Error("Missing staff id");
+
       setIsSaving(true);
 
-      const response = await fetch(`/api/admin/staff/${staff?.id}/financials`, {
+      const response = await fetch(`/api/admin/staff/${staffId}/financials`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -218,7 +228,7 @@ export default function AdminStaffDetailsModal({
       }
 
       await queryClient.invalidateQueries({
-        queryKey: ["admin-staff-financials", staff?.id],
+        queryKey: ["admin-staff-financials", staffId],
       });
 
       notifications.show({

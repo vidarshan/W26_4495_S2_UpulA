@@ -17,6 +17,7 @@ import {
   TextInput,
   Title,
 } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
@@ -107,12 +108,24 @@ export default function StaffProfilePage() {
 
       if (res.ok) {
         setIsEditing(false);
-        alert("Profile updated successfully!");
+        notifications.show({
+          title: "Profile updated",
+          message: "Profile updated successfully.",
+          color: "green",
+        });
       } else {
-        alert("Failed to update profile.");
+        notifications.show({
+          title: "Update failed",
+          message: "Failed to update profile.",
+          color: "red",
+        });
       }
     } catch (error) {
-      alert("Error saving profile.");
+      notifications.show({
+        title: "Save failed",
+        message: "Error saving profile.",
+        color: "red",
+      });
     } finally {
       setSaving(false);
     }

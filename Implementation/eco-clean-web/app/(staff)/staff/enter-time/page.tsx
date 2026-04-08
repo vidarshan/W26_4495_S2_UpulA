@@ -23,6 +23,7 @@ import {
   Title,
 } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
+import { notifications } from "@mantine/notifications";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DateTime } from "luxon";
 import {
@@ -193,14 +194,26 @@ export default function EnterTimePage() {
       const result = await res.json();
 
       if (!res.ok) {
-        alert(result.error ?? "Failed to submit timesheet");
+        notifications.show({
+          title: "Submission failed",
+          message: result.error ?? "Failed to submit timesheet.",
+          color: "red",
+        });
         return;
       }
 
-      alert("Timesheet submitted successfully");
+      notifications.show({
+        title: "Timesheet submitted",
+        message: "Timesheet submitted successfully.",
+        color: "green",
+      });
     } catch (error) {
       console.error(error);
-      alert("Failed to submit timesheet");
+      notifications.show({
+        title: "Submission failed",
+        message: "Failed to submit timesheet.",
+        color: "red",
+      });
     } finally {
       setSubmitting(false);
     }

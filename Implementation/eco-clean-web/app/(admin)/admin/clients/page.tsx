@@ -1,4 +1,4 @@
-import { Badge, Box, Group, SimpleGrid, Stack, Text } from "@mantine/core";
+import { Box, Group, SimpleGrid, Stack, Text } from "@mantine/core";
 import AdminPageFrame from "@/app/components/admin/AdminPageFrame";
 import ClientsTable from "@/app/components/tables/ClientTable";
 

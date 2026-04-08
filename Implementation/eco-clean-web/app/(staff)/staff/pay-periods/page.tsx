@@ -14,6 +14,7 @@ import {
   Card,
   ScrollArea,
 } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
 import { useMemo, useState, useEffect } from 'react';
 import { useMediaQuery } from '@mantine/hooks';
 import { DateTime } from 'luxon';
@@ -145,9 +146,17 @@ export default function ManagePayPeriodsPage() {
       });
 
       if (response.ok) {
-        alert('Pay statements generated successfully!');
+        notifications.show({
+          title: 'Pay statements generated',
+          message: 'Pay statements generated successfully.',
+          color: 'green',
+        });
       } else {
-        alert('Failed to generate pay statements.');
+        notifications.show({
+          title: 'Generation failed',
+          message: 'Failed to generate pay statements.',
+          color: 'red',
+        });
       }
     } catch (error) {
       console.error(error);

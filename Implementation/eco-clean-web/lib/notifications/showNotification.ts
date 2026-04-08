@@ -1,6 +1,12 @@
+import { notifications } from "@mantine/notifications";
+
 export const showLocalNotification = async (title: string, url: string) => {
   if (!("Notification" in window) || !("serviceWorker" in navigator)) {
-    alert("Notifications are not supported.");
+    notifications.show({
+      title: "Notifications unavailable",
+      message: "Notifications are not supported in this browser.",
+      color: "yellow",
+    });
     return;
   }
 
@@ -23,7 +29,11 @@ export const showLocalNotification = async (title: string, url: string) => {
 
 export const requestPermission = async () => {
   if (!("Notification" in window)) {
-    alert("Notifications are not supported in this browser.");
+    notifications.show({
+      title: "Notifications unavailable",
+      message: "Notifications are not supported in this browser.",
+      color: "yellow",
+    });
     return;
   }
 

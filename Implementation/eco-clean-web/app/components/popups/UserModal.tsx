@@ -441,7 +441,7 @@ export default function UserUpsertModal({
       <AdminStaffDetailsModal
         opened={detailsOpen}
         onClose={() => setDetailsOpen(false)}
-        staff={user}
+        staff={user ?? null}
       />
     </Modal>
   );

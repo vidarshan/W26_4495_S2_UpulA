@@ -19,10 +19,10 @@ function calculateLeaveHours(start: Date, end: Date) {
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const staffId = params.id;
+    const { id: staffId } = await params;
 
     const leaves = await prisma.leave.findMany({
       where: { staffId },

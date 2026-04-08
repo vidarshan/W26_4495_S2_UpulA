@@ -1,6 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getToken } from "next-auth/jwt";
+
+type PayBreakdown = {
+  regularAmount?: number;
+  otAmount?: number;
+  transportAllowance?: number;
+  federalTax?: number;
+  quebecTax?: number;
+  ei?: number;
+  qpp?: number;
+  qpp2?: number;
+  qpip?: number;
+};
+
+function readBreakdown(value: Prisma.JsonValue | null): PayBreakdown {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+
+  return value as PayBreakdown;
+}
 
 export async function GET(req: NextRequest) {
 
@@ -55,7 +76,7 @@ export async function GET(req: NextRequest) {
         acc.deductions += s.totalDeductions || 0;
         acc.net += s.netEarnings || 0;
 
-        const b = (s.breakdown || {}) as any;
+        const b = readBreakdown(s.breakdown);
 
         // earnings
         acc.regular += b?.regularAmount || 0;

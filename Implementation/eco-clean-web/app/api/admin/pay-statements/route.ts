@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getToken } from "next-auth/jwt";
 
@@ -127,8 +128,12 @@ export async function POST(req: NextRequest) {
     const payDate = new Date(); // you can customize later
 
     const created = await prisma.$transaction(
-      rows.map((row) =>
-        prisma.payStatement.create({
+      rows.map((row) => {
+        const breakdown = Object.fromEntries(
+          Object.entries(row).map(([key, value]) => [key, value ?? null])
+        ) as Prisma.InputJsonObject;
+
+        return prisma.payStatement.create({
           data: {
             userId: row.userId,
             timesheetPeriodId: periodId,
@@ -141,10 +146,10 @@ export async function POST(req: NextRequest) {
             totalDeductions: row.deductions,
             netEarnings: row.netEarnings,
 
-            breakdown: row,
+            breakdown,
           },
-        })
-      )
+        });
+      })
     );
 
     return NextResponse.json({

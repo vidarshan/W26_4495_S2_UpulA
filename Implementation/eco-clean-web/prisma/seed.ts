@@ -8,25 +8,25 @@ import {
   JobNoteCategory,
   AssignmentStatus,
   LeaveType,
-  LeaveStatus,
   TimesheetStatus,
   TimesheetPeriodStatus,
 } from "@prisma/client";
 import { faker } from "@faker-js/faker";
-import { PrismaPg } from "@prisma/adapter-pg";
-import bcrypt from "bcrypt";
+import * as bcrypt from "bcrypt";
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is missing");
 }
 
-const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL,
-});
-
-const prisma = new PrismaClient({ adapter });
+const prisma = new PrismaClient();
 
 type SeedMode = "small" | "medium" | "large";
+type DayKey = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
+type ShiftKey = "S1" | "S2";
+type AvailabilitySnapshot = Record<
+  `${DayKey}Active` | `${DayKey}${ShiftKey}`,
+  boolean
+>;
 
 const mode = (process.argv[2] as SeedMode) || "small";
 const DEFAULT_PASSWORD = "Password123!";
@@ -101,6 +101,12 @@ function addHours(date: Date, hours: number) {
 
 function addDays(date: Date, days: number) {
   return new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
+}
+
+function setTime(date: Date, hour: number, minute = 0) {
+  const next = new Date(date);
+  next.setHours(hour, minute, 0, 0);
+  return next;
 }
 
 function randomDateBetween(from: Date, to: Date) {
@@ -355,6 +361,152 @@ function endOfDay(date: Date) {
   return d;
 }
 
+function getDayKey(date: Date): DayKey {
+  return ["sun", "mon", "tue", "wed", "thu", "fri", "sat"][
+    date.getDay()
+  ] as DayKey;
+}
+
+function getRequiredShifts(startTime: Date, endTime: Date): ShiftKey[] {
+  const required: ShiftKey[] = [];
+  const startHour = startTime.getHours() + startTime.getMinutes() / 60;
+  const endHour = endTime.getHours() + endTime.getMinutes() / 60;
+
+  if (startHour < 12 && endHour > 7) required.push("S1");
+  if (startHour < 17 && endHour > 12) required.push("S2");
+
+  return required;
+}
+
+function supportsAppointmentWindow(
+  availability: AvailabilitySnapshot,
+  startTime: Date,
+  endTime: Date,
+) {
+  const dayKey = getDayKey(startTime);
+  const isActive = availability[`${dayKey}Active`];
+  const requiredShifts = getRequiredShifts(startTime, endTime);
+
+  if (!isActive || !requiredShifts.length) return false;
+
+  return requiredShifts.every((shift) => availability[`${dayKey}${shift}`]);
+}
+
+function createAvailabilityPattern(variant: number): AvailabilitySnapshot {
+  const baseWeekdays = {
+    monActive: true,
+    tueActive: true,
+    wedActive: true,
+    thuActive: true,
+    friActive: true,
+    satActive: false,
+    sunActive: false,
+  } as const;
+
+  switch (variant % 4) {
+    case 0:
+      return {
+        ...baseWeekdays,
+        monS1: true,
+        monS2: true,
+        tueS1: true,
+        tueS2: true,
+        wedS1: true,
+        wedS2: true,
+        thuS1: true,
+        thuS2: true,
+        friS1: true,
+        friS2: true,
+        satS1: false,
+        satS2: false,
+        sunS1: false,
+        sunS2: false,
+      };
+    case 1:
+      return {
+        ...baseWeekdays,
+        monS1: true,
+        monS2: false,
+        tueS1: true,
+        tueS2: false,
+        wedS1: true,
+        wedS2: false,
+        thuS1: true,
+        thuS2: false,
+        friS1: true,
+        friS2: false,
+        satS1: maybe(0.45),
+        satS2: false,
+        sunS1: false,
+        sunS2: false,
+      };
+    case 2:
+      return {
+        ...baseWeekdays,
+        monS1: false,
+        monS2: true,
+        tueS1: false,
+        tueS2: true,
+        wedS1: false,
+        wedS2: true,
+        thuS1: false,
+        thuS2: true,
+        friS1: false,
+        friS2: true,
+        satS1: false,
+        satS2: maybe(0.35),
+        sunS1: false,
+        sunS2: false,
+      };
+    default:
+      return {
+        ...baseWeekdays,
+        monS1: true,
+        monS2: true,
+        tueS1: true,
+        tueS2: true,
+        wedS1: true,
+        wedS2: false,
+        thuS1: true,
+        thuS2: true,
+        friS1: true,
+        friS2: false,
+        satActive: true,
+        satS1: true,
+        satS2: maybe(0.4),
+        sunActive: maybe(0.35),
+        sunS1: maybe(0.35),
+        sunS2: false,
+      };
+  }
+}
+
+function generateAppointmentWindow(from: Date, to: Date) {
+  const workingDays = [1, 2, 3, 4, 5, 6];
+  let candidate = randomDateBetween(from, to);
+  let attempts = 0;
+
+  while (!workingDays.includes(candidate.getDay()) && attempts < 20) {
+    candidate = randomDateBetween(from, to);
+    attempts++;
+  }
+
+  if (!workingDays.includes(candidate.getDay())) {
+    candidate = addDays(startOfDay(new Date()), 1);
+  }
+
+  const shift = pick<ShiftKey>(["S1", "S2"]);
+  const startHour =
+    shift === "S1" ? pick([7, 8, 9, 10]) : pick([12, 13, 14, 15]);
+  const maxDuration =
+    shift === "S1" ? 12 - startHour : 17 - startHour;
+  const durationHours = Math.max(2, Math.min(maxDuration, pick([2, 3, 4])));
+  const startTime = setTime(startOfDay(candidate), startHour);
+  const endTime = addHours(startTime, durationHours);
+
+  return { startTime, endTime };
+}
+
 function fmtMoney(n: number) {
   return Number(n.toFixed(2));
 }
@@ -367,8 +519,6 @@ async function resetDatabase() {
   await prisma.leave.deleteMany();
   await prisma.staffAvailability.deleteMany();
   await prisma.assignment.deleteMany();
-  await prisma.bankDetails.deleteMany();
-  await prisma.tD1.deleteMany();
   await prisma.emergencyContact.deleteMany();
   await prisma.staffAddress.deleteMany();
   await prisma.staffProfile.deleteMany();
@@ -389,7 +539,6 @@ async function resetDatabase() {
 }
 
 async function createTimesheetPeriodsForYear(year: number) {
-  const yearStart = new Date(year, 0, 1);
   const yearEnd = new Date(year, 11, 31);
 
   const periods: Array<{
@@ -513,6 +662,27 @@ async function createStaffProfiles(staff: { id: string; name: string }[]) {
           fractionDigits: 2,
         }),
         phoneNumber: fakePhone(),
+        bankDetails: {
+          create: {
+            bankName: fakeBankName(),
+            accountHolder: member.name,
+            institutionNo: fakeDigits(3),
+            transitNo: fakeDigits(5),
+            accountNo: fakeDigits(10),
+          },
+        },
+        td1: {
+          create: {
+            sin: fakeDigits(9),
+            federalClaimAmount: pick([15705, 16452, 17298]),
+            quebecClaimAmount: 0,
+            additionalFederalTaxPerPay: maybe(0.25)
+              ? pick([0, 15, 25, 40])
+              : 0,
+            additionalQuebecTaxPerPay: 0,
+            isExempt: maybe(0.05),
+          },
+        },
       },
       select: { id: true },
     });
@@ -535,64 +705,26 @@ async function createStaffProfiles(staff: { id: string; name: string }[]) {
       },
     });
 
-    await prisma.bankDetails.create({
-      data: {
-        staffProfileId: profile.id,
-        bankName: fakeBankName(),
-        accountHolder: member.name,
-        institutionNo: fakeDigits(3),
-        transitNo: fakeDigits(5),
-        accountNo: fakeDigits(10),
-      },
-    });
-
-    await prisma.tD1.create({
-      data: {
-        staffProfileId: profile.id,
-        sin: fakeDigits(9),
-        federalClaimAmount: pick([15705, 16452, 17298]),
-        quebecClaimAmount: 0,
-        additionalFederalTaxPerPay: maybe(0.25)
-          ? pick([0, 15, 25, 40])
-          : 0,
-        additionalQuebecTaxPerPay: 0,
-        isExempt: maybe(0.05),
-      },
-    });
-
     financialRecordsCreated += 2;
 
-    const availabilityRows = Array.from({ length: maybe(0.3) ? 2 : 1 }).map(
-      (_, index) => {
-        const worksWeekend = maybe(0.35);
-
-        return {
-          staffProfileId: profile.id,
-          effectiveFrom: addDays(new Date(), -randInt(15 + index * 45, 180)),
-          monActive: true,
-          monS1: true,
-          monS2: maybe(0.8),
-          tueActive: true,
-          tueS1: true,
-          tueS2: maybe(0.8),
-          wedActive: true,
-          wedS1: true,
-          wedS2: maybe(0.8),
-          thuActive: true,
-          thuS1: true,
-          thuS2: maybe(0.8),
-          friActive: true,
-          friS1: true,
-          friS2: maybe(0.65),
-          satActive: worksWeekend,
-          satS1: worksWeekend,
-          satS2: worksWeekend && maybe(0.5),
-          sunActive: worksWeekend && maybe(0.5),
-          sunS1: worksWeekend && maybe(0.5),
-          sunS2: false,
-        };
+    const latestPattern = createAvailabilityPattern(i);
+    const previousPattern = createAvailabilityPattern(i + 1);
+    const availabilityRows = [
+      {
+        staffProfileId: profile.id,
+        effectiveFrom: addDays(new Date(), -randInt(7, 45)),
+        ...latestPattern,
       },
-    );
+      ...(maybe(0.3)
+        ? [
+            {
+              staffProfileId: profile.id,
+              effectiveFrom: addDays(new Date(), -randInt(60, 180)),
+              ...previousPattern,
+            },
+          ]
+        : []),
+    ].sort((a, b) => b.effectiveFrom.getTime() - a.effectiveFrom.getTime());
 
     await prisma.staffAvailability.createMany({ data: availabilityRows });
     availabilityRowsCreated += availabilityRows.length;
@@ -711,6 +843,73 @@ async function createJobsForClients(
   const now = new Date();
   const threeWeeksAgo = addDays(now, -21);
   const threeWeeksAhead = addDays(now, 21);
+  const latestAvailabilities = await prisma.staffAvailability.findMany({
+    where: {
+      staffProfile: {
+        userId: { in: staff.map((member) => member.id) },
+      },
+    },
+    orderBy: [{ effectiveFrom: "desc" }, { createdAt: "desc" }],
+    select: {
+      staffProfile: {
+        select: {
+          userId: true,
+        },
+      },
+      monActive: true,
+      monS1: true,
+      monS2: true,
+      tueActive: true,
+      tueS1: true,
+      tueS2: true,
+      wedActive: true,
+      wedS1: true,
+      wedS2: true,
+      thuActive: true,
+      thuS1: true,
+      thuS2: true,
+      friActive: true,
+      friS1: true,
+      friS2: true,
+      satActive: true,
+      satS1: true,
+      satS2: true,
+      sunActive: true,
+      sunS1: true,
+      sunS2: true,
+    },
+  });
+  const availabilityMap = new Map<string, AvailabilitySnapshot>();
+
+  for (const availability of latestAvailabilities) {
+    const userId = availability.staffProfile.userId;
+    if (!availabilityMap.has(userId)) {
+      const snapshot: AvailabilitySnapshot = {
+        monActive: availability.monActive,
+        monS1: availability.monS1,
+        monS2: availability.monS2,
+        tueActive: availability.tueActive,
+        tueS1: availability.tueS1,
+        tueS2: availability.tueS2,
+        wedActive: availability.wedActive,
+        wedS1: availability.wedS1,
+        wedS2: availability.wedS2,
+        thuActive: availability.thuActive,
+        thuS1: availability.thuS1,
+        thuS2: availability.thuS2,
+        friActive: availability.friActive,
+        friS1: availability.friS1,
+        friS2: availability.friS2,
+        satActive: availability.satActive,
+        satS1: availability.satS1,
+        satS2: availability.satS2,
+        sunActive: availability.sunActive,
+        sunS1: availability.sunS1,
+        sunS2: availability.sunS2,
+      };
+      availabilityMap.set(userId, snapshot);
+    }
+  }
 
   for (const client of clients) {
     const addresses = await prisma.address.findMany({
@@ -731,13 +930,14 @@ async function createJobsForClients(
 
     for (let j = 0; j < jobsCount; j++) {
       const jobType = maybe(0.45) ? JobType.RECURRING : JobType.ONE_OFF;
+      const selectedAddress = addresses[randInt(0, addresses.length - 1)];
 
       const job = await prisma.job.create({
         data: {
           title: fakeJobTitle(jobType),
           type: jobType,
           clientId: client.id,
-          addressId: pick(addresses).id,
+          addressId: selectedAddress.id,
           isAnytime: maybe(0.18),
           visitInstructions: maybe(0.7) ? fakeVisitInstructions() : null,
         },
@@ -822,17 +1022,35 @@ async function createJobsForClients(
       );
 
       for (let a = 0; a < appointmentsCount; a++) {
-        const startTime = randomDateBetween(threeWeeksAgo, threeWeeksAhead);
-        const durationHours = pick([2, 2, 3, 3, 4, 5]);
-        const endTime = addHours(startTime, durationHours);
+        const { startTime, endTime } = generateAppointmentWindow(
+          threeWeeksAgo,
+          threeWeeksAhead,
+        );
         const status = deriveAppointmentStatus(startTime);
 
         const reminderFlags = computeReminderFlags(startTime, status);
 
-        const assignedStaff = faker.helpers.arrayElements(
-          staff.map((s) => s.id),
-          { min: 1, max: Math.min(3, staff.length) },
+        const availableStaffIds = staff
+          .map((member) => member.id)
+          .filter((staffId) => {
+            const availability = availabilityMap.get(staffId);
+            return (
+              availability &&
+              supportsAppointmentWindow(availability, startTime, endTime)
+            );
+          });
+
+        const assignmentPool = availableStaffIds.length
+          ? availableStaffIds
+          : staff.map((member) => member.id);
+        const requiredStaffCount = Math.min(
+          assignmentPool.length,
+          maybe(0.75) ? 1 : 2,
         );
+        const assignedStaff = faker.helpers.arrayElements(assignmentPool, {
+          min: Math.max(1, requiredStaffCount),
+          max: Math.max(1, requiredStaffCount),
+        });
 
         const completedAt =
           status === AppointmentStatus.COMPLETED
@@ -842,7 +1060,10 @@ async function createJobsForClients(
         const timeSpent =
           status === AppointmentStatus.COMPLETED ||
           status === AppointmentStatus.LATE
-            ? randInt(durationHours * 50, durationHours * 75)
+            ? randInt(
+                Math.round(((endTime.getTime() - startTime.getTime()) / 3600000) * 50),
+                Math.round(((endTime.getTime() - startTime.getTime()) / 3600000) * 70),
+              )
             : null;
 
         const appointment = await prisma.appointment.create({
@@ -884,21 +1105,30 @@ async function createJobsForClients(
 
         appointmentsCreated++;
 
-        const visitNotes = Array.from({ length: randInt(0, 3) }).map(() => ({
-          appointmentId: appointment.id,
-          content: faker.lorem.sentences({ min: 1, max: 3 }),
-          isClientVisible: maybe(0.35),
-          createdAt: faker.date.between({
-            from: addDays(startTime, -2),
-            to: addDays(startTime, 2),
-          }),
-          createdById:
-            maybe(0.85) && appointment.assignments.length
-              ? pick(appointment.assignments).staffId
-              : maybe(0.4)
-                ? pick(createdByCandidates)
-                : null,
-        }));
+        const visitNotes = Array.from({ length: randInt(0, 3) }).map(() => {
+          const pickedAssignment =
+            appointment.assignments.length > 0
+              ? appointment.assignments[
+                  randInt(0, appointment.assignments.length - 1)
+                ]
+              : null;
+
+          return {
+            appointmentId: appointment.id,
+            content: faker.lorem.sentences({ min: 1, max: 3 }),
+            isClientVisible: maybe(0.35),
+            createdAt: faker.date.between({
+              from: addDays(startTime, -2),
+              to: addDays(startTime, 2),
+            }),
+            createdById:
+              maybe(0.85) && pickedAssignment
+                ? pickedAssignment.staffId
+                : maybe(0.4)
+                  ? pick(createdByCandidates)
+                  : null,
+          };
+        });
 
         if (visitNotes.length) {
           await prisma.visitNote.createMany({ data: visitNotes });
@@ -979,7 +1209,15 @@ async function createCurrentTimeLogFixtures(staff: { id: string }[]) {
   const today = startOfDay(new Date());
   const yesterday = addDays(today, -1);
 
-  const fixtures = [
+  const fixtures: Array<{
+    jobId: string;
+    staffId: string;
+    startTime: Date;
+    endTime: Date;
+    startedAt: Date | null;
+    endedAt: Date | null;
+    status: AppointmentStatus;
+  }> = [
     {
       jobId: jobs[0].id,
       staffId: staff[0].id,
@@ -1067,7 +1305,7 @@ async function createCurrentTimeLogFixtures(staff: { id: string }[]) {
 }
 
 async function createLeaves(staff: { id: string }[]) {
-  const leaveRows: Prisma.LeaveCreateManyInput[] = [];
+  const leaveRows = [];
 
   for (const member of staff) {
     const leaveCount = randInt(0, 3);
@@ -1089,10 +1327,10 @@ async function createLeaves(staff: { id: string }[]) {
         endAt,
         reason: maybe(0.7) ? faker.lorem.sentence() : null,
         status: pick([
-          LeaveStatus.PENDING,
-          LeaveStatus.APPROVED,
-          LeaveStatus.APPROVED,
-          LeaveStatus.REJECTED,
+          "PENDING",
+          "APPROVED",
+          "APPROVED",
+          "REJECTED",
         ]),
         createdAt: faker.date.between({
           from: addDays(startAt, -14),
@@ -1103,7 +1341,9 @@ async function createLeaves(staff: { id: string }[]) {
   }
 
   if (leaveRows.length) {
-    await prisma.leave.createMany({ data: leaveRows });
+    await prisma.leave.createMany({
+      data: leaveRows as Prisma.LeaveCreateManyInput[],
+    });
   }
 
   return leaveRows.length;
@@ -1191,7 +1431,7 @@ async function createTimesheetsAndPayroll(
         }, 0),
       );
 
-      const snapshot =
+      const snapshot: Prisma.InputJsonValue | undefined =
         status === TimesheetStatus.APPROVED
           ? {
               staffId: member.id,
@@ -1211,9 +1451,9 @@ async function createTimesheetsAndPayroll(
               })),
               source: "seed",
             }
-          : null;
+          : undefined;
 
-      const timesheet = await prisma.timesheet.create({
+      await prisma.timesheet.create({
         data: {
           periodId: period.id,
           staffId: member.id,
@@ -1234,13 +1474,10 @@ async function createTimesheetsAndPayroll(
             create: days,
           },
         },
-        include: {
-          days: true,
-        },
       });
 
       timesheetsCreated++;
-      timesheetDaysCreated += timesheet.days.length;
+      timesheetDaysCreated += days.length;
 
       if (isLocked) {
         const existingPayStatement = await prisma.payStatement.findFirst({
@@ -1254,7 +1491,7 @@ async function createTimesheetsAndPayroll(
         if (existingPayStatement) continue;
 
         const gross = fmtMoney(
-          timesheet.days.reduce((sum, day) => {
+          days.reduce((sum, day) => {
             const rate = day.hourlyRate ?? hourlyRate;
             return sum + (day.minutesWorked / 60) * rate;
           }, 0),
@@ -1275,7 +1512,7 @@ async function createTimesheetsAndPayroll(
             netEarnings: net,
             breakdown: {
               hours: fmtMoney(
-                timesheet.days.reduce(
+                days.reduce(
                   (sum, day) => sum + day.minutesWorked / 60,
                   0,
                 ),
@@ -1392,18 +1629,18 @@ async function createGuaranteedReminderTestAppointments(
   const templates = [
     {
       label: "5-day",
-      startTime: reminderDateUtc(5, 16),
-      endTime: reminderDateUtc(5, 19),
+      startTime: reminderDateUtc(5, 13),
+      endTime: reminderDateUtc(5, 16),
     },
     {
       label: "1-day",
-      startTime: reminderDateUtc(1, 16),
-      endTime: reminderDateUtc(1, 19),
+      startTime: reminderDateUtc(1, 13),
+      endTime: reminderDateUtc(1, 16),
     },
     {
       label: "control",
-      startTime: reminderDateUtc(3, 16),
-      endTime: reminderDateUtc(3, 19),
+      startTime: reminderDateUtc(3, 9),
+      endTime: reminderDateUtc(3, 12),
     },
   ];
 

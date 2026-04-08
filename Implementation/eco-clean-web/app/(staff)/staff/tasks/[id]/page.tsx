@@ -447,6 +447,16 @@ const Page = () => {
         radius="lg"
         title="Image Preview"
         padding="md"
+        styles={{
+          content: {
+            background:
+              "linear-gradient(180deg, rgba(251, 253, 247, 0.99), rgba(243, 247, 236, 0.99))",
+          },
+          body: {
+            background:
+              "linear-gradient(180deg, rgba(251, 253, 247, 0.99), rgba(243, 247, 236, 0.99))",
+          },
+        }}
       >
         {selectedImage ? (
           <Flex justify="center" align="center" h="100%">

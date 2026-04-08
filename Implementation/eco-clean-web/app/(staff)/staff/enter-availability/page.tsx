@@ -12,9 +12,12 @@ import {
   Box,
   Table,
   Card,
+  SimpleGrid,
+  Textarea,
 } from "@mantine/core";
 import { DateInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
+import { notifications } from "@mantine/notifications";
 import { useSession } from "next-auth/react";
 import { useState } from "react";
 import { addAppDays, appNowDate, toAppDateKey } from "@/lib/dateTime";
@@ -117,14 +120,27 @@ export default function EnterAvailabilityPage() {
       if (!response.ok) throw new Error("Failed to save availability.");
 
       if (!staffProfileId) {
-        alert("User not loaded yet");
+        notifications.show({
+          title: "User not ready",
+          message: "User information has not loaded yet.",
+          color: "yellow",
+        });
         return;
       }
 
-      alert("Availability updated successfully!");
+      notifications.show({
+        title: "Availability updated",
+        message: "Availability updated successfully.",
+        color: "green",
+      });
       form.reset();
-    } catch (error: any) {
-      alert(error.message);
+    } catch (error) {
+      notifications.show({
+        title: "Update failed",
+        message:
+          error instanceof Error ? error.message : "Failed to update availability.",
+        color: "red",
+      });
     }
   }
 

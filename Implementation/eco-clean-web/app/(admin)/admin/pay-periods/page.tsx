@@ -12,6 +12,7 @@ import {
   Stack,
   Text,
 } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
 import { useEffect, useMemo, useState } from "react";
 import * as XLSX from "xlsx";
 import {
@@ -93,7 +94,11 @@ export default function ManagePayPeriodsPage() {
 
   async function handleSubmit() {
     if (!periodId) {
-      alert("Please select a pay period first.");
+      notifications.show({
+        title: "Select a pay period",
+        message: "Choose a pay period before generating pay statements.",
+        color: "yellow",
+      });
       return;
     }
 
@@ -114,14 +119,26 @@ export default function ManagePayPeriodsPage() {
       if (!res.ok) {
         const text = await res.text();
         console.error("Failed:", text);
-        alert("Failed to generate pay statements");
+        notifications.show({
+          title: "Generation failed",
+          message: "Failed to generate pay statements.",
+          color: "red",
+        });
         return;
       }
 
-      alert("Pay statements generated successfully!");
+      notifications.show({
+        title: "Pay statements generated",
+        message: "Pay statements were generated successfully.",
+        color: "green",
+      });
     } catch (err) {
       console.error(err);
-      alert("Something went wrong");
+      notifications.show({
+        title: "Something went wrong",
+        message: "Unable to generate pay statements right now.",
+        color: "red",
+      });
     } finally {
       setLoading(false);
     }

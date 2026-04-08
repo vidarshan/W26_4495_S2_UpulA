@@ -14,6 +14,7 @@ import {
   Text,
 } from '@mantine/core';
 import { useEffect, useMemo, useState } from 'react';
+import { notifications } from '@mantine/notifications';
 import { generateBiweeklyPeriods } from '@/lib/actions/periods';
 import {
   IoCalendarOutline,
@@ -83,10 +84,18 @@ export default function ManagePayPeriodsPage() {
     setLoading(false);
 
     if (result.success) {
-      alert(`Success. Created ${result.count} pay periods for ${targetYear}.`);
+      notifications.show({
+        title: 'Pay periods created',
+        message: `Created ${result.count} pay periods for ${targetYear}.`,
+        color: 'green',
+      });
       await fetchPeriods();
     } else {
-      alert(`Error: ${result.error}`);
+      notifications.show({
+        title: 'Generation failed',
+        message: result.error ?? 'Failed to generate pay periods.',
+        color: 'red',
+      });
     }
   };
 

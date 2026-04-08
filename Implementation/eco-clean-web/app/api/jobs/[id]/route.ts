@@ -183,34 +183,35 @@ export async function PATCH(
       }
 
       if (existing.type === "RECURRING") {
-        must(recurrenceBody, "Recurring jobs require recurrence settings");
+        if (!recurrenceBody) {
+          throw new Error("Recurring jobs require recurrence settings");
+        }
+
+        const recurrence = recurrenceBody;
         must(
-          recurrenceBody.frequency === "weekly" ||
-            recurrenceBody.frequency === "monthly",
+          recurrence.frequency === "weekly" || recurrence.frequency === "monthly",
           "Invalid recurrence frequency",
         );
         must(
-          typeof recurrenceBody.interval === "number" &&
-            recurrenceBody.interval >= 1,
+          typeof recurrence.interval === "number" && recurrence.interval >= 1,
           "recurrence.interval must be >= 1",
         );
         must(
-          recurrenceBody.endType === "after" || recurrenceBody.endType === "on",
+          recurrence.endType === "after" || recurrence.endType === "on",
           "Invalid recurrence endType",
         );
 
-        if (recurrenceBody.endType === "after") {
+        if (recurrence.endType === "after") {
           must(
-            typeof recurrenceBody.endsAfter === "number" &&
-              recurrenceBody.endsAfter >= 1,
+            typeof recurrence.endsAfter === "number" && recurrence.endsAfter >= 1,
             "recurrence.endsAfter must be >= 1",
           );
         }
 
-        if (recurrenceBody.endType === "on") {
+        if (recurrence.endType === "on") {
           must(
-            typeof recurrenceBody.endsOn === "string" &&
-              recurrenceBody.endsOn.trim().length > 0,
+            typeof recurrence.endsOn === "string" &&
+              recurrence.endsOn.trim().length > 0,
             "recurrence.endsOn is required",
           );
         }

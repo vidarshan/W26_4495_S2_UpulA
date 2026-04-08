@@ -566,7 +566,10 @@ export default function JobEditModal({ onSuccess }: Props) {
                       disabled={updateMutation.isPending}
                       value={form.values.recurrence.endsOn}
                       onChange={(value) =>
-                        form.setFieldValue("recurrence.endsOn", value)
+                        form.setFieldValue(
+                          "recurrence.endsOn",
+                          value ? new Date(value) : null,
+                        )
                       }
                       error={form.errors["recurrence.endsOn"]}
                     />

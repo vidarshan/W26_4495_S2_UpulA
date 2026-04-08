@@ -21,6 +21,7 @@ import { DatePickerInput } from "@mantine/dates";
 import { useDebouncedValue, useMediaQuery } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import {
+  DateSpanApi,
   DateSelectArg,
   EventClickArg,
   EventDropArg,
@@ -150,11 +151,11 @@ export default function DashboardClient() {
     });
   };
 
-  const handleSelectAllow = useCallback((selectInfo: DateSelectArg) => {
-    const start = DateTime.fromJSDate(selectInfo.start, {
+  const handleSelectAllow = useCallback((span: DateSpanApi) => {
+    const start = DateTime.fromJSDate(span.start, {
       zone: "utc",
     }).setZone(APP_TZ);
-    const end = DateTime.fromJSDate(selectInfo.end, { zone: "utc" })
+    const end = DateTime.fromJSDate(span.end, { zone: "utc" })
       .setZone(APP_TZ)
       .minus({ millisecond: 1 });
 

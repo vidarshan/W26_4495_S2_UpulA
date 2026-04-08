@@ -135,10 +135,12 @@ export default function YourPayPage() {
     );
   }
 
-  // Correct source
-  const latest = data.latest || {};
-  const b = latest.breakdown || {};
-  const ytd = data.ytd || {};
+  const latest: Partial<PayPeriodRecord> = data.latest ?? {};
+  const b: PayBreakdown = latest.breakdown ?? {};
+  const ytd = data.ytd ?? {};
+  const latestPayDateLabel = latest.payDate
+    ? new Date(latest.payDate).toLocaleDateString()
+    : "Not scheduled";
 
   const earningsBreakdown = [
     { label: "Regular", value: b.regularAmount || 0 },
@@ -227,7 +229,7 @@ export default function YourPayPage() {
 
           <Box>
             <Text fw={700}>Pay Date</Text>
-            <Text>{new Date(latest.payDate).toLocaleDateString()}</Text>
+            <Text>{latestPayDateLabel}</Text>
           </Box>
         </Group>
       </Card>
@@ -336,7 +338,7 @@ export default function YourPayPage() {
                   const selected = historyOptionsA.find(
                     (p) => p.value === value,
                   );
-                  setPeriodA(selected?.raw);
+                  setPeriodA(selected?.raw ?? null);
                   setPeriodB(null);
                 }}
               />
@@ -349,7 +351,7 @@ export default function YourPayPage() {
                   const selected = historyOptionsB.find(
                     (p) => p.value === value,
                   );
-                  setPeriodB(selected?.raw);
+                  setPeriodB(selected?.raw ?? null);
                 }}
               />
             </Group>

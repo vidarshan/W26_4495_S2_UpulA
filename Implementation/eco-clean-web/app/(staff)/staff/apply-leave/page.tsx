@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from "react";
 import { DateTime } from "luxon";
 import {
   Alert,
+  Badge,
   Box,
   Button,
   Card,
@@ -15,16 +16,18 @@ import {
   Divider,
   Group,
   Loader,
+  Paper,
   Select,
   SimpleGrid,
   Stack,
   Table,
   Text,
   Textarea,
+  ThemeIcon,
   Title,
   SegmentedControl,
 } from "@mantine/core";
-import { DatePickerInput, TimeInput } from "@mantine/dates";
+import { DateInput, DatePicker, DatePickerInput, TimeInput } from "@mantine/dates";
 import { useMediaQuery } from "@mantine/hooks";
 import { useSession } from "next-auth/react";
 import { IoCalendarOutline, IoDocumentTextOutline } from "react-icons/io5";
@@ -74,6 +77,8 @@ type LeaveRequestCardProps = {
   isMobile: boolean;
 };
 
+const MIN_LEAVE_REQUEST_DATE = addAppDays(appNowDate(), 14);
+
 function formatLeaveType(type: string) {
   return type
     .toLowerCase()
@@ -86,6 +91,21 @@ function getLeaveAccent(type: string) {
   if (type === "VACATION") return "blue";
   if (type.includes("SICK")) return "orange";
   return "lime";
+}
+
+function BoxDot({ visible }: { visible: boolean }) {
+  if (!visible) return <Box h={6} />;
+
+  return (
+    <Box
+      w={6}
+      h={6}
+      style={{
+        borderRadius: "999px",
+        background: "var(--mantine-color-lime-6)",
+      }}
+    />
+  );
 }
 
 export default function ApplyLeavePage() {
@@ -116,15 +136,7 @@ export default function ApplyLeavePage() {
 
   const { data: session, status } = useSession();
 
-  // TODO: replace with session-based user context
-
-  if (status === "loading") return <Loader />;
-
   const staffId = session?.user?.id;
-
-  if (!staffId) {
-    return <Text>No user found</Text>;
-  }
 
   useEffect(() => {
     if (!staffId) return;
@@ -187,17 +199,23 @@ export default function ApplyLeavePage() {
           Math.ceil(
             (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24),
           ) || 1;
-
-  const leaveMarkers = useMemo(
-    () =>
-      new Set(
-        leaveData.map((record) => toAppDateKey(record.startAt)),
-      ),
-    [leaveData],
-  );
         return acc + days * 8;
       }, 0);
   }, [leaveData]);
+
+  const leaveMarkers = useMemo(
+    () => new Set(leaveData.map((record) => toAppDateKey(record.startAt))),
+    [leaveData],
+  );
+
+  const sortedLeaveData = useMemo(
+    () =>
+      [...leaveData].sort(
+        (a, b) =>
+          new Date(b.startAt).getTime() - new Date(a.startAt).getTime(),
+      ),
+    [leaveData],
+  );
 
   const hoursScheduled = useMemo(() => {
     return leaveType === "FULL_DAY" ? 8 : 3.5;
@@ -270,6 +288,25 @@ export default function ApplyLeavePage() {
     }
   }
 
+  if (status === "loading") {
+    return (
+      <Container size="sm" py="xl">
+        <Stack align="center" py="xl">
+          <Loader size="lg" />
+          <Text c="dimmed">Loading your profile...</Text>
+        </Stack>
+      </Container>
+    );
+  }
+
+  if (!staffId) {
+    return (
+      <Container size="sm" py="xl">
+        <Alert color="red">No user found.</Alert>
+      </Container>
+    );
+  }
+
   if (loading && leaveData.length === 0) {
     return (
       <Container size="sm" py="xl">
@@ -323,8 +360,10 @@ export default function ApplyLeavePage() {
 
               <Paper withBorder radius="lg" p="xs">
                 <DatePicker
-                  value={selectedDate}
-                  onChange={setSelectedDate}
+                  value={selectedDate ? appDateKeyToDate(selectedDate) : null}
+                  onChange={(value) =>
+                    setSelectedDate(value ? toAppDateKey(value) : null)
+                  }
                   minDate={addAppDays(appNowDate(), 14)}
                   size="sm"
                   styles={{
@@ -332,10 +371,9 @@ export default function ApplyLeavePage() {
                     monthCell: { padding: 2 },
                   }}
                   renderDay={(date) => {
-                    const hasLeave = leaveMarkers.has(date);
-                    const dayNumber = DateTime.fromFormat(date, "yyyy-LL-dd", {
-                      zone: APP_TZ,
-                    }).day;
+                    const dateKey = toAppDateKey(date);
+                    const hasLeave = leaveMarkers.has(dateKey);
+                    const dayNumber = appDateKeyToDate(dateKey).getDate();
 
                     return (
                       <Stack
@@ -534,9 +572,11 @@ function LeaveRequestCard(props: LeaveRequestCardProps) {
               Date
             </Text>
             <DatePickerInput
-              value={props.selectedDate}
-              onChange={props.setSelectedDate}
-              minDate={new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)}
+              value={props.selectedDate ? appDateKeyToDate(props.selectedDate) : null}
+              onChange={(value) =>
+                props.setSelectedDate(value ? toAppDateKey(value) : null)
+              }
+              minDate={MIN_LEAVE_REQUEST_DATE}
             />
           </Box>
 

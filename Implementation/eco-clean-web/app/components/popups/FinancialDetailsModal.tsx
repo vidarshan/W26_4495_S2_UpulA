@@ -88,9 +88,9 @@ export default function FinancialDetailsModal({
 
       setTax({
         sin: data.td1?.sin || "",
-        totalClaimAmount: data.td1?.totalClaimAmount || 0,
-        additionalTaxPerPay: data.td1?.additionalTaxPerPay || 0,
-        deductionsTotal: data.td1?.deductionsTotal || 0,
+        totalClaimAmount: data.td1?.federalClaimAmount || 0,
+        additionalTaxPerPay: data.td1?.additionalFederalTaxPerPay || 0,
+        deductionsTotal: data.td1?.quebecClaimAmount || 0,
         isExempt: data.td1?.isExempt || false,
       });
     }
