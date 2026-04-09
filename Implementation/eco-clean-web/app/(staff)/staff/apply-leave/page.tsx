@@ -374,6 +374,10 @@ export default function ApplyLeavePage() {
                   styles={{
                     calendarHeader: { marginBottom: 8 },
                     monthCell: { padding: 2 },
+                    day: {
+                      width: 40,
+                      height: 40,
+                    },
                   }}
                   renderDay={(date) => {
                     const dateKey = toAppDateKey(date);
@@ -383,17 +387,17 @@ export default function ApplyLeavePage() {
                     return (
                       <Box
                         style={{
-                          width: 34,
-                          height: 34,
+                          width: 40,
+                          height: 40,
                           display: "flex",
                           flexDirection: "column",
                           alignItems: "center",
                           justifyContent: "center",
-                          gap: 3,
+                          gap: 4,
                           margin: "0 auto",
                         }}
                       >
-                        <Text size="sm" lh={1} ta="center">
+                        <Text size="sm" lh={1} ta="center" fw={500}>
                           {dayNumber}
                         </Text>
                         <BoxDot visible={hasLeave} />
