@@ -8,12 +8,14 @@ import {
   JobNoteCategory,
   AssignmentStatus,
   LeaveType,
+  LeaveStatus,
   TimesheetStatus,
   TimesheetPeriodStatus,
 } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { faker } from "@faker-js/faker";
 import * as bcrypt from "bcrypt";
+import { calculatePayroll } from "../lib/payroll/calculatePayroll";
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is missing");
@@ -516,6 +518,95 @@ function generateAppointmentWindow(from: Date, to: Date) {
 
 function fmtMoney(n: number) {
   return Number(n.toFixed(2));
+}
+
+function isoDayKey(date: Date) {
+  return startOfDay(date).toISOString().slice(0, 10);
+}
+
+function chooseLeaveStartDate(from: Date, to: Date) {
+  let candidate = startOfDay(randomDateBetween(from, to));
+  let attempts = 0;
+
+  while ((candidate.getDay() === 0 || candidate.getDay() === 6) && attempts < 10) {
+    candidate = startOfDay(randomDateBetween(from, to));
+    attempts++;
+  }
+
+  return candidate;
+}
+
+function buildApprovedLeaveDays(leaves: { staffId: string; startAt: Date; endAt: Date }[]) {
+  const leaveDays = new Map<string, Set<string>>();
+
+  for (const leave of leaves) {
+    const days = leaveDays.get(leave.staffId) ?? new Set<string>();
+    let cursor = startOfDay(leave.startAt);
+    const end = startOfDay(leave.endAt);
+
+    while (cursor <= end) {
+      days.add(isoDayKey(cursor));
+      cursor = addDays(cursor, 1);
+    }
+
+    leaveDays.set(leave.staffId, days);
+  }
+
+  return leaveDays;
+}
+
+function getExpectedHoursForWeekday(dayOfWeek: number) {
+  if (dayOfWeek === 1) return pick([6, 7, 8]);
+  if (dayOfWeek === 5) return pick([5, 6, 7, 8, 9]);
+  return pick([6, 7, 8, 8, 9]);
+}
+
+function calculatePayBreakdown(
+  totalMinutes: number,
+  hourlyRate: number,
+  daysWorked: number,
+) {
+  const totalHours = totalMinutes / 60;
+  const overtimeHours = Math.max(0, totalHours - 80);
+  const regularHours = Math.max(0, totalHours - overtimeHours);
+  const regularRate = fmtMoney(hourlyRate);
+  const otRate = fmtMoney(hourlyRate * 1.5);
+  const regularAmount = fmtMoney(regularHours * regularRate);
+  const otAmount = fmtMoney(overtimeHours * otRate);
+  const transportAllowance =
+    daysWorked >= 8 ? fmtMoney(daysWorked * pick([8, 10, 12])) : 0;
+  const gross = fmtMoney(regularAmount + otAmount + transportAllowance);
+
+  const payroll = calculatePayroll({
+    grossPayPerPeriod: gross,
+  });
+
+  const health = daysWorked >= 7 && maybe(0.45) ? pick([18, 22, 26, 32]) : 0;
+  const other = maybe(0.18) ? pick([0, 8, 12, 15]) : 0;
+  const totalDeductions = fmtMoney(payroll.totalDeductions + health + other);
+  const netEarnings = fmtMoney(gross - totalDeductions);
+
+  return {
+    regularHours: fmtMoney(regularHours),
+    regularRate,
+    regularAmount,
+    otHours: fmtMoney(overtimeHours),
+    otRate,
+    otAmount,
+    transportAllowance,
+    grossEarnings: gross,
+    federalTax: fmtMoney(payroll.federalTax),
+    quebecTax: fmtMoney(payroll.quebecTax),
+    ei: fmtMoney(payroll.ei),
+    qpp: fmtMoney(payroll.qpp),
+    qpp2: 0,
+    qpip: fmtMoney(payroll.qpip),
+    health,
+    other,
+    deductions: totalDeductions,
+    netEarnings,
+    payrollDebug: payroll.debug ?? null,
+  };
 }
 
 function logStage(message: string) {
@@ -1336,37 +1427,75 @@ async function createCurrentTimeLogFixtures(staff: { id: string }[]) {
 }
 
 async function createLeaves(staff: { id: string }[]) {
-  const leaveRows = [];
+  const leaveRows: Prisma.LeaveCreateManyInput[] = [];
 
   for (const member of staff) {
-    const leaveCount = randInt(0, 3);
+    const leaveCount = pick([0, 1, 1, 2, 2, 3]);
 
     for (let i = 0; i < leaveCount; i++) {
-      const startAt = startOfDay(addDays(new Date(), randInt(-60, 45)));
-      const durationDays = randInt(1, 4);
+      const type = pick([
+        LeaveType.VACATION,
+        LeaveType.VACATION,
+        LeaveType.PAID_SICK,
+        LeaveType.PERSONAL,
+        LeaveType.UNPAID_SICK,
+      ]);
+      const isFutureHeavy = type === LeaveType.VACATION;
+      const startAt = chooseLeaveStartDate(
+        addDays(new Date(), isFutureHeavy ? 14 : -75),
+        addDays(new Date(), isFutureHeavy ? 120 : 30),
+      );
+      const durationDays =
+        type === LeaveType.VACATION
+          ? pick([1, 2, 3, 4, 5])
+          : type === LeaveType.PERSONAL
+            ? pick([1, 1, 1, 2])
+            : pick([1, 1, 2, 3]);
       const endAt = endOfDay(addDays(startAt, durationDays - 1));
+      const status: LeaveStatus =
+        type === LeaveType.VACATION && startAt > new Date()
+          ? pick([
+              LeaveStatus.APPROVED,
+              LeaveStatus.APPROVED,
+              LeaveStatus.PENDING,
+            ])
+          : pick([
+              LeaveStatus.APPROVED,
+              LeaveStatus.APPROVED,
+              LeaveStatus.REJECTED,
+              LeaveStatus.PENDING,
+            ]);
+      const createdAt = faker.date.between({
+        from: addDays(startAt, type === LeaveType.VACATION ? -45 : -10),
+        to: addDays(startAt, -1),
+      });
+      const reason =
+        type === LeaveType.VACATION
+          ? pick([
+              "Family trip planned in advance.",
+              "Booked personal vacation.",
+              "Out-of-town travel already scheduled.",
+            ])
+          : type === LeaveType.PERSONAL
+            ? pick([
+                "Personal appointment.",
+                "Family responsibility.",
+                "Personal day requested.",
+              ])
+            : pick([
+                "Medical appointment and recovery.",
+                "Not feeling well and unable to work.",
+                "Recovering from illness.",
+              ]);
 
       leaveRows.push({
         staffId: member.id,
-        type: pick([
-          LeaveType.PAID_SICK,
-          LeaveType.VACATION,
-          LeaveType.PERSONAL,
-          LeaveType.UNPAID_SICK,
-        ]),
+        type,
         startAt,
         endAt,
-        reason: maybe(0.7) ? faker.lorem.sentence() : null,
-        status: pick([
-          "PENDING",
-          "APPROVED",
-          "APPROVED",
-          "REJECTED",
-        ]),
-        createdAt: faker.date.between({
-          from: addDays(startAt, -14),
-          to: startAt,
-        }),
+        reason: maybe(0.9) ? reason : null,
+        status,
+        createdAt,
       });
     }
   }
@@ -1396,6 +1525,18 @@ async function createTimesheetsAndPayroll(
 
   const hourlyRateMap = new Map(profiles.map((p) => [p.userId, p.hourlyRate]));
   const approverId = admins[0]?.id ?? null;
+  const approvedLeaves = await prisma.leave.findMany({
+    where: {
+      staffId: { in: staff.map((member) => member.id) },
+      status: "APPROVED",
+    },
+    select: {
+      staffId: true,
+      startAt: true,
+      endAt: true,
+    },
+  });
+  const approvedLeaveDays = buildApprovedLeaveDays(approvedLeaves);
 
   const periods = await prisma.timesheetPeriod.findMany({
     orderBy: { startDate: "asc" },
@@ -1417,6 +1558,7 @@ async function createTimesheetsAndPayroll(
     for (const member of staff) {
       const hourlyRate = hourlyRateMap.get(member.id) ?? 0;
       const isLocked = period.status === TimesheetPeriodStatus.LOCKED;
+      const staffLeaveDays = approvedLeaveDays.get(member.id) ?? new Set<string>();
 
       const days: Prisma.TimesheetDayCreateWithoutTimesheetInput[] = [];
       let cursor = startOfDay(period.startDate);
@@ -1424,14 +1566,28 @@ async function createTimesheetsAndPayroll(
       while (cursor <= period.endDate) {
         const dayOfWeek = cursor.getDay();
         const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+        const isOnApprovedLeave = staffLeaveDays.has(isoDayKey(cursor));
 
-        if (!isWeekend && maybe(0.82)) {
-          const minutesWorked = pick([240, 300, 360, 420, 480]);
+        if (!isWeekend && !isOnApprovedLeave && maybe(0.84)) {
+          const expectedHours = getExpectedHoursForWeekday(dayOfWeek);
+          const minutesWorked = pick([
+            expectedHours * 60,
+            expectedHours * 60,
+            Math.max(240, (expectedHours - 1) * 60),
+            Math.min(600, (expectedHours + 1) * 60),
+          ]);
           days.push({
             workDate: new Date(cursor),
             minutesWorked,
             hourlyRate,
-            notes: maybe(0.18) ? faker.lorem.sentence() : null,
+            notes: maybe(0.22)
+              ? pick([
+                  "Client requested extra attention in kitchen.",
+                  "Travel delay noted before shift start.",
+                  "Completed standard service checklist.",
+                  "Supplies restocked after appointment.",
+                ])
+              : null,
           });
         }
 
@@ -1461,6 +1617,7 @@ async function createTimesheetsAndPayroll(
           return sum + (day.minutesWorked / 60) * rate;
         }, 0),
       );
+      const payBreakdown = calculatePayBreakdown(totalMinutes, hourlyRate, days.length);
 
       const snapshot: Prisma.InputJsonValue | undefined =
         status === TimesheetStatus.APPROVED
@@ -1471,6 +1628,9 @@ async function createTimesheetsAndPayroll(
               totalMinutes,
               totalHours: fmtMoney(totalMinutes / 60),
               totalPay,
+              regularHours: payBreakdown.regularHours,
+              overtimeHours: payBreakdown.otHours,
+              transportAllowance: payBreakdown.transportAllowance,
               days: days.map((day) => ({
                 date: day.workDate,
                 minutes: day.minutesWorked,
@@ -1521,16 +1681,6 @@ async function createTimesheetsAndPayroll(
 
         if (existingPayStatement) continue;
 
-        const gross = fmtMoney(
-          days.reduce((sum, day) => {
-            const rate = day.hourlyRate ?? hourlyRate;
-            return sum + (day.minutesWorked / 60) * rate;
-          }, 0),
-        );
-
-        const deductions = fmtMoney(gross * 0.12);
-        const net = fmtMoney(gross - deductions);
-
         await prisma.payStatement.create({
           data: {
             userId: member.id,
@@ -1538,18 +1688,33 @@ async function createTimesheetsAndPayroll(
             payPeriodStart: period.startDate,
             payPeriodEnd: period.endDate,
             payDate: addDays(period.endDate, 5),
-            grossEarnings: gross,
-            totalDeductions: deductions,
-            netEarnings: net,
+            grossEarnings: payBreakdown.grossEarnings,
+            totalDeductions: payBreakdown.deductions,
+            netEarnings: payBreakdown.netEarnings,
             breakdown: {
-              hours: fmtMoney(
-                days.reduce(
-                  (sum, day) => sum + day.minutesWorked / 60,
-                  0,
-                ),
-              ),
+              userId: member.id,
+              regularHours: payBreakdown.regularHours,
+              regularRate: payBreakdown.regularRate,
+              regularAmount: payBreakdown.regularAmount,
+              otHours: payBreakdown.otHours,
+              otRate: payBreakdown.otRate,
+              otAmount: payBreakdown.otAmount,
+              transportAllowance: payBreakdown.transportAllowance,
+              federalTax: payBreakdown.federalTax,
+              quebecTax: payBreakdown.quebecTax,
+              ei: payBreakdown.ei,
+              qpp: payBreakdown.qpp,
+              qpp2: payBreakdown.qpp2,
+              qpip: payBreakdown.qpip,
+              health: payBreakdown.health,
+              other: payBreakdown.other,
+              deductions: payBreakdown.deductions,
+              grossEarnings: payBreakdown.grossEarnings,
+              netEarnings: payBreakdown.netEarnings,
+              totalHours: fmtMoney(totalMinutes / 60),
+              daysWorked: days.length,
               hourlyRate,
-              deductionRate: 0.12,
+              payrollDebug: payBreakdown.payrollDebug,
               source: "seed",
             },
           },
