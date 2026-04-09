@@ -1,4 +1,88 @@
 AI: ChatGPT 5.3 Plus
+Prompt: Redesigning admin and staff UI across dashboard, tasks, payroll, and profile pages for consistency and improved usability
+Value Addition: Helped restructure multiple UI components and layouts, improving overall consistency and user experience across the application
+
+AI: ChatGPT 5.3 Plus
+Prompt: Integrating AI features into job modal and appointment workflows, including task assistance and staff recommendations
+Value Addition: Enabled embedding AI directly into operational workflows, making features more practical and aligned with real use cases
+
+AI: ChatGPT 5.3 Plus
+Prompt: Refactoring application to centralize state management and data fetching using reusable hooks and query logic
+Value Addition: Reduced duplication and improved maintainability by standardizing how data is accessed and managed across the app
+
+AI: ChatGPT 5.3 Plus
+Prompt: Fixing task appointment detail issues in staff task page and resolving related type inconsistencies
+Value Addition: Helped identify root causes of rendering and data issues, improving stability of task detail functionality
+
+AI: ChatGPT 5.3 Plus
+Prompt: Improving login and authentication flow in Next.js and ensuring proper access control across admin and staff pages
+Value Addition: Strengthened authentication reliability and reduced issues with protected routes and session handling
+
+AI: ChatGPT 5.3 Plus
+Prompt: Refining PWA experience for staff tasks, availability, time entry, and related screens with improved mobile usability
+Value Addition: Enhanced mobile-first design and usability, making the application more suitable for real-world staff usage
+
+AI: ChatGPT 5.3 Plus
+Prompt: Finalizing staff task screen and improving layout, AI assistant integration, and overall user flow
+Value Addition: Transitioned task functionality from prototype to polished, demo-ready implementation
+
+AI: ChatGPT 5.3 Plus
+Prompt: Cleaning up React and TypeScript warnings across task pages and AI-related components
+Value Addition: Reduced development noise and improved code quality, making debugging and builds more stable
+
+AI: ChatGPT 5.3 Plus
+Prompt: Implementing AI task assistant feature within task and job workflows, including UI and backend integration
+Value Addition: Delivered a key AI feature that enhances decision support within the scheduling workflow
+
+AI: ChatGPT 5.3 Plus
+Prompt: Documenting AI feature workflow including system flow, usage, and integration within the application
+Value Addition: Improved clarity for reporting and presentation, making the AI feature easier to explain and justify
+
+AI: ChatGPT 5.3 Plus
+Prompt: Applying cosmetic UI improvements to dashboard, job modal, and AI suggestion components
+Value Addition: Enhanced visual quality and user perception with minimal-risk UI refinements
+
+AI: ChatGPT 5.3 Plus
+Prompt: Creating Job Edit Modal with API integration and updating job management workflows
+Value Addition: Added flexible editing capability, improving admin workflow efficiency and usability
+
+AI: ChatGPT 5.3 Plus
+Prompt: Resolving merge conflicts and reconciling differences between multiple feature branches
+Value Addition: Helped preserve functionality while integrating multiple features, reducing risk of regressions
+
+AI: ChatGPT 5.3 Plus
+Prompt: Fixing timezone handling issues across scheduling, tasks, and time-related APIs using consistent timezone logic
+Value Addition: Ensured accurate scheduling and time tracking, which is critical for operational correctness
+
+AI: ChatGPT 5.3 Plus
+Prompt: Stabilizing UI across admin and staff pages by fixing layout inconsistencies and interaction issues
+Value Addition: Improved overall system reliability and presentation quality before finalization
+
+AI: ChatGPT 5.3 Plus
+Prompt: Cleaning and organizing codebase by removing redundancy and improving structure across APIs and components
+Value Addition: Increased maintainability and reduced technical debt, making future changes easier
+
+AI: ChatGPT 5.3 Plus
+Prompt: Fixing build errors and resolving TypeScript and Next.js issues across multiple pages and APIs
+Value Addition: Unblocked successful builds and ensured the application could be deployed and tested properly
+
+AI: ChatGPT 5.3 Plus
+Prompt: Improving PWA user experience including navigation, profile, and task flows for better mobile interaction
+Value Addition: Strengthened the app’s mobile usability and made it more aligned with real-world field usage
+
+AI: ChatGPT 5.3 Plus
+Prompt: Ensuring UI consistency across components including cards, modals, dashboards, and login pages
+Value Addition: Enhanced visual cohesion and professionalism of the application
+
+AI: ChatGPT 5.3 Plus
+Prompt: Fixing lint issues and standardizing icon usage across the application
+Value Addition: Improved code quality and consistency, reducing potential future issues
+
+AI: ChatGPT 5.3 Plus
+Prompt: Updating README and aligning documentation with the current system architecture and features
+Value Addition: Improved project clarity and presentation for evaluators and collaborators
+
+AI: ChatGPT 5.3 Plus
 Prompt: Improving appointment API structure and handling updates for scheduling, status, and staff assignments
 Value Addition: Helped refine backend logic for more consistent data handling and improved reliability of appointment updates
 
