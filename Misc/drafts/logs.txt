@@ -12,18 +12,10 @@
 2026-04-05	3:00–5:00am	    Implemented AI task assistant feature within task workflows
 2026-04-05	10:00–11:30am	Documented AI feature workflow for reporting and presentation
 2026-04-06	6:00–7:30pm	    Applied cosmetic UI improvements across dashboard and modals
-2026-04-07	11:00–1:00pm	Implemented Job Edit Modal with API integration
-2026-04-07	2:00–5:00pm	    Team discussion and collaboration to merge branches and resolve merge conflicts
-2026-04-07	5:00–6:00pm	    Resolved merge conflicts and synchronized feature branches
-2026-04-07	6:00–7:30pm	    Fixed timezone handling issues across scheduling and APIs
-2026-04-07	9:00–11:30pm	Stabilized UI across admin and staff pages
-2026-04-07	11:30–1:00am	Cleaned and organized codebase structure
-2026-04-08	1:00–3:00am	    Resolved build errors and ensured successful compilation
-2026-04-08	9:30–11:00am	Improved PWA user experience and navigation flow
-2026-04-08	11:00–12:30pm	Applied UI consistency fixes across components and pages
-2026-04-08	12:30–1:30pm	Fixed lint issues and standardized icon usage
-2026-04-08	1:30–2:30pm	    Updated README and aligned documentation with system features
-2026-04-08	2:30–3:30pm	    Fixed staff details and minor data handling issues
+2026-04-07  11:00am–3:30pm  Implemented Job Edit Modal with API integration, resolved merge conflicts, and fixed timezone issues
+2026-04-07  7:00pm–10:30pm  Stabilized UI across admin and staff pages and improved overall application consistency
+2026-04-08  10:00am–1:00pm    Improved PWA user experience and applied UI consistency fixes
+2026-04-08  2:00pm–4:00pm    Resolved lint issues, updated documentation, and fixed minor data handling issues
 
 -- Progress Report 5 --
 2026-03-17	9:30–12:30pm	Worked on appointment API improvements, including handling scheduling updates, status changes, staff assignments, and notes
@@ -156,9 +148,9 @@
 2026-01-27 4:30pm-6:30pm Setup authentication with next js
 2026-01-27 8:30pm-10:30pm Implemented user get,edit,delete,create functions on the API
 2026-02-03 10:30pm-1:30pm Connect mobile app to the web API
-2026-02-03 1:30-2:30pm Meeting with client to discuss the requirements
-2026-02-03 4:00-6:45pm Presisting logged in status on React Native
-2026-02-03 8:30-11:30pm Implemented authenticated navigation flow and rectify navigation control issues
-2026-02-04 4:30-6:30pm Implemented auppointments endpoint
-2026-02-04 8:30-10:30pm Send emails through cron jobs
-2026-02-05 4:30-7:00pm Implementing dashboard UI
+2026-02-03 1:30pm-2:30pm Meeting with client to discuss the requirements
+2026-02-03 4:00pm-6:45pm Presisting logged in status on React Native
+2026-02-03 8:30pm-11:30pm Implemented authenticated navigation flow and rectify navigation control issues
+2026-02-04 4:30pm-6:30pm Implemented auppointments endpoint
+2026-02-04 8:30pm-10:30pm Send emails through cron jobs
+2026-02-05 4:30pm-7:00pm Implementing dashboard UI
