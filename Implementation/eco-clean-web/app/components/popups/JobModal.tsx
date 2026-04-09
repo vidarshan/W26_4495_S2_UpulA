@@ -35,7 +35,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { IoAdd, IoClose, IoImage } from "react-icons/io5";
+import { IoClose, IoImage } from "react-icons/io5";
 import { createJob, CreateJobPayload, JobFormValues } from "@/lib/api/jobs";
 import { getClientAddresses, getClients } from "@/lib/api/client";
 import { getStaff } from "@/lib/api/users";
