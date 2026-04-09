@@ -162,12 +162,32 @@ npm install
 cp .env.example .env.local
 ```
 
-Fill in your environment variables for:
+Use the following template in your local `.env.local` file:
 
-- database
-- auth
-- UploadThing
-- optional AI services
+```env
+DATABASE_URL=[YOUR_DATABASE_URL]
+
+NEXTAUTH_URL=[YOUR_NEXTAUTH_URL]
+NEXTAUTH_SECRET=[YOUR_NEXTAUTH_SECRET]
+
+APP_TZ=[YOUR_APP_TIMEZONE]
+
+OPENAI_API_KEY=[YOUR_OPENAI_API_KEY]
+NEXT_PUBLIC_AI_ENABLED=[true_or_false]
+
+SMTP_HOST=[YOUR_SMTP_HOST]
+SMTP_PORT=[YOUR_SMTP_PORT]
+SMTP_SECURE=[true_or_false]
+SMTP_USER=[YOUR_SMTP_USER]
+SMTP_PASS=[YOUR_SMTP_PASS]
+EMAIL_FROM=[YOUR_EMAIL_FROM_ADDRESS]
+
+CRON_SECRET=[YOUR_CRON_SECRET]
+
+SEED_TEST_EMAIL=[YOUR_OPTIONAL_SEED_TEST_EMAIL]
+```
+
+Then replace each placeholder with your local values before running the app.
 
 ### Apply database migrations
 
