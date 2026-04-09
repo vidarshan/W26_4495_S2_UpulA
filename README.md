@@ -29,6 +29,14 @@
 - Padmapriya Arasanipalai Kandhadai - Supervisor/Instructor
 - Stephanie Riddell - Client
 
+## Live Preview
+
+Deployed app:
+
+> [!TIP]
+> Live Preview link: https://w26-4495-s2-upul-a-hrnk.vercel.app/login
+
+
 ## Project Configurations
 
 - Web
@@ -83,14 +91,6 @@ Staff can:
 - Enter and submit work time
 - View pay periods, pay history, and pay stubs
 - Update profile and contact information
-
-## Live Preview
-
-Deployed login page:
-
-> [!TIP]
-> Live Preview link: https://w26-4495-s2-upul-a-hrnk.vercel.app/login
-
 
 Use this for the live demo when you want to show the hosted version instead of local development.
 
