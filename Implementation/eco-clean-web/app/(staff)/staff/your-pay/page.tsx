@@ -18,10 +18,13 @@ import {
   Stack,
   Text,
   Title,
+  RingProgress,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+
+const EARNINGS_COLORS = ["#1f6b8f", "#eb7a2f", "#2e7d32"];
 
 type PayBreakdown = {
   regularAmount?: number;
@@ -128,6 +131,81 @@ function BreakdownCard({
             <Text fw={600}>{formatCurrency(item.value)}</Text>
           </Group>
         ))}
+      </Stack>
+    </Card>
+  );
+}
+
+function EarningsChartCard({
+  items,
+}: {
+  items: Array<{ label: string; value?: number }>;
+}) {
+  const chartData = items.map((item, index) => ({
+    label: item.label,
+    value: item.value ?? 0,
+    color: EARNINGS_COLORS[index % EARNINGS_COLORS.length],
+  }));
+  const total = chartData.reduce((sum, item) => sum + item.value, 0);
+  const sections =
+    total > 0
+      ? chartData.map((item) => ({
+          value: (item.value / total) * 100,
+          color: item.color,
+          tooltip: `${item.label}: ${formatCurrency(item.value)}`,
+        }))
+      : [{ value: 100, color: "#e2e8f0", tooltip: "No earnings data" }];
+
+  return (
+    <Card withBorder radius="lg" p="lg" className="staff-app-surface">
+      <Stack gap="md">
+        <Box>
+          <Text fw={700}>Earnings Distribution</Text>
+          <Text size="sm" c="dimmed" mt={4}>
+            See how your latest pay was split across regular time, overtime, and allowance.
+          </Text>
+        </Box>
+
+        <Group justify="center" py="sm">
+          <RingProgress
+            size={220}
+            thickness={26}
+            roundCaps
+            sections={sections}
+            label={
+              <Stack gap={0} align="center">
+                <Text fw={800} size="xl">
+                  {formatCurrency(total)}
+                </Text>
+                <Text size="xs" c="dimmed">
+                  Total earnings
+                </Text>
+              </Stack>
+            }
+          />
+        </Group>
+
+        <Stack gap="xs">
+          {chartData.map((item) => (
+            <Group key={item.label} justify="space-between" wrap="nowrap">
+              <Group gap="xs" wrap="nowrap">
+                <Box
+                  w={10}
+                  h={10}
+                  style={{
+                    borderRadius: "999px",
+                    background: item.color,
+                    flexShrink: 0,
+                  }}
+                />
+                <Text size="sm" c="dimmed">
+                  {item.label}
+                </Text>
+              </Group>
+              <Text fw={600}>{formatCurrency(item.value)}</Text>
+            </Group>
+          ))}
+        </Stack>
       </Stack>
     </Card>
   );
@@ -330,7 +408,10 @@ export default function YourPayPage() {
         </Card>
 
         <Grid gutter="md">
-          <Grid.Col span={{ base: 12, md: 6 }}>
+          <Grid.Col span={{ base: 12, lg: 4 }}>
+            <EarningsChartCard items={earningsItems} />
+          </Grid.Col>
+          <Grid.Col span={{ base: 12, md: 6, lg: 4 }}>
             <BreakdownCard
               title="Earnings"
               items={earningsItems}
@@ -338,7 +419,7 @@ export default function YourPayPage() {
               tone="lime"
             />
           </Grid.Col>
-          <Grid.Col span={{ base: 12, md: 6 }}>
+          <Grid.Col span={{ base: 12, md: 6, lg: 4 }}>
             <BreakdownCard
               title="Deductions"
               items={deductionItems}

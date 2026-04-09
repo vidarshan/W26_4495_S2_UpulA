@@ -35,6 +35,8 @@ import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 type Props = {
+  opened: boolean;
+  onClose: () => void;
   staff: {
     id: string;
     name?: string | null;
@@ -60,16 +62,12 @@ type Props = {
       } | null;
     } | null;
   } | null;
-  opened?: boolean;
-  onClose?: () => void;
-  embedded?: boolean;
 };
 
 export default function AdminStaffDetailsModal({
-  staff,
-  opened = true,
+  opened,
   onClose,
-  embedded = false,
+  staff,
 }: Props) {
   const staffId = staff?.id ?? null;
   const [isSaving, setIsSaving] = useState(false);
@@ -250,8 +248,21 @@ export default function AdminStaffDetailsModal({
     }
   };
 
-  const content = (
-    <Stack gap="md">
+  return (
+    <Modal
+      opened={opened}
+      onClose={onClose}
+      title="Staff Details"
+      size="xl"
+      centered
+      classNames={{
+        content: "app-modal__content",
+        header: "app-modal__header",
+        title: "app-modal__title",
+        body: "app-modal__body",
+      }}
+    >
+      <Stack gap="md">
         <Paper withBorder radius="xl" p="lg">
           <Group justify="space-between" align="flex-start" wrap="wrap">
             <Group align="flex-start" wrap="nowrap" gap="md">
@@ -588,13 +599,10 @@ export default function AdminStaffDetailsModal({
           <Text size="sm" c="dimmed"></Text>
 
           <Group>
-            {!embedded ? (
-              <Button type="button" variant="default" onClick={onClose}>
-                Close
-              </Button>
-            ) : null}
+            <Button variant="default" onClick={onClose}>
+              Close
+            </Button>
             <Button
-              type="button"
               loading={isSaving}
               onClick={
                 activeView === "financial" ? handleSaveFinancial : handleSave
@@ -605,27 +613,6 @@ export default function AdminStaffDetailsModal({
           </Group>
         </Group>
       </Stack>
-  );
-
-  if (embedded) {
-    return content;
-  }
-
-  return (
-    <Modal
-      opened={opened}
-      onClose={onClose ?? (() => undefined)}
-      title="Staff Details"
-      size="xl"
-      centered
-      classNames={{
-        content: "app-modal__content",
-        header: "app-modal__header",
-        title: "app-modal__title",
-        body: "app-modal__body",
-      }}
-    >
-      {content}
     </Modal>
   );
 }
