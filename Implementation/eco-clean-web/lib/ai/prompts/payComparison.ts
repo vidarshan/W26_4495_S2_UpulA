@@ -1,4 +1,8 @@
-export function buildPayComparisonPrompt(ctx: any) {
+type PayComparisonPromptContext = ReturnType<
+  typeof import("@/lib/ai/context/payComparison").buildPayComparisonContext
+>;
+
+export function buildPayComparisonPrompt(ctx: PayComparisonPromptContext) {
   return `
 You are an assistant that explains payroll differences between two pay periods.
 

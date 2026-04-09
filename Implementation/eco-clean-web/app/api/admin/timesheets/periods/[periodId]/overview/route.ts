@@ -31,6 +31,37 @@ type RouteContext = {
   params: Promise<{ periodId: string }>;
 };
 
+type DayEntry = {
+  date: string;
+  actualMinutes: number;
+  plannedMinutes: number;
+  varianceMinutes: number;
+  timesheetDayId: string | null;
+  hourlyRate: number | null;
+  notes: string | null;
+  assignments: Array<{
+    id: string;
+    jobTitle: string;
+    clientName: string;
+    status: string;
+    plannedMinutes: number;
+  }>;
+};
+
+type EmployeeEntry = {
+  staffId: string;
+  name: string;
+  email: string;
+  staffCode: string | null;
+  position: string | null;
+  timesheetId: string;
+  timesheetStatus: string;
+  submittedAt: Date | null;
+  approvedAt: Date | null;
+  notes: string | null;
+  daysMap: Record<string, DayEntry>;
+};
+
 export async function GET(_req: Request, context: RouteContext) {
   try {
     const session = await getAuthSession();
@@ -114,8 +145,8 @@ export async function GET(_req: Request, context: RouteContext) {
     // Step 1: Build employees from timesheets only
     // ======================================================
 
-    const employees = timesheets.map((ts) => {
-      const daysMap: Record<string, any> = {};
+    const employees: EmployeeEntry[] = timesheets.map((ts) => {
+      const daysMap: Record<string, DayEntry> = {};
 
       // Add actual work
       for (const day of ts.days) {
@@ -204,8 +235,8 @@ export async function GET(_req: Request, context: RouteContext) {
 
     const result = employees.map((emp) => {
       const days = Object.values(emp.daysMap)
-        .sort((a: any, b: any) => a.date.localeCompare(b.date))
-        .map((d: any) => {
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .map((d) => {
           const variance = d.actualMinutes - d.plannedMinutes;
 
           return {
@@ -215,12 +246,12 @@ export async function GET(_req: Request, context: RouteContext) {
         });
 
       const plannedMinutes = days.reduce(
-        (sum: number, d: any) => sum + d.plannedMinutes,
+        (sum, d) => sum + d.plannedMinutes,
         0
       );
 
       const actualMinutes = days.reduce(
-        (sum: number, d: any) => sum + d.actualMinutes,
+        (sum, d) => sum + d.actualMinutes,
         0
       );
 

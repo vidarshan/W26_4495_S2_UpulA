@@ -5,6 +5,7 @@ import { AppointmentStatus, Prisma, Role } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { parseAppDateTimeInput } from "@/lib/dateTime";
 import { UTApi } from "uploadthing/server";
+import { getAuthSession } from "@/lib/session";
 
 type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
 const utapi = new UTApi();
@@ -141,6 +142,11 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const session = await getAuthSession();
+  if (!session || session.user.role !== "ADMIN") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const { id } = await params;
 
   if (!id) {
@@ -430,6 +436,11 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const session = await getAuthSession();
+  if (!session || session.user.role !== "ADMIN") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const { id } = await params;
 
   if (!id) {

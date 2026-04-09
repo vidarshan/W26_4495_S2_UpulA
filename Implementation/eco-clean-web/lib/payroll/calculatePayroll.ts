@@ -32,7 +32,14 @@ export interface PayrollOutput {
   totalDeductions: number;
   netPay: number;
 
-  debug?: any;
+  debug?: {
+    annualIncome: number;
+    federalClaimAmount: number;
+    quebecClaimAmount: number;
+    qpp: number;
+    ei: number;
+    qpip: number;
+  };
 }
 
 // ================= CONSTANTS =================

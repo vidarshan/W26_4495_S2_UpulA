@@ -64,6 +64,7 @@ export interface AddressResponse {
 }
 
 export type StaffResponse = Pick<Staff, "id" | "name" | "email" | "role">;
+type WrappedData<T> = { data: T };
 
 type ApiClientOptions<TBody = unknown> = Omit<RequestInit, "body"> & {
   body?: TBody;
@@ -117,20 +118,20 @@ export function getClientAddresses(clientId: string) {
 }
 
 export function updateClient(id: string, payload: CreateClientPayload) {
-  return apiClient<ClientWithRelations, CreateClientPayload>(
+  return apiClient<ClientWithRelations | WrappedData<ClientWithRelations>, CreateClientPayload>(
     `/api/clients/${id}`,
     {
       method: "PATCH",
       body: payload,
     },
-  );
+  ).then((response) => ("data" in response ? response.data : response));
 }
 
 export function createClient(payload: CreateClientPayload) {
-  return apiClient<ClientWithRelations, CreateClientPayload>("/api/clients", {
+  return apiClient<ClientWithRelations | WrappedData<ClientWithRelations>, CreateClientPayload>("/api/clients", {
     method: "POST",
     body: payload,
-  });
+  }).then((response) => ("data" in response ? response.data : response));
 }
 
 export function deleteClient(id: string) {

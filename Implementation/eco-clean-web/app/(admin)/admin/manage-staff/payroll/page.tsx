@@ -8,6 +8,7 @@ import {
   Center,
   Group,
   Loader,
+  Modal,
   SimpleGrid,
   Stack,
   Table,
@@ -20,7 +21,6 @@ import {
   IoCalendar,
   IoCheckmarkCircle,
   IoLockClosed,
-  IoRefresh,
 } from 'react-icons/io5';
 import { useRouter } from 'next/navigation';
 import AdminPageFrame from '@/app/components/admin/AdminPageFrame';
@@ -45,6 +45,7 @@ export default function ManagePayPeriodsPage() {
   const [periods, setPeriods] = useState<TimesheetPeriod[]>([]);
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [confirmGenerateOpen, setConfirmGenerateOpen] = useState(false);
   const router = useRouter();
 
   const fetchPeriods = async () => {
@@ -74,11 +75,6 @@ export default function ManagePayPeriodsPage() {
 
   const handleGenerate = async () => {
     const targetYear = 2026;
-
-    if (!confirm(`This will generate all biweekly periods for ${targetYear}. Continue?`)) {
-      return;
-    }
-
     setLoading(true);
     const result = await generateBiweeklyPeriods(targetYear);
     setLoading(false);
@@ -120,6 +116,37 @@ export default function ManagePayPeriodsPage() {
         { label: 'Open', value: String(summary.open), icon: IoCheckmarkCircle },
       ]}
     >
+      <Modal
+        opened={confirmGenerateOpen}
+        onClose={() => setConfirmGenerateOpen(false)}
+        title="Generate payroll periods"
+        centered
+      >
+        <Stack gap="md">
+          <Text size="sm">
+            This will generate all biweekly payroll periods for 2026. Continue only if they have not already been created.
+          </Text>
+          <Group justify="flex-end">
+            <Button
+              variant="default"
+              onClick={() => setConfirmGenerateOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              color="lime"
+              loading={loading}
+              onClick={async () => {
+                setConfirmGenerateOpen(false);
+                await handleGenerate();
+              }}
+            >
+              Generate
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
       <Stack gap="lg">
         {error ? (
           <Alert color="red" title="Unable to load payroll periods">
@@ -155,7 +182,7 @@ export default function ManagePayPeriodsPage() {
               <Button
                 color="lime"
                 loading={loading}
-                onClick={handleGenerate}
+                onClick={() => setConfirmGenerateOpen(true)}
               >
                 Generate 2026 periods
               </Button>

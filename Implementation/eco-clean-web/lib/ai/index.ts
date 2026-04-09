@@ -54,8 +54,20 @@ export const PayComparisonResponseSchema = z.object({
   recommendation: z.string().nullable(),
 });
 
+const PayComparisonPeriodSchema = z.object({
+  grossEarnings: z.number().default(0),
+  netEarnings: z.number().default(0),
+  totalHours: z.number().default(0),
+  overtimeHours: z.number().default(0),
+  totalDeductions: z.number().default(0),
+  hourlyRate: z.number().default(0),
+});
+
 export async function runPayComparisonFeature(a: unknown, b: unknown) {
-  const context = buildPayComparisonContext(a, b);
+  const context = buildPayComparisonContext(
+    PayComparisonPeriodSchema.parse(a),
+    PayComparisonPeriodSchema.parse(b),
+  );
 
   const aiRaw = await generateStructuredJson({
     system: "You are a payroll assistant",

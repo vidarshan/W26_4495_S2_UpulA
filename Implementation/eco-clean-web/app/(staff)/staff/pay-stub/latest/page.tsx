@@ -12,15 +12,74 @@ import {
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { useEffect, useRef, useState } from 'react';
-import { IoDownload } from 'react-icons/io5';
 import Image from 'next/image';
+
+type PayBreakdown = {
+  regularRate?: number;
+  regularHours?: number;
+  regularAmount?: number;
+  otRate?: number;
+  otHours?: number;
+  otAmount?: number;
+  transportAllowance?: number;
+  federalTax?: number;
+  quebecTax?: number;
+  ei?: number;
+  qpp?: number;
+  qpp2?: number;
+  qpip?: number;
+};
+
+type PayStatementSummary = {
+  payPeriodStart?: string;
+  payPeriodEnd?: string;
+  payDate?: string;
+  grossEarnings?: number;
+  totalDeductions?: number;
+  netEarnings?: number;
+  breakdown?: PayBreakdown;
+};
+
+type PayStatementResponse = {
+  latest?: PayStatementSummary;
+  employeeName?: string;
+  employeeId?: string;
+  ytd?: {
+    regular?: number;
+    overtime?: number;
+    allowance?: number;
+    federalTax?: number;
+    quebecTax?: number;
+    ei?: number;
+    qpp?: number;
+    qpp2?: number;
+    qpip?: number;
+    gross?: number;
+    deductions?: number;
+    net?: number;
+  };
+};
+
+type StatementRow = {
+  label: string;
+  amount?: number;
+  ytd?: number;
+};
+
+function formatDate(value?: string) {
+  return value ? new Date(value).toLocaleDateString() : "N/A";
+}
+
+function formatAmount(value?: number) {
+  return (value ?? 0).toFixed(2);
+}
 
 export default function PayStubPage() {
   const pdfRef = useRef<HTMLDivElement>(null);
-  const [statement, setStatement] = useState<any>(null);
+  const [statement, setStatement] = useState<PayStatementResponse | null>(null);
   const latest = statement?.latest || {};
-const employeeName = statement?.employeeName || "N/A";
-const employeeId = statement?.employeeId || "N/A";
+  const employeeName = statement?.employeeName || "N/A";
+  const employeeId = statement?.employeeId || "N/A";
 
 
   useEffect(() => {
@@ -43,12 +102,13 @@ const employeeId = statement?.employeeId || "N/A";
     const height = (canvas.height * width) / canvas.width;
 
     pdf.addImage(imgData, 'PNG', 10, 10, width, height);
-pdf.save(`pay-stub-${latest.payDate}.pdf`);  };
+    pdf.save(`pay-stub-${latest.payDate ?? 'latest'}.pdf`);
+  };
 
   if (!statement) return <Text>Loading...</Text>;
 
- const b = latest.breakdown || {};
-const ytd = statement.ytd || {};
+  const b = latest.breakdown || {};
+  const ytd = statement.ytd || {};
 
   const rows = [
     {
@@ -104,8 +164,8 @@ const ytd = statement.ytd || {};
           <Grid.Col span={9}>
             <Title order={3}>STATEMENT OF EARNINGS</Title>
             <Text size="sm">
-              Pay Period: {new Date(latest.payPeriodStart).toLocaleDateString()} -{' '}
-              {new Date(latest.payPeriodEnd).toLocaleDateString()}
+              Pay Period: {formatDate(latest.payPeriodStart)} -{' '}
+              {formatDate(latest.payPeriodEnd)}
             </Text>
           </Grid.Col>
         </Grid>
@@ -119,7 +179,7 @@ const ytd = statement.ytd || {};
             </Grid.Col>
 
             <Grid.Col span={6}>
-              <Text><b>Pay Date:</b> {new Date(latest.payDate).toLocaleDateString()}</Text>
+              <Text><b>Pay Date:</b> {formatDate(latest.payDate)}</Text>
               <Text><b>Department:</b> Cleaning Services</Text>
             </Grid.Col>
           </Grid>
@@ -158,7 +218,7 @@ const ytd = statement.ytd || {};
               <Text fw={700}>Net Earnings</Text>
             </Grid.Col>
             <Grid.Col span={3}>
-              <Text ta="right">{latest.netEarnings.toFixed(2)}</Text>
+              <Text ta="right">{formatAmount(latest.netEarnings)}</Text>
             </Grid.Col>
             <Grid.Col span={3}>
               <Text ta="right">{ytd.net?.toFixed(2)}</Text>
@@ -184,7 +244,7 @@ function TableHeader({ title }: { title: string }) {
   );
 }
 
-function TableRow({ label, rate, units, amount, ytd }: any) {
+function TableRow({ label, amount, ytd }: StatementRow) {
   return (
     <Box style={{ borderBottom: '1px solid #ccc' }} py={4}>
       <Grid>
@@ -192,17 +252,17 @@ function TableRow({ label, rate, units, amount, ytd }: any) {
           <Text>{label}</Text>
         </Grid.Col>
         <Grid.Col span={2}>
-          <Text ta="right">{amount?.toFixed?.(2) || '0.00'}</Text>
+          <Text ta="right">{formatAmount(amount)}</Text>
         </Grid.Col>
         <Grid.Col span={2}>
-          <Text ta="right">{ytd?.toFixed?.(2) || ''}</Text>
+          <Text ta="right">{ytd !== undefined ? formatAmount(ytd) : ''}</Text>
         </Grid.Col>
       </Grid>
     </Box>
   );
 }
 
-function TableTotal({ label, amount, ytd }: any) {
+function TableTotal({ label, amount, ytd }: StatementRow) {
   return (
     <Box mt="xs" style={{ borderTop: '2px solid black', borderBottom: '2px solid black' }}>
       <Grid>
@@ -210,10 +270,10 @@ function TableTotal({ label, amount, ytd }: any) {
           <Text fw={700}>{label}</Text>
         </Grid.Col>
         <Grid.Col span={2}>
-          <Text fw={700} ta="right">{amount?.toFixed?.(2)}</Text>
+          <Text fw={700} ta="right">{formatAmount(amount)}</Text>
         </Grid.Col>
         <Grid.Col span={2}>
-          <Text fw={700} ta="right">{ytd?.toFixed?.(2)}</Text>
+          <Text fw={700} ta="right">{ytd !== undefined ? formatAmount(ytd) : ''}</Text>
         </Grid.Col>
       </Grid>
     </Box>

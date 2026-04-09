@@ -22,7 +22,9 @@ export function getStaff(params?: {
   }
 
   return apiClient<User[]>(`/api/users?${sp.toString()}`).then((res) => {
-    const rawUsers = Array.isArray(res) ? res : [];
+    const rawUsers = Array.isArray(res)
+      ? res.filter((user) => user.role === "ADMIN" || user.role === "STAFF")
+      : [];
     const users = rawUsers.map(
       (u): Staff => ({
         id: u.id,

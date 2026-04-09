@@ -1,6 +1,7 @@
 export const runtime = "nodejs";
 
 import { prisma } from "@/lib/prisma";
+import { getAuthSession } from "@/lib/session";
 import { NextRequest, NextResponse } from "next/server";
 
 type AddressInput = {
@@ -18,6 +19,11 @@ export async function GET(
   context: { params: Promise<{ id: string }> },
 ) {
   try {
+    const session = await getAuthSession();
+    if (!session || session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const { id: clientId } = await context.params;
 
     if (!clientId) {
@@ -54,6 +60,11 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> },
 ) {
   try {
+    const session = await getAuthSession();
+    if (!session || session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const { id: clientId } = await context.params;
 
     if (!clientId) {
@@ -199,6 +210,11 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> },
 ) {
   try {
+    const session = await getAuthSession();
+    if (!session || session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const { id: clientId } = await context.params;
 
     if (!clientId) {

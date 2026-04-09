@@ -1,5 +1,6 @@
 export const runtime = "nodejs";
 import { prisma } from "@/lib/prisma";
+import { getAuthSession } from "@/lib/session";
 import { NextResponse } from "next/server";
 
 // Define Address type here, or move it to /types/address.ts and import it.
@@ -17,6 +18,11 @@ type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
 
 export async function GET(req: Request) {
   try {
+    const session = await getAuthSession();
+    if (!session || session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const { searchParams } = new URL(req.url);
 
     const q = searchParams.get("q")?.trim() || "";
@@ -86,6 +92,11 @@ export async function GET(req: Request) {
 // POST
 export async function POST(req: Request) {
   try {
+    const session = await getAuthSession();
+    if (!session || session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const body = await req.json();
     const {
       title,

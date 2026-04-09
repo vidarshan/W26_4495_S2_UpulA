@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { LineItem } from "@/lib/api/jobs";
 import { NextRequest, NextResponse } from "next/server";
 import { parseAppDateTimeInput } from "@/lib/dateTime";
+import { getAuthSession } from "@/lib/session";
 
 function must(condition: unknown, msg: string) {
   if (!condition) throw new Error(msg);
@@ -55,6 +56,11 @@ export async function GET(
   context: { params: Promise<{ id: string }> },
 ) {
   try {
+    const session = await getAuthSession();
+    if (!session || session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const { id } = await context.params;
 
     const job = await prisma.job.findUnique({
@@ -107,6 +113,11 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> },
 ) {
   try {
+    const session = await getAuthSession();
+    if (!session || session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const { id: jobId } = await context.params;
     const raw = await req.text();
 

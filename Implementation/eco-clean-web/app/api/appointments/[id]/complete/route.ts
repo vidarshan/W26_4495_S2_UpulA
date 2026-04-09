@@ -2,23 +2,9 @@ export const runtime = "nodejs";
 
 import { prisma } from "@/lib/prisma";
 import { normalizeAddressLocation } from "@/lib/staffLocation";
+import { getAuthSession } from "@/lib/session";
 import { AppointmentStatus, Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
-
-type CompleteAppointmentBody = {
-  staffId?: string;
-};
-
-function parseBody(raw: string): CompleteAppointmentBody {
-  if (!raw) return {};
-
-  const parsed: unknown = JSON.parse(raw);
-  if (typeof parsed === "string") {
-    return JSON.parse(parsed) as CompleteAppointmentBody;
-  }
-
-  return (parsed ?? {}) as CompleteAppointmentBody;
-}
 
 export async function POST(
   req: NextRequest,
@@ -34,18 +20,12 @@ export async function POST(
       );
     }
 
-    let body: CompleteAppointmentBody = {};
-    try {
-      const raw = await req.text();
-      body = parseBody(raw);
-    } catch {
-      body = {};
+    const session = await getAuthSession();
+    if (!session?.user?.id || session.user.role !== "STAFF") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const staffId =
-      typeof body.staffId === "string" && body.staffId.trim().length > 0
-        ? body.staffId.trim()
-        : undefined;
+    const staffId = session.user.id;
 
     if (!staffId) {
       return NextResponse.json(

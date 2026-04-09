@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { AppointmentStatus, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { parseAppDateTimeInput } from "@/lib/dateTime";
+import { getAuthSession } from "@/lib/session";
 
 export async function GET(req: NextRequest) {
   try {
@@ -145,6 +146,11 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await getAuthSession();
+    if (!session || session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const body = await req.json();
     const { jobId, startTime, endTime, status, staffIds } = body;
 

@@ -6,6 +6,7 @@ import { AppointmentStatus, JobType } from "@prisma/client";
 import { DateTime } from "luxon";
 import { LineItem } from "@/lib/api/jobs";
 import { buildUtcWindowFromLocal } from "@/lib/dateTime";
+import { getAuthSession } from "@/lib/session";
 
 const APP_TZ = process.env.APP_TZ ?? "America/Vancouver";
 
@@ -138,6 +139,11 @@ function normalizeNotes(rawNotes: unknown) {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await getAuthSession();
+    if (!session || session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const raw = await req.text();
 
     let parsed: unknown;

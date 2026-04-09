@@ -381,17 +381,23 @@ export default function ApplyLeavePage() {
                     const dayNumber = appDateKeyToDate(dateKey).getDate();
 
                     return (
-                      <Stack
-                        align="center"
-                        justify="center"
-                        gap={3}
-                        style={{ minHeight: 30 }}
+                      <Box
+                        style={{
+                          width: 34,
+                          height: 34,
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 3,
+                          margin: "0 auto",
+                        }}
                       >
-                        <Text size="sm" lh={1}>
+                        <Text size="sm" lh={1} ta="center">
                           {dayNumber}
                         </Text>
                         <BoxDot visible={hasLeave} />
-                      </Stack>
+                      </Box>
                     );
                   }}
                 />

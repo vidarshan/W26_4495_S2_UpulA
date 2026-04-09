@@ -1,4 +1,16 @@
-export function buildPayComparisonContext(a: any, b: any) {
+type PayComparisonPeriod = {
+  grossEarnings: number;
+  netEarnings: number;
+  totalHours: number;
+  overtimeHours: number;
+  totalDeductions: number;
+  hourlyRate: number;
+};
+
+export function buildPayComparisonContext(
+  a: PayComparisonPeriod,
+  b: PayComparisonPeriod,
+) {
   return {
     periodA: {
       gross: a.grossEarnings,

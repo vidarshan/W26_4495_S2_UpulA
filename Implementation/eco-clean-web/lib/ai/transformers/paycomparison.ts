@@ -1,4 +1,14 @@
-export function mapToPayComparison(res: any) {
+type PayComparisonResult = {
+  brief?: string;
+  priorityOrder?: string[];
+  checklist?: string[];
+  alerts?: string[];
+  riskLevel?: "low" | "medium" | "high";
+  riskReason?: string | null;
+  completionDraft?: string | null;
+};
+
+export function mapToPayComparison(res: PayComparisonResult) {
   return {
     summary: res.brief,
     keyDrivers: res.priorityOrder,

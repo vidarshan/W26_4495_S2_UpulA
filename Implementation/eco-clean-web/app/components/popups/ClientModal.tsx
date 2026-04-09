@@ -176,7 +176,11 @@ export default function ClientPropertyModal({
     }) => {
       return id ? updateClient(id, payload) : createClient(payload);
     },
-    onSuccess: async (_data, variables) => {
+    onSuccess: async (data, variables) => {
+      if (variables?.id) {
+        queryClient.setQueryData(["client", variables.id], data);
+      }
+
       await queryClient.invalidateQueries({ queryKey: ["clients"] });
 
       if (variables?.id) {
