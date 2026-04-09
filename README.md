@@ -1,5 +1,8 @@
 # Eco Clean - Scheduling Platform
 
+<img width="1472" height="926" alt="Frame 10" src="https://github.com/user-attachments/assets/8d4c6eab-3544-4581-bf1b-8f8a40b3be10" />
+
+
 ## W26_4495_S2_UpulA
 
 ### 📁 Folder Structure
@@ -197,6 +200,15 @@ Add your real demo/test credentials here before presenting.
 
 - `Email:` `staff1@ecoclean.local`
 - `Password:` `Password123!`
+
+### iOS Setup
+
+<img width="960" height="600" alt="Untitled design (1)" src="https://github.com/user-attachments/assets/6189ac90-b057-4978-95e4-c8b1b106c241" />
+
+### Android Setup
+
+<img width="943" height="422" alt="Untitled design (2)" src="https://github.com/user-attachments/assets/975c5019-8ece-473b-bc05-115e31d00b71" />
+
 
 ## User Guide
 
