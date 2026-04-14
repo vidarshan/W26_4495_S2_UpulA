@@ -1,5 +1,5 @@
-import { ActionIcon, Box, Flex, Text, ThemeIcon } from "@mantine/core";
-import { IoArrowBack, IoMenu, IoRefresh } from "@/lib/icons";
+import { ActionIcon, Box, Flex, Group, Text, ThemeIcon } from "@mantine/core";
+import { IoArrowBack, IoHome, IoMenu, IoRefresh } from "@/lib/icons";
 
 interface Props {
   onClick: () => void;
@@ -7,9 +7,17 @@ interface Props {
   title: string;
   onRefresh?: () => void;
   refreshing?: boolean;
+  onHome?: () => void;
 }
 
-const TopBar = ({ back, onClick, title, onRefresh, refreshing }: Props) => {
+const TopBar = ({
+  back,
+  onClick,
+  title,
+  onRefresh,
+  refreshing,
+  onHome,
+}: Props) => {
   return (
     <Box pos="sticky" top={0} className="staff-topbar">
       <Box className="staff-topbar__inner">
@@ -32,18 +40,33 @@ const TopBar = ({ back, onClick, title, onRefresh, refreshing }: Props) => {
           </Box>
         </Flex>
 
-        <ActionIcon
-          radius="lg"
-          size={42}
-          variant="light"
-          aria-label="Refresh"
-          onClick={onRefresh}
-          disabled={!onRefresh || refreshing}
-          className="staff-topbar__refresh"
-          style={{ visibility: onRefresh ? "visible" : "hidden" }}
-        >
-          <IoRefresh size={20} />
-        </ActionIcon>
+        <Group gap="xs">
+          {onHome ? (
+            <ActionIcon
+              radius="lg"
+              size={42}
+              variant="light"
+              aria-label="Go home"
+              onClick={onHome}
+              className="staff-topbar__refresh"
+            >
+              <IoHome size={20} />
+            </ActionIcon>
+          ) : null}
+
+          <ActionIcon
+            radius="lg"
+            size={42}
+            variant="light"
+            aria-label="Refresh"
+            onClick={onRefresh}
+            disabled={!onRefresh || refreshing}
+            className="staff-topbar__refresh"
+            style={{ visibility: onRefresh ? "visible" : "hidden" }}
+          >
+            <IoRefresh size={20} />
+          </ActionIcon>
+        </Group>
       </Box>
     </Box>
   );

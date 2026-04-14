@@ -176,6 +176,8 @@ export default function StaffShell({
   );
   const effectiveTitle = routeMeta.title;
   const effectiveBack = !isPrimaryRoute && !!routeMeta.backHref;
+  const showHomeShortcut =
+    pathname !== "/staff" && pathname !== "/staff/tasks";
   const handleTopBarClick = () => {
     if (effectiveBack) {
       if (onBack) {
@@ -346,6 +348,7 @@ export default function StaffShell({
         title={effectiveTitle}
         onRefresh={onRefresh ?? undefined}
         refreshing={refreshing}
+        onHome={showHomeShortcut ? () => router.push("/staff") : undefined}
       />
 
       <Box className="staff-shell__main">{children}</Box>
