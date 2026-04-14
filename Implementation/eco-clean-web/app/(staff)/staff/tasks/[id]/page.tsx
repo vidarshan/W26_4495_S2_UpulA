@@ -97,7 +97,29 @@ function buildDirectionsUrl(address?: {
   country?: string | null;
 }) {
   const fullAddress = formatAddress(address);
-  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(fullAddress)}`;
+  if (!fullAddress) return "";
+
+  const isAppleMobile =
+    typeof navigator !== "undefined" &&
+    /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+  return isAppleMobile
+    ? `https://maps.apple.com/?daddr=${encodeURIComponent(fullAddress)}`
+    : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(fullAddress)}`;
+}
+
+function openDirections(address?: {
+  street1?: string | null;
+  street2?: string | null;
+  city?: string | null;
+  province?: string | null;
+  postalCode?: string | null;
+  country?: string | null;
+}) {
+  const url = buildDirectionsUrl(address);
+  if (!url) return;
+
+  window.open(url, "_blank", "noopener,noreferrer");
 }
 
 function getElapsedSeconds(
@@ -890,11 +912,10 @@ const Page = () => {
             </Box>
 
             <Button
-              component="a"
-              href={buildDirectionsUrl(address)}
               radius="lg"
               color="lime"
               disabled={!address}
+              onClick={() => openDirections(address)}
             >
               Directions
             </Button>
