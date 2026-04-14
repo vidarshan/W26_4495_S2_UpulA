@@ -17,6 +17,7 @@ import {
   Text,
   Textarea,
   ThemeIcon,
+  Loader,
 } from "@mantine/core";
 import { DateInput, TimeInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
@@ -33,13 +34,10 @@ import {
   IoTimer,
 } from "@/lib/icons";
 
-import Loader from "../UI/Loader";
 import { useDashboardUI } from "@/stores/store";
 import { useAppointment } from "@/hooks/useAppointment";
 import { getStaff } from "@/lib/api/users";
-import {
-  formatStaffOptionLabel,
-} from "@/lib/appointments/staffAvailability";
+import { formatStaffOptionLabel } from "@/lib/appointments/staffAvailability";
 import { updateAppointment } from "@/lib/api/appointments";
 import { dateOnlyAndHHmmToIso, isoToDateOnly, isoToHHmm } from "@/lib/dateTime";
 import { deleteAppointmentImage } from "@/lib/uploadthing";
@@ -380,7 +378,8 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
       status: appointment.status,
       staff: assignedStaffIds,
       leadStaffId:
-        explicitLead ?? (assignedStaffIds.length === 1 ? assignedStaffIds[0] : ""),
+        explicitLead ??
+        (assignedStaffIds.length === 1 ? assignedStaffIds[0] : ""),
       checklist: (appointment.checklistItems ?? []).map((item) =>
         createChecklistDraftItem(item.label, item.id),
       ),
@@ -494,17 +493,17 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
     },
   });
 
-  const start = appointment
-    ? new Date(appointment.startTime)
-    : null;
+  const start = appointment ? new Date(appointment.startTime) : null;
   const end = appointment ? new Date(appointment.endTime) : null;
   const scheduledMinutes =
     start && end
       ? Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000))
       : 0;
-  const workSessions = (appointment?.workSessions ?? []).slice().sort((a, b) => {
-    return new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime();
-  });
+  const workSessions = (appointment?.workSessions ?? [])
+    .slice()
+    .sort((a, b) => {
+      return new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime();
+    });
   const totalWorkedMinutes = workSessions.reduce((total, session) => {
     if (!session.endedAt) return total;
 
@@ -520,7 +519,9 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
       )
     );
   }, 0);
-  const activeSessionCount = workSessions.filter((session) => !session.endedAt).length;
+  const activeSessionCount = workSessions.filter(
+    (session) => !session.endedAt,
+  ).length;
   const leadAssignment = appointment?.assignments?.find(
     (assignment) => assignment.isTeamLead,
   );
@@ -580,632 +581,767 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
               }}
             >
               <Stack gap="lg" pb="xs">
-                <Paper withBorder radius="md" p="lg" className={classes.heroCard}>
-                <Group justify="space-between" align="flex-start" gap="md" wrap="wrap">
-                  <Stack gap={8} maw={700}>
-                    <Group gap="xs" wrap="wrap">
-                      <Badge
-                        color={getStatusColor(appointment.status)}
-                        variant="light"
-                        radius="md"
-                      >
-                        {appointment.status}
-                      </Badge>
-                      <Badge color="gray" variant="outline" radius="md">
-                        {appointment.job?.type || "Job"}
-                      </Badge>
-                      {leadAssignment ? (
-                        <Badge color="teal" variant="light" radius="md">
-                          Lead: {leadAssignment.staff.name}
+                <Paper
+                  withBorder
+                  radius="md"
+                  p="lg"
+                  className={classes.heroCard}
+                >
+                  <Group
+                    justify="space-between"
+                    align="flex-start"
+                    gap="md"
+                    wrap="wrap"
+                  >
+                    <Stack gap={8} maw={700}>
+                      <Group gap="xs" wrap="wrap">
+                        <Badge
+                          color={getStatusColor(appointment.status)}
+                          variant="light"
+                          radius="md"
+                        >
+                          {appointment.status}
                         </Badge>
-                      ) : null}
-                    </Group>
+                        <Badge color="gray" variant="outline" radius="md">
+                          {appointment.job?.type || "Job"}
+                        </Badge>
+                        {leadAssignment ? (
+                          <Badge color="teal" variant="light" radius="md">
+                            Lead: {leadAssignment.staff.name}
+                          </Badge>
+                        ) : null}
+                      </Group>
 
-                    <Box>
-                      <Text size="xs" fw={800} tt="uppercase" c="dimmed">
-                        Parent Job
-                      </Text>
-                      <Text fw={800} size="xl" mt={4}>
-                        {appointment.job?.title || "Untitled job"}
-                      </Text>
-                      <Text size="sm" c="dimmed" mt={2}>
-                        {buildClientName(appointment.job?.client)}
-                      </Text>
-                      <Text size="sm" c="dimmed" mt={2}>
-                        {buildAddress(appointment.job?.address)}
-                      </Text>
-                    </Box>
-                  </Stack>
-
-                  <Group gap="xs">
-                    <Button
-                      radius="md"
-                      variant="light"
-                      onClick={() => {
-                        closeAppointment();
-                        openEditJob();
-                      }}
-                      disabled={!appointment.job?.id}
-                    >
-                      Edit Job
-                    </Button>
-                    <Button
-                      color="red"
-                      radius="md"
-                      variant="light"
-                      onClick={() => openConfirmCancel("APPOINTMENT")}
-                    >
-                      Delete Appointment
-                    </Button>
-                  </Group>
-                </Group>
-
-                <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} mt="lg">
-                  <MetricCard
-                    label="Scheduled Window"
-                    value={formatDurationMinutes(scheduledMinutes)}
-                    meta={`${formatDateTime(appointment.startTime)} → ${formatDateTime(
-                      appointment.endTime,
-                    )}`}
-                  />
-                  <MetricCard
-                    label="Logged Time"
-                    value={formatDurationMinutes(totalWorkedMinutes)}
-                    meta={`${workSessions.length} work session${workSessions.length === 1 ? "" : "s"}`}
-                  />
-                  <MetricCard
-                    label="Checklist"
-                    value={`${checklistCompletedCount}/${checklistTotalCount}`}
-                    meta={
-                      checklistTotalCount
-                        ? "Completed items"
-                        : "No checklist assigned"
-                    }
-                  />
-                  <MetricCard
-                    label="Activity"
-                    value={activeSessionCount}
-                    meta={
-                      activeSessionCount === 1
-                        ? "1 active session"
-                        : `${activeSessionCount} active sessions`
-                    }
-                  />
-                </SimpleGrid>
-              </Paper>
-
-              <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="lg">
-                <Stack gap="lg">
-                  <Paper withBorder radius="md" p="lg" className={classes.sectionCard}>
-                    <Group mb="md" gap="xs">
-                      <ThemeIcon radius="md" variant="light" color="blue">
-                        <IoCalendar size={18} />
-                      </ThemeIcon>
                       <Box>
-                        <Text fw={700}>Appointment Setup</Text>
-                        <Text size="sm" c="dimmed">
-                          Scheduling, status, assignments, and lead ownership.
+                        <Text size="xs" fw={800} tt="uppercase" c="dimmed">
+                          Parent Job
+                        </Text>
+                        <Text fw={800} size="xl" mt={4}>
+                          {appointment.job?.title || "Untitled job"}
+                        </Text>
+                        <Text size="sm" c="dimmed" mt={2}>
+                          {buildClientName(appointment.job?.client)}
+                        </Text>
+                        <Text size="sm" c="dimmed" mt={2}>
+                          {buildAddress(appointment.job?.address)}
                         </Text>
                       </Box>
-                    </Group>
+                    </Stack>
 
-                    <Stack gap="md">
-                      <SimpleGrid cols={{ base: 1, sm: 2 }}>
-                        <DateInput
-                          label="Date"
-                          value={form.values.date}
-                          onChange={(value) =>
-                            form.setFieldValue("date", value ? new Date(value) : null)
+                    <Group gap="xs">
+                      <Button
+                        radius="md"
+                        variant="light"
+                        onClick={() => {
+                          closeAppointment();
+                          openEditJob();
+                        }}
+                        disabled={!appointment.job?.id}
+                      >
+                        Edit Job
+                      </Button>
+                      <Button
+                        color="red"
+                        radius="md"
+                        variant="light"
+                        onClick={() => openConfirmCancel("APPOINTMENT")}
+                      >
+                        Delete Appointment
+                      </Button>
+                    </Group>
+                  </Group>
+
+                  <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} mt="lg">
+                    <MetricCard
+                      label="Scheduled Window"
+                      value={formatDurationMinutes(scheduledMinutes)}
+                      meta={`${formatDateTime(appointment.startTime)} → ${formatDateTime(
+                        appointment.endTime,
+                      )}`}
+                    />
+                    <MetricCard
+                      label="Logged Time"
+                      value={formatDurationMinutes(totalWorkedMinutes)}
+                      meta={`${workSessions.length} work session${workSessions.length === 1 ? "" : "s"}`}
+                    />
+                    <MetricCard
+                      label="Checklist"
+                      value={`${checklistCompletedCount}/${checklistTotalCount}`}
+                      meta={
+                        checklistTotalCount
+                          ? "Completed items"
+                          : "No checklist assigned"
+                      }
+                    />
+                    <MetricCard
+                      label="Activity"
+                      value={activeSessionCount}
+                      meta={
+                        activeSessionCount === 1
+                          ? "1 active session"
+                          : `${activeSessionCount} active sessions`
+                      }
+                    />
+                  </SimpleGrid>
+                </Paper>
+
+                <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="lg">
+                  <Stack gap="lg">
+                    <Paper
+                      withBorder
+                      radius="md"
+                      p="lg"
+                      className={classes.sectionCard}
+                    >
+                      <Group mb="md" gap="xs">
+                        <ThemeIcon radius="md" variant="light" color="blue">
+                          <IoCalendar size={18} />
+                        </ThemeIcon>
+                        <Box>
+                          <Text fw={700}>Appointment Setup</Text>
+                          <Text size="sm" c="dimmed">
+                            Scheduling, status, assignments, and lead ownership.
+                          </Text>
+                        </Box>
+                      </Group>
+
+                      <Stack gap="md">
+                        <SimpleGrid cols={{ base: 1, sm: 2 }}>
+                          <DateInput
+                            label="Date"
+                            value={form.values.date}
+                            onChange={(value) =>
+                              form.setFieldValue(
+                                "date",
+                                value ? new Date(value) : null,
+                              )
+                            }
+                            error={form.errors.date}
+                          />
+
+                          <Select
+                            label="Status"
+                            data={[
+                              { value: "SCHEDULED", label: "Scheduled" },
+                              { value: "COMPLETED", label: "Completed" },
+                              { value: "CANCELLED", label: "Cancelled" },
+                            ]}
+                            allowDeselect={false}
+                            {...form.getInputProps("status")}
+                          />
+                        </SimpleGrid>
+
+                        <SimpleGrid cols={{ base: 1, sm: 2 }}>
+                          <TimeInput
+                            label="Start Time"
+                            value={form.values.startTime}
+                            onChange={(event) =>
+                              form.setFieldValue(
+                                "startTime",
+                                event.currentTarget.value,
+                              )
+                            }
+                            error={form.errors.startTime}
+                          />
+
+                          <TimeInput
+                            label="End Time"
+                            value={form.values.endTime}
+                            onChange={(event) =>
+                              form.setFieldValue(
+                                "endTime",
+                                event.currentTarget.value,
+                              )
+                            }
+                            error={form.errors.endTime}
+                          />
+                        </SimpleGrid>
+
+                        <MultiSelect
+                          label="Assigned Staff"
+                          data={staffOptions}
+                          searchable
+                          nothingFoundMessage={
+                            staffLoading || candidateLoading
+                              ? "Loading staff..."
+                              : "No staff"
                           }
-                          error={form.errors.date}
+                          rightSection={
+                            candidateLoading ? <Loader /> : undefined
+                          }
+                          value={form.values.staff}
+                          onChange={(value) => {
+                            form.setFieldValue("staff", value);
+                            form.setFieldValue(
+                              "leadStaffId",
+                              value.length === 1
+                                ? value[0]
+                                : value.includes(form.values.leadStaffId)
+                                  ? form.values.leadStaffId
+                                  : "",
+                            );
+                          }}
                         />
 
                         <Select
-                          label="Status"
-                          data={[
-                            { value: "SCHEDULED", label: "Scheduled" },
-                            { value: "COMPLETED", label: "Completed" },
-                            { value: "CANCELLED", label: "Cancelled" },
-                          ]}
-                          allowDeselect={false}
-                          {...form.getInputProps("status")}
-                        />
-                      </SimpleGrid>
-
-                      <SimpleGrid cols={{ base: 1, sm: 2 }}>
-                        <TimeInput
-                          label="Start Time"
-                          value={form.values.startTime}
-                          onChange={(event) =>
-                            form.setFieldValue("startTime", event.currentTarget.value)
+                          label="Team Lead"
+                          description="Only the team lead or sole participant can update checklist items on the staff app."
+                          data={selectedLeadOptions}
+                          placeholder={
+                            form.values.staff.length
+                              ? "Select team lead"
+                              : "Assign staff first"
                           }
-                          error={form.errors.startTime}
-                        />
-
-                        <TimeInput
-                          label="End Time"
-                          value={form.values.endTime}
-                          onChange={(event) =>
-                            form.setFieldValue("endTime", event.currentTarget.value)
+                          disabled={!form.values.staff.length}
+                          value={form.values.leadStaffId}
+                          onChange={(value) =>
+                            form.setFieldValue("leadStaffId", value ?? "")
                           }
-                          error={form.errors.endTime}
                         />
-                      </SimpleGrid>
+                      </Stack>
+                    </Paper>
 
-                      <MultiSelect
-                        label="Assigned Staff"
-                        data={staffOptions}
-                        searchable
-                        nothingFoundMessage={
-                          staffLoading || candidateLoading
-                            ? "Loading staff..."
-                            : "No staff"
+                    <Paper
+                      withBorder
+                      radius="md"
+                      p="lg"
+                      className={classes.sectionCard}
+                    >
+                      <Group mb="md" gap="xs">
+                        <ThemeIcon radius="md" variant="light" color="teal">
+                          <IoPeople size={18} />
+                        </ThemeIcon>
+                        <Box>
+                          <Text fw={700}>Team & Work Sessions</Text>
+                          <Text size="sm" c="dimmed">
+                            Assigned team members and all recorded work
+                            activity.
+                          </Text>
+                        </Box>
+                      </Group>
+
+                      <Stack gap="sm">
+                        {appointment.assignments?.length ? (
+                          appointment.assignments.map((assignment) => {
+                            const memberSessions = workSessions.filter(
+                              (session) =>
+                                session.staffId === assignment.staff.id,
+                            );
+                            const activeForMember = memberSessions.some(
+                              (session) => !session.endedAt,
+                            );
+
+                            return (
+                              <Paper
+                                key={assignment.id}
+                                withBorder
+                                radius="md"
+                                p="sm"
+                                className={classes.timelineCard}
+                              >
+                                <Group
+                                  justify="space-between"
+                                  align="flex-start"
+                                >
+                                  <Box>
+                                    <Group gap="xs">
+                                      <Text fw={700} size="sm">
+                                        {assignment.staff.name}
+                                      </Text>
+                                      {assignment.isTeamLead ? (
+                                        <Badge
+                                          color="teal"
+                                          variant="light"
+                                          size="sm"
+                                        >
+                                          Team Lead
+                                        </Badge>
+                                      ) : null}
+                                    </Group>
+                                    <Text size="xs" c="dimmed" mt={4}>
+                                      {assignment.staff.email || "No email"}
+                                    </Text>
+                                  </Box>
+
+                                  <Badge
+                                    color={activeForMember ? "lime" : "gray"}
+                                    variant="light"
+                                  >
+                                    {activeForMember ? "Active" : "Idle"}
+                                  </Badge>
+                                </Group>
+
+                                {memberSessions.length ? (
+                                  <Stack gap={6} mt="sm">
+                                    {memberSessions.map((session) => {
+                                      const sessionStaff = (
+                                        session as WorkSession & {
+                                          staff?: StaffUser;
+                                        }
+                                      ).staff;
+                                      const sessionLabel =
+                                        sessionStaff?.name ||
+                                        assignment.staff.name;
+
+                                      return (
+                                        <Group
+                                          key={session.id}
+                                          justify="space-between"
+                                          className={classes.inlineRow}
+                                        >
+                                          <Text size="sm">
+                                            {sessionLabel}:{" "}
+                                            {formatDateTime(session.startedAt)}
+                                          </Text>
+                                          <Text size="xs" c="dimmed">
+                                            {session.endedAt
+                                              ? formatDateTime(session.endedAt)
+                                              : "Running"}
+                                          </Text>
+                                        </Group>
+                                      );
+                                    })}
+                                  </Stack>
+                                ) : (
+                                  <Text size="sm" c="dimmed" mt="sm">
+                                    No work sessions recorded yet.
+                                  </Text>
+                                )}
+                              </Paper>
+                            );
+                          })
+                        ) : (
+                          <Text size="sm" c="dimmed">
+                            No staff assigned to this appointment.
+                          </Text>
+                        )}
+                      </Stack>
+                    </Paper>
+
+                    <Paper
+                      withBorder
+                      radius="md"
+                      p="lg"
+                      className={classes.sectionCard}
+                    >
+                      <Group mb="md" gap="xs">
+                        <ThemeIcon radius="md" variant="light" color="lime">
+                          <IoCheckmarkDone size={18} />
+                        </ThemeIcon>
+                        <Box>
+                          <Text fw={700}>Checklist</Text>
+                          <Text size="sm" c="dimmed">
+                            Edit required steps and review completion progress.
+                          </Text>
+                        </Box>
+                      </Group>
+
+                      <ChecklistEditor
+                        items={form.values.checklist}
+                        disabled={false}
+                        label="Appointment Checklist"
+                        description="Existing completion states stay attached to retained items."
+                        addLabel="Add checklist item"
+                        onChange={(items) =>
+                          form.setFieldValue("checklist", items)
                         }
-                        rightSection={
-                          candidateLoading ? <Loader size="xs" /> : undefined
-                        }
-                        value={form.values.staff}
-                        onChange={(value) => {
-                          form.setFieldValue("staff", value);
-                          form.setFieldValue(
-                            "leadStaffId",
-                            value.length === 1
-                              ? value[0]
-                              : value.includes(form.values.leadStaffId)
-                                ? form.values.leadStaffId
-                                : "",
-                          );
-                        }}
                       />
 
-                      <Select
-                        label="Team Lead"
-                        description="Only the team lead or sole participant can update checklist items on the staff app."
-                        data={selectedLeadOptions}
-                        placeholder={
-                          form.values.staff.length
-                            ? "Select team lead"
-                            : "Assign staff first"
-                        }
-                        disabled={!form.values.staff.length}
-                        value={form.values.leadStaffId}
-                        onChange={(value) =>
-                          form.setFieldValue("leadStaffId", value ?? "")
-                        }
+                      {appointment.checklistItems?.length ? (
+                        <Stack gap="xs" mt="md">
+                          {appointment.checklistItems.map((item) => (
+                            <Group
+                              key={item.id}
+                              justify="space-between"
+                              className={classes.inlineRow}
+                            >
+                              <Text size="sm" fw={item.isCompleted ? 700 : 500}>
+                                {item.label}
+                              </Text>
+                              <Badge
+                                color={item.isCompleted ? "lime" : "gray"}
+                                variant="light"
+                              >
+                                {item.isCompleted ? "Completed" : "Pending"}
+                              </Badge>
+                            </Group>
+                          ))}
+                        </Stack>
+                      ) : null}
+                    </Paper>
+                  </Stack>
+
+                  <Stack gap="lg">
+                    <Paper
+                      withBorder
+                      radius="md"
+                      p="lg"
+                      className={classes.sectionCard}
+                    >
+                      <Group mb="md" gap="xs">
+                        <ThemeIcon radius="md" variant="light" color="orange">
+                          <IoDocumentText size={18} />
+                        </ThemeIcon>
+                        <Box>
+                          <Text fw={700}>Visit Notes & Attachments</Text>
+                          <Text size="sm" c="dimmed">
+                            Latest note draft, historical visit notes, and
+                            appointment images.
+                          </Text>
+                        </Box>
+                      </Group>
+
+                      <Textarea
+                        id="appointment-note-textarea"
+                        label="Latest Appointment Note"
+                        description="This updates the current internal visit note draft."
+                        autosize
+                        minRows={3}
+                        placeholder="Add internal note for this visit..."
+                        {...form.getInputProps("note")}
                       />
-                    </Stack>
-                  </Paper>
 
-                  <Paper withBorder radius="md" p="lg" className={classes.sectionCard}>
-                    <Group mb="md" gap="xs">
-                      <ThemeIcon radius="md" variant="light" color="teal">
-                        <IoPeople size={18} />
-                      </ThemeIcon>
-                      <Box>
-                        <Text fw={700}>Team & Work Sessions</Text>
-                        <Text size="sm" c="dimmed">
-                          Assigned team members and all recorded work activity.
-                        </Text>
-                      </Box>
-                    </Group>
-
-                    <Stack gap="sm">
-                      {appointment.assignments?.length ? (
-                        appointment.assignments.map((assignment) => {
-                          const memberSessions = workSessions.filter(
-                            (session) => session.staffId === assignment.staff.id,
-                          );
-                          const activeForMember = memberSessions.some(
-                            (session) => !session.endedAt,
-                          );
-
-                          return (
+                      {sortedAppointmentNotes.length ? (
+                        <Stack gap="sm" mt="md">
+                          {sortedAppointmentNotes.map((note) => (
                             <Paper
-                              key={assignment.id}
+                              key={note.id}
                               withBorder
                               radius="md"
                               p="sm"
                               className={classes.timelineCard}
                             >
-                              <Group justify="space-between" align="flex-start">
-                                <Box>
-                                  <Group gap="xs">
-                                    <Text fw={700} size="sm">
-                                      {assignment.staff.name}
-                                    </Text>
-                                    {assignment.isTeamLead ? (
-                                      <Badge color="teal" variant="light" size="sm">
-                                        Team Lead
-                                      </Badge>
-                                    ) : null}
-                                  </Group>
-                                  <Text size="xs" c="dimmed" mt={4}>
-                                    {assignment.staff.email || "No email"}
-                                  </Text>
-                                </Box>
-
-                                <Badge
-                                  color={activeForMember ? "lime" : "gray"}
-                                  variant="light"
-                                >
-                                  {activeForMember ? "Active" : "Idle"}
-                                </Badge>
-                              </Group>
-
-                              {memberSessions.length ? (
-                                <Stack gap={6} mt="sm">
-                                  {memberSessions.map((session) => {
-                                    const sessionStaff = (session as WorkSession & {
-                                      staff?: StaffUser;
-                                    }).staff;
-                                    const sessionLabel = sessionStaff?.name || assignment.staff.name;
-
-                                    return (
-                                      <Group
-                                        key={session.id}
-                                        justify="space-between"
-                                        className={classes.inlineRow}
-                                      >
-                                        <Text size="sm">
-                                          {sessionLabel}: {formatDateTime(session.startedAt)}
-                                        </Text>
-                                        <Text size="xs" c="dimmed">
-                                          {session.endedAt
-                                            ? formatDateTime(session.endedAt)
-                                            : "Running"}
-                                        </Text>
-                                      </Group>
-                                    );
-                                  })}
-                                </Stack>
-                              ) : (
-                                <Text size="sm" c="dimmed" mt="sm">
-                                  No work sessions recorded yet.
-                                </Text>
-                              )}
-                            </Paper>
-                          );
-                        })
-                      ) : (
-                        <Text size="sm" c="dimmed">
-                          No staff assigned to this appointment.
-                        </Text>
-                      )}
-                    </Stack>
-                  </Paper>
-
-                  <Paper withBorder radius="md" p="lg" className={classes.sectionCard}>
-                    <Group mb="md" gap="xs">
-                      <ThemeIcon radius="md" variant="light" color="lime">
-                        <IoCheckmarkDone size={18} />
-                      </ThemeIcon>
-                      <Box>
-                        <Text fw={700}>Checklist</Text>
-                        <Text size="sm" c="dimmed">
-                          Edit required steps and review completion progress.
-                        </Text>
-                      </Box>
-                    </Group>
-
-                    <ChecklistEditor
-                      items={form.values.checklist}
-                      disabled={false}
-                      label="Appointment Checklist"
-                      description="Existing completion states stay attached to retained items."
-                      addLabel="Add checklist item"
-                      onChange={(items) => form.setFieldValue("checklist", items)}
-                    />
-
-                    {appointment.checklistItems?.length ? (
-                      <Stack gap="xs" mt="md">
-                        {appointment.checklistItems.map((item) => (
-                          <Group
-                            key={item.id}
-                            justify="space-between"
-                            className={classes.inlineRow}
-                          >
-                            <Text size="sm" fw={item.isCompleted ? 700 : 500}>
-                              {item.label}
-                            </Text>
-                            <Badge
-                              color={item.isCompleted ? "lime" : "gray"}
-                              variant="light"
-                            >
-                              {item.isCompleted ? "Completed" : "Pending"}
-                            </Badge>
-                          </Group>
-                        ))}
-                      </Stack>
-                    ) : null}
-                  </Paper>
-                </Stack>
-
-                <Stack gap="lg">
-                  <Paper withBorder radius="md" p="lg" className={classes.sectionCard}>
-                    <Group mb="md" gap="xs">
-                      <ThemeIcon radius="md" variant="light" color="orange">
-                        <IoDocumentText size={18} />
-                      </ThemeIcon>
-                      <Box>
-                        <Text fw={700}>Visit Notes & Attachments</Text>
-                        <Text size="sm" c="dimmed">
-                          Latest note draft, historical visit notes, and appointment images.
-                        </Text>
-                      </Box>
-                    </Group>
-
-                    <Textarea
-                      id="appointment-note-textarea"
-                      label="Latest Appointment Note"
-                      description="This updates the current internal visit note draft."
-                      autosize
-                      minRows={3}
-                      placeholder="Add internal note for this visit..."
-                      {...form.getInputProps("note")}
-                    />
-
-                    {sortedAppointmentNotes.length ? (
-                      <Stack gap="sm" mt="md">
-                        {sortedAppointmentNotes.map((note) => (
-                          <Paper
-                            key={note.id}
-                            withBorder
-                            radius="md"
-                            p="sm"
-                            className={classes.timelineCard}
-                          >
-                            <Group justify="space-between" align="flex-start" mb={6}>
-                              <Badge
-                                variant="light"
-                                color={note.isClientVisible ? "blue" : "gray"}
+                              <Group
+                                justify="space-between"
+                                align="flex-start"
+                                mb={6}
                               >
-                                {note.isClientVisible ? "Client visible" : "Internal"}
-                              </Badge>
-
-                              <Text size="xs" c="dimmed">
-                                {formatDateTime(note.createdAt)}
-                              </Text>
-                            </Group>
-
-                            <Text size="sm">{note.content || "—"}</Text>
-
-                            {!!note.images?.length && (
-                              <Group mt="sm" wrap="wrap" gap="xs">
-                                {note.images.map((img) => (
-                                  <ImageViewer
-                                    key={img.id}
-                                    src={img.url}
-                                    alt="Visit note attachment"
-                                    modalTitle="Visit Note Attachment"
-                                  />
-                                ))}
-                              </Group>
-                            )}
-                          </Paper>
-                        ))}
-                      </Stack>
-                    ) : (
-                      <Text size="sm" c="dimmed" mt="md">
-                        No visit notes have been added yet.
-                      </Text>
-                    )}
-
-                    {!!appointment.images?.length && (
-                      <Stack gap="xs" mt="md">
-                        <Text fw={600} size="sm">
-                          Appointment Images
-                        </Text>
-
-                        <Group wrap="wrap" gap="xs">
-                          {appointment.images.map((img) => (
-                            <ImageViewer
-                              key={img.id}
-                              src={img.url}
-                              alt="Appointment attachment"
-                              modalTitle="Appointment Attachment"
-                              overlay={
-                                <ActionIcon
-                                  size="sm"
-                                  variant="filled"
-                                  color="dark"
-                                  className={classes.thumbnailAction}
-                                  loading={deleteImageMutation.isPending}
-                                  onClick={() => deleteImageMutation.mutate(img.id)}
-                                  aria-label="Delete image"
+                                <Badge
+                                  variant="light"
+                                  color={note.isClientVisible ? "blue" : "gray"}
                                 >
-                                  <IoClose size={14} />
-                                </ActionIcon>
-                              }
-                            />
-                          ))}
-                        </Group>
-                      </Stack>
-                    )}
-                  </Paper>
-
-                  <Paper withBorder radius="md" p="lg" className={classes.sectionCard}>
-                    <Group mb="md" gap="xs">
-                      <ThemeIcon radius="md" variant="light" color="grape">
-                        <IoPricetag size={18} />
-                      </ThemeIcon>
-                      <Box>
-                        <Text fw={700}>Job Context</Text>
-                        <Text size="sm" c="dimmed">
-                          Core job metadata, client details, line items, and notes.
-                        </Text>
-                      </Box>
-                    </Group>
-
-                    <SimpleGrid cols={{ base: 1, sm: 2 }}>
-                      <ReadOnlyItem
-                        icon={<IoDocumentText size={18} />}
-                        label="Job Title"
-                        value={appointment.job?.title || "—"}
-                      />
-                      <ReadOnlyItem
-                        icon={<IoPricetag size={18} />}
-                        label="Job Type"
-                        value={appointment.job?.type || "—"}
-                      />
-                      <ReadOnlyItem
-                        icon={<IoPerson size={18} />}
-                        label="Client"
-                        value={buildClientName(appointment.job?.client)}
-                      />
-                      <ReadOnlyItem
-                        icon={<IoPeople size={18} />}
-                        label="Preferred Contact"
-                        value={appointment.job?.client?.preferredContact || "—"}
-                      />
-                      <ReadOnlyItem
-                        icon={<IoCalendar size={18} />}
-                        label="Created"
-                        value={formatDateOnly(appointment.createdAt)}
-                      />
-                      <ReadOnlyItem
-                        icon={<IoTimer size={18} />}
-                        label="Recurrence"
-                        value={recurrenceSummary}
-                      />
-                    </SimpleGrid>
-
-                    <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md" mt="md">
-                      <Paper withBorder radius="md" p="md" className={classes.infoCard}>
-                        <Text size="xs" fw={700} tt="uppercase" c="dimmed" mb={8}>
-                          Service Address
-                        </Text>
-                        <Text size="sm">{buildAddress(appointment.job?.address)}</Text>
-                      </Paper>
-
-                      <Paper withBorder radius="md" p="md" className={classes.infoCard}>
-                        <Text size="xs" fw={700} tt="uppercase" c="dimmed" mb={8}>
-                          Client Contact
-                        </Text>
-                        <Stack gap={4}>
-                          <Text size="sm">
-                            Email: {appointment.job?.client?.email || "—"}
-                          </Text>
-                          <Text size="sm">
-                            Phone: {appointment.job?.client?.phone || "—"}
-                          </Text>
-                        </Stack>
-                      </Paper>
-                    </SimpleGrid>
-
-                    {!!appointment.job?.visitInstructions && (
-                      <Paper withBorder radius="md" p="md" mt="md" className={classes.infoCard}>
-                        <Text size="xs" fw={700} tt="uppercase" c="dimmed" mb={8}>
-                          Visit Instructions
-                        </Text>
-                        <Text size="sm">{appointment.job.visitInstructions}</Text>
-                      </Paper>
-                    )}
-
-                    {!!appointment.job?.lineItems?.length && (
-                      <Stack gap="sm" mt="md">
-                        <Text fw={700} size="sm" tt="uppercase" c="dimmed">
-                          Job Line Items
-                        </Text>
-                        {appointment.job.lineItems.map((item) => (
-                          <Paper
-                            key={item.id}
-                            withBorder
-                            radius="md"
-                            p="sm"
-                            className={classes.timelineCard}
-                          >
-                            <Group justify="space-between" align="flex-start" mb={4}>
-                              <Text fw={600} size="sm">
-                                {item.name}
-                              </Text>
-
-                              <Badge variant="light">
-                                Qty {item.quantity}
-                                {item.total != null ? ` • Total ${item.total}` : ""}
-                              </Badge>
-                            </Group>
-
-                            {item.description ? (
-                              <Text size="sm" c="dimmed">
-                                {item.description}
-                              </Text>
-                            ) : null}
-                          </Paper>
-                        ))}
-                      </Stack>
-                    )}
-
-                    {!!sortedJobNotes.length && (
-                      <Stack gap="sm" mt="md">
-                        <Text fw={700} size="sm" tt="uppercase" c="dimmed">
-                          Job Notes
-                        </Text>
-                        {sortedJobNotes.map((note) => (
-                          <Paper
-                            key={note.id}
-                            withBorder
-                            radius="md"
-                            p="sm"
-                            className={classes.timelineCard}
-                          >
-                            <Group justify="space-between" align="flex-start" mb={6}>
-                              <Stack gap={4}>
-                                <Group gap="xs">
-                                  <Text fw={600} size="sm">
-                                    {note.title || "Untitled note"}
-                                  </Text>
-                                  {note.isPinned ? (
-                                    <Badge color="yellow" variant="light">
-                                      Pinned
-                                    </Badge>
-                                  ) : null}
-                                  {note.category ? (
-                                    <Badge variant="outline">{note.category}</Badge>
-                                  ) : null}
-                                  <Badge
-                                    variant="light"
-                                    color={note.isClientVisible ? "blue" : "gray"}
-                                  >
-                                    {note.isClientVisible
-                                      ? "Client visible"
-                                      : "Internal"}
-                                  </Badge>
-                                </Group>
+                                  {note.isClientVisible
+                                    ? "Client visible"
+                                    : "Internal"}
+                                </Badge>
 
                                 <Text size="xs" c="dimmed">
                                   {formatDateTime(note.createdAt)}
                                 </Text>
-                              </Stack>
-                            </Group>
-
-                            <Text size="sm">{note.content}</Text>
-
-                            {!!note.images?.length && (
-                              <Group mt="sm" wrap="wrap" gap="xs">
-                                {note.images.map((img) => (
-                                  <ImageViewer
-                                    key={img.id}
-                                    src={img.url}
-                                    alt="Job note attachment"
-                                    modalTitle="Job Note Attachment"
-                                  />
-                                ))}
                               </Group>
-                            )}
-                          </Paper>
-                        ))}
-                      </Stack>
-                    )}
-                  </Paper>
-                </Stack>
-              </SimpleGrid>
 
-                <Paper withBorder radius="md" p="md" className={classes.footerBar}>
+                              <Text size="sm">{note.content || "—"}</Text>
+
+                              {!!note.images?.length && (
+                                <Group mt="sm" wrap="wrap" gap="xs">
+                                  {note.images.map((img) => (
+                                    <ImageViewer
+                                      key={img.id}
+                                      src={img.url}
+                                      alt="Visit note attachment"
+                                      modalTitle="Visit Note Attachment"
+                                    />
+                                  ))}
+                                </Group>
+                              )}
+                            </Paper>
+                          ))}
+                        </Stack>
+                      ) : (
+                        <Text size="sm" c="dimmed" mt="md">
+                          No visit notes have been added yet.
+                        </Text>
+                      )}
+
+                      {!!appointment.images?.length && (
+                        <Stack gap="xs" mt="md">
+                          <Text fw={600} size="sm">
+                            Appointment Images
+                          </Text>
+
+                          <Group wrap="wrap" gap="xs">
+                            {appointment.images.map((img) => (
+                              <ImageViewer
+                                key={img.id}
+                                src={img.url}
+                                alt="Appointment attachment"
+                                modalTitle="Appointment Attachment"
+                                overlay={
+                                  <ActionIcon
+                                    size="sm"
+                                    variant="filled"
+                                    color="dark"
+                                    className={classes.thumbnailAction}
+                                    loading={deleteImageMutation.isPending}
+                                    onClick={() =>
+                                      deleteImageMutation.mutate(img.id)
+                                    }
+                                    aria-label="Delete image"
+                                  >
+                                    <IoClose size={14} />
+                                  </ActionIcon>
+                                }
+                              />
+                            ))}
+                          </Group>
+                        </Stack>
+                      )}
+                    </Paper>
+
+                    <Paper
+                      withBorder
+                      radius="md"
+                      p="lg"
+                      className={classes.sectionCard}
+                    >
+                      <Group mb="md" gap="xs">
+                        <ThemeIcon radius="md" variant="light" color="grape">
+                          <IoPricetag size={18} />
+                        </ThemeIcon>
+                        <Box>
+                          <Text fw={700}>Job Context</Text>
+                          <Text size="sm" c="dimmed">
+                            Core job metadata, client details, line items, and
+                            notes.
+                          </Text>
+                        </Box>
+                      </Group>
+
+                      <SimpleGrid cols={{ base: 1, sm: 2 }}>
+                        <ReadOnlyItem
+                          icon={<IoDocumentText size={18} />}
+                          label="Job Title"
+                          value={appointment.job?.title || "—"}
+                        />
+                        <ReadOnlyItem
+                          icon={<IoPricetag size={18} />}
+                          label="Job Type"
+                          value={appointment.job?.type || "—"}
+                        />
+                        <ReadOnlyItem
+                          icon={<IoPerson size={18} />}
+                          label="Client"
+                          value={buildClientName(appointment.job?.client)}
+                        />
+                        <ReadOnlyItem
+                          icon={<IoPeople size={18} />}
+                          label="Preferred Contact"
+                          value={
+                            appointment.job?.client?.preferredContact || "—"
+                          }
+                        />
+                        <ReadOnlyItem
+                          icon={<IoCalendar size={18} />}
+                          label="Created"
+                          value={formatDateOnly(appointment.createdAt)}
+                        />
+                        <ReadOnlyItem
+                          icon={<IoTimer size={18} />}
+                          label="Recurrence"
+                          value={recurrenceSummary}
+                        />
+                      </SimpleGrid>
+
+                      <SimpleGrid
+                        cols={{ base: 1, md: 2 }}
+                        spacing="md"
+                        mt="md"
+                      >
+                        <Paper
+                          withBorder
+                          radius="md"
+                          p="md"
+                          className={classes.infoCard}
+                        >
+                          <Text
+                            size="xs"
+                            fw={700}
+                            tt="uppercase"
+                            c="dimmed"
+                            mb={8}
+                          >
+                            Service Address
+                          </Text>
+                          <Text size="sm">
+                            {buildAddress(appointment.job?.address)}
+                          </Text>
+                        </Paper>
+
+                        <Paper
+                          withBorder
+                          radius="md"
+                          p="md"
+                          className={classes.infoCard}
+                        >
+                          <Text
+                            size="xs"
+                            fw={700}
+                            tt="uppercase"
+                            c="dimmed"
+                            mb={8}
+                          >
+                            Client Contact
+                          </Text>
+                          <Stack gap={4}>
+                            <Text size="sm">
+                              Email: {appointment.job?.client?.email || "—"}
+                            </Text>
+                            <Text size="sm">
+                              Phone: {appointment.job?.client?.phone || "—"}
+                            </Text>
+                          </Stack>
+                        </Paper>
+                      </SimpleGrid>
+
+                      {!!appointment.job?.visitInstructions && (
+                        <Paper
+                          withBorder
+                          radius="md"
+                          p="md"
+                          mt="md"
+                          className={classes.infoCard}
+                        >
+                          <Text
+                            size="xs"
+                            fw={700}
+                            tt="uppercase"
+                            c="dimmed"
+                            mb={8}
+                          >
+                            Visit Instructions
+                          </Text>
+                          <Text size="sm">
+                            {appointment.job.visitInstructions}
+                          </Text>
+                        </Paper>
+                      )}
+
+                      {!!appointment.job?.lineItems?.length && (
+                        <Stack gap="sm" mt="md">
+                          <Text fw={700} size="sm" tt="uppercase" c="dimmed">
+                            Job Line Items
+                          </Text>
+                          {appointment.job.lineItems.map((item) => (
+                            <Paper
+                              key={item.id}
+                              withBorder
+                              radius="md"
+                              p="sm"
+                              className={classes.timelineCard}
+                            >
+                              <Group
+                                justify="space-between"
+                                align="flex-start"
+                                mb={4}
+                              >
+                                <Text fw={600} size="sm">
+                                  {item.name}
+                                </Text>
+
+                                <Badge variant="light">
+                                  Qty {item.quantity}
+                                  {item.total != null
+                                    ? ` • Total ${item.total}`
+                                    : ""}
+                                </Badge>
+                              </Group>
+
+                              {item.description ? (
+                                <Text size="sm" c="dimmed">
+                                  {item.description}
+                                </Text>
+                              ) : null}
+                            </Paper>
+                          ))}
+                        </Stack>
+                      )}
+
+                      {!!sortedJobNotes.length && (
+                        <Stack gap="sm" mt="md">
+                          <Text fw={700} size="sm" tt="uppercase" c="dimmed">
+                            Job Notes
+                          </Text>
+                          {sortedJobNotes.map((note) => (
+                            <Paper
+                              key={note.id}
+                              withBorder
+                              radius="md"
+                              p="sm"
+                              className={classes.timelineCard}
+                            >
+                              <Group
+                                justify="space-between"
+                                align="flex-start"
+                                mb={6}
+                              >
+                                <Stack gap={4}>
+                                  <Group gap="xs">
+                                    <Text fw={600} size="sm">
+                                      {note.title || "Untitled note"}
+                                    </Text>
+                                    {note.isPinned ? (
+                                      <Badge color="yellow" variant="light">
+                                        Pinned
+                                      </Badge>
+                                    ) : null}
+                                    {note.category ? (
+                                      <Badge variant="outline">
+                                        {note.category}
+                                      </Badge>
+                                    ) : null}
+                                    <Badge
+                                      variant="light"
+                                      color={
+                                        note.isClientVisible ? "blue" : "gray"
+                                      }
+                                    >
+                                      {note.isClientVisible
+                                        ? "Client visible"
+                                        : "Internal"}
+                                    </Badge>
+                                  </Group>
+
+                                  <Text size="xs" c="dimmed">
+                                    {formatDateTime(note.createdAt)}
+                                  </Text>
+                                </Stack>
+                              </Group>
+
+                              <Text size="sm">{note.content}</Text>
+
+                              {!!note.images?.length && (
+                                <Group mt="sm" wrap="wrap" gap="xs">
+                                  {note.images.map((img) => (
+                                    <ImageViewer
+                                      key={img.id}
+                                      src={img.url}
+                                      alt="Job note attachment"
+                                      modalTitle="Job Note Attachment"
+                                    />
+                                  ))}
+                                </Group>
+                              )}
+                            </Paper>
+                          ))}
+                        </Stack>
+                      )}
+                    </Paper>
+                  </Stack>
+                </SimpleGrid>
+
+                <Paper
+                  withBorder
+                  radius="md"
+                  p="md"
+                  className={classes.footerBar}
+                >
                   <Group justify="space-between" wrap="wrap">
                     <Text size="sm" c="dimmed">
-                      {visitNotesCount} visit note{visitNotesCount === 1 ? "" : "s"} •{" "}
-                      {checklistTotalCount} checklist item{checklistTotalCount === 1 ? "" : "s"} •{" "}
-                      {workSessions.length} work session{workSessions.length === 1 ? "" : "s"}
+                      {visitNotesCount} visit note
+                      {visitNotesCount === 1 ? "" : "s"} • {checklistTotalCount}{" "}
+                      checklist item{checklistTotalCount === 1 ? "" : "s"} •{" "}
+                      {workSessions.length} work session
+                      {workSessions.length === 1 ? "" : "s"}
                     </Text>
 
                     <Group gap="xs">
