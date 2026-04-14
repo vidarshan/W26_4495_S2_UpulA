@@ -1,5 +1,5 @@
 import { ActionIcon, Box, Flex, Text, ThemeIcon } from "@mantine/core";
-import { IoArrowBack, IoMenu, IoRefresh } from "react-icons/io5";
+import { IoArrowBack, IoMenu, IoRefresh } from "@/lib/icons";
 
 interface Props {
   onClick: () => void;

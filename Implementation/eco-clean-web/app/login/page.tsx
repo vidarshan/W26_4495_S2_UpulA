@@ -17,7 +17,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { getSession, signIn } from "next-auth/react";
 import { useState } from "react";
-import { IoCloseCircle } from "react-icons/io5";
+import { IoCloseCircle } from "@/lib/icons";
 
 export default function LoginPage() {
   const router = useRouter();

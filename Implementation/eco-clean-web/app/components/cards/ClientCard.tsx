@@ -4,7 +4,7 @@ import {
   IoCall,
   IoHome,
   IoMailOpen,
-} from "react-icons/io5";
+} from "@/lib/icons";
 
 interface Props {
   client: Client;

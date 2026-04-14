@@ -16,7 +16,6 @@ import {
   Stack,
   Text,
   TextInput,
-  ThemeIcon,
   Textarea,
 } from "@mantine/core";
 import { DateInput } from "@mantine/dates";
@@ -25,13 +24,9 @@ import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  IoAdd,
-  IoCalendar,
   IoClose,
-  IoConstruct,
   IoLocation,
-  IoRefresh,
-} from "react-icons/io5";
+} from "@/lib/icons";
 
 import Loader from "../UI/Loader";
 import { useJob } from "@/hooks/useJob";
@@ -95,16 +90,6 @@ function mapJobLineItems(items?: LineItem[]) {
     description: item.description ?? "",
   }));
 }
-
-const heroPaperStyles = {
-  root: {
-    background:
-      "radial-gradient(circle at top right, rgba(101, 163, 13, 0.16), transparent 34%), linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(241, 245, 249, 0.96))",
-    border: "1px solid rgba(148, 163, 184, 0.22)",
-    boxShadow:
-      "inset 0 1px 0 rgba(255, 255, 255, 0.78), 0 16px 34px rgba(148, 163, 184, 0.14)",
-  },
-} as const;
 
 const sectionPaperStyles = {
   root: {
@@ -410,7 +395,7 @@ export default function JobEditModal({ onSuccess }: Props) {
           onSubmit={form.onSubmit((values) => updateMutation.mutate(values))}
         >
           <Stack gap="md">
-            <Paper withBorder radius="xl" p="lg" styles={sectionPaperStyles}>
+            <Paper withBorder radius="md" p="lg" styles={sectionPaperStyles} className="app-modal__section">
               <Stack gap="md">
                 <Group justify="space-between" align="flex-start" wrap="wrap">
                   <Stack gap={2}>
@@ -486,7 +471,7 @@ export default function JobEditModal({ onSuccess }: Props) {
             </Paper>
 
             {job.type === "RECURRING" && (
-              <Paper withBorder radius="xl" p="lg" styles={sectionPaperStyles}>
+              <Paper withBorder radius="md" p="lg" styles={sectionPaperStyles} className="app-modal__section">
                 <Stack gap="md">
                   <Group justify="space-between" align="flex-start" wrap="wrap">
                     <Stack gap={2}>
@@ -579,7 +564,7 @@ export default function JobEditModal({ onSuccess }: Props) {
               </Paper>
             )}
 
-            <Paper withBorder radius="xl" p="lg" styles={sectionPaperStyles}>
+            <Paper withBorder radius="md" p="lg" styles={sectionPaperStyles} className="app-modal__section">
               <Group
                 mb="sm"
                 justify="space-between"
@@ -607,12 +592,12 @@ export default function JobEditModal({ onSuccess }: Props) {
                   <Paper
                     key={item.id}
                     withBorder
-                    radius="lg"
+                    radius="md"
                     p="md"
                     styles={lineItemPaperStyles}
                   >
                     <Group justify="space-between" align="flex-start" mb="xs">
-                      <Badge variant="light" radius="xl" color="gray">
+                      <Badge variant="light" radius="md" color="gray">
                         Item {index + 1}
                       </Badge>
                       <ActionIcon

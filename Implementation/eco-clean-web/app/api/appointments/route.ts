@@ -5,6 +5,10 @@ import { AppointmentStatus, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { parseAppDateTimeInput } from "@/lib/dateTime";
 import { getAuthSession } from "@/lib/session";
+import {
+  normalizeChecklistInput,
+  normalizeLeadStaffId,
+} from "@/lib/appointments/checklist";
 
 export async function GET(req: NextRequest) {
   try {
@@ -108,6 +112,9 @@ export async function GET(req: NextRequest) {
         },
         images: true,
         notes: true,
+        checklistItems: {
+          orderBy: { sortOrder: "asc" },
+        },
       },
       orderBy: { startTime: "asc" },
     });
@@ -152,7 +159,8 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { jobId, startTime, endTime, status, staffIds } = body;
+    const { jobId, startTime, endTime, status, staffIds, leadStaffId } = body;
+    const normalizedChecklist = normalizeChecklistInput(body.checklist);
 
     if (!jobId || !startTime || !endTime) {
       return NextResponse.json(
@@ -178,14 +186,36 @@ export async function POST(req: NextRequest) {
           startTime: parsedStartTime,
           endTime: parsedEndTime,
           status: status || "SCHEDULED",
+          checklistItems: normalizedChecklist.length
+            ? {
+                create: normalizedChecklist.map((item) => ({
+                  label: item.label,
+                  sortOrder: item.sortOrder,
+                })),
+              }
+            : undefined,
         },
       });
 
       if (Array.isArray(staffIds) && staffIds.length > 0) {
+        const normalizedStaffIds = [
+          ...new Set(
+            staffIds.filter(
+              (sid: unknown): sid is string =>
+                typeof sid === "string" && sid.trim().length > 0,
+            ),
+          ),
+        ];
+        const effectiveLeadStaffId = normalizeLeadStaffId(
+          leadStaffId,
+          normalizedStaffIds,
+        );
+
         await tx.assignment.createMany({
-          data: staffIds.map((sid: string) => ({
+          data: normalizedStaffIds.map((sid: string) => ({
             appointmentId: appt.id,
             staffId: sid,
+            isTeamLead: sid === effectiveLeadStaffId,
             status: "PENDING",
             plannedStart: parsedStartTime,
             plannedEnd: parsedEndTime,
@@ -209,6 +239,9 @@ export async function POST(req: NextRequest) {
         },
         images: true,
         notes: true,
+        checklistItems: {
+          orderBy: { sortOrder: "asc" },
+        },
       },
     });
 

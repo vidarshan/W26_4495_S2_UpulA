@@ -1,13 +1,13 @@
 "use client";
 
 import {
+  Badge,
   Modal,
   Stack,
   Grid,
   TextInput,
   Button,
   Group,
-  Divider,
   Paper,
   Select,
   SegmentedControl,
@@ -15,14 +15,12 @@ import {
   NumberInput,
   MultiSelect,
   Flex,
-  Card,
   Radio,
   Text,
-  Image,
   Checkbox,
   Loader,
-  Box,
   ActionIcon,
+  ScrollArea,
 } from "@mantine/core";
 import { DatePickerInput, TimeInput } from "@mantine/dates";
 import { Dropzone } from "@mantine/dropzone";
@@ -35,7 +33,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { IoClose, IoImage } from "react-icons/io5";
+import { IoClose, IoImage } from "@/lib/icons";
 import { createJob, CreateJobPayload, JobFormValues } from "@/lib/api/jobs";
 import { getClientAddresses, getClients } from "@/lib/api/client";
 import { getStaff } from "@/lib/api/users";
@@ -43,17 +41,22 @@ import { runStaffRecommendationPreview } from "@/lib/api/appointments";
 import {
   CalendarSelection,
   CandidateResponse,
-  CandidateRecommendation,
   CandidateStaff,
   Client,
   Staff,
 } from "@/types";
 import { DateTime } from "luxon";
 import { AI_FEATURES_ENABLED } from "@/lib/config/ai";
+import { formatStaffOptionLabel } from "@/lib/appointments/staffAvailability";
 import { APP_TZ } from "@/lib/dateTime";
 import { useUploadThing } from "@/lib/uploadthing";
 import { notifications } from "@mantine/notifications";
 import AIStaffSuggestionCard from "../cards/AIStaffSuggestionCard";
+import ChecklistEditor, {
+  ChecklistDraftItem,
+} from "../appointments/ChecklistEditor";
+import ImageViewer from "../media/ImageViewer";
+import classes from "./JobModal.module.css";
 
 interface Props {
   opened: boolean;
@@ -103,6 +106,8 @@ type AppointmentForm = {
   startTime: string;
   endTime: string;
   staffId: string[];
+  leadStaffId: string;
+  checklist: ChecklistDraftItem[];
   notes: string;
   uploadedImages: UploadedImage[];
 };
@@ -134,6 +139,11 @@ type AppointmentApiPayload = {
   startTime: string | null;
   endTime: string | null;
   staffIds: string[];
+  leadStaffId?: string | null;
+  checklist?: Array<{
+    id?: string;
+    label: string;
+  }>;
   note?: string | null;
   images?: Array<{ url: string; fileKey?: string | null }>;
 };
@@ -271,6 +281,13 @@ const mapAppt = (appt: AppointmentForm): AppointmentApiPayload => {
     startTime: appt.startTime?.trim() ? appt.startTime.trim() : null,
     endTime: appt.endTime?.trim() ? appt.endTime.trim() : null,
     staffIds: Array.isArray(appt.staffId) ? appt.staffId : [],
+    leadStaffId: appt.leadStaffId.trim() || null,
+    checklist: appt.checklist
+      .map((item) => ({
+        ...(item.persistedId ? { id: item.persistedId } : {}),
+        label: item.label.trim(),
+      }))
+      .filter((item) => item.label.length > 0),
     note: appt.notes?.trim() ? appt.notes.trim() : null,
     images: appt.uploadedImages?.length
       ? appt.uploadedImages.map((img) => ({
@@ -287,6 +304,7 @@ const isMeaningfulAppointment = (appt: AppointmentForm) => {
     appt.startTime.trim() ||
     appt.endTime.trim() ||
     appt.staffId.length ||
+    appt.checklist.some((item) => item.label.trim()) ||
     appt.notes.trim() ||
     appt.uploadedImages.length
   );
@@ -312,9 +330,19 @@ function blankAppointment(): AppointmentForm {
     startTime: "",
     endTime: "",
     staffId: [],
+    leadStaffId: "",
+    checklist: [],
     notes: "",
     uploadedImages: [],
   };
+}
+
+function getNextLeadStaffId(staffIds: string[], currentLeadStaffId: string) {
+  if (staffIds.length === 1) return staffIds[0];
+  if (currentLeadStaffId && staffIds.includes(currentLeadStaffId)) {
+    return currentLeadStaffId;
+  }
+  return "";
 }
 
 function buildInitialValues(
@@ -623,6 +651,27 @@ export default function NewJobModal({
     ]);
   };
 
+  const removeLineItem = (id: string) => {
+    if (form.values.lineItems.length === 1) {
+      form.setFieldValue("lineItems", [
+        {
+          id: crypto.randomUUID(),
+          name: "",
+          quantity: 1,
+          unitCost: 0,
+          unitPrice: 0,
+          description: "",
+        },
+      ]);
+      return;
+    }
+
+    form.setFieldValue(
+      "lineItems",
+      form.values.lineItems.filter((item) => item.id !== id),
+    );
+  };
+
   const addAppointment = () => {
     if (form.values.jobType === "RECURRING") return;
 
@@ -630,6 +679,19 @@ export default function NewJobModal({
       ...form.values.appointments,
       blankAppointment(),
     ]);
+  };
+
+  const removeAppointment = (id: string) => {
+    if (form.values.jobType === "RECURRING") return;
+    if (form.values.appointments.length === 1) {
+      form.setFieldValue("appointments", [blankAppointment()]);
+      return;
+    }
+
+    form.setFieldValue(
+      "appointments",
+      form.values.appointments.filter((appointment) => appointment.id !== id),
+    );
   };
 
   const addJobNote = () => {
@@ -825,9 +887,33 @@ export default function NewJobModal({
 
   const renderJobNotes = () =>
     form.values.notes.map((note, index) => (
-      <Card withBorder mt="sm" key={note.id}>
+      <Paper
+        withBorder
+        mt="sm"
+        key={note.id}
+        radius="md"
+        p="md"
+        className={classes.subCard}
+      >
+        <div className={classes.subCardHeader}>
+          <Group gap="xs">
+            <Badge variant="light" color="gray" radius="xl">
+              Note {index + 1}
+            </Badge>
+          </Group>
+          <Button
+            color="red"
+            variant="light"
+            type="button"
+            size="xs"
+            disabled={isBusy || form.values.notes.length === 1}
+            onClick={() => removeJobNote(note.id)}
+          >
+            Remove Note
+          </Button>
+        </div>
         <Grid>
-          <Grid.Col span={6}>
+          <Grid.Col span={{ base: 12, sm: 6 }}>
             <TextInput
               label="Note title"
               placeholder="e.g. Gate access"
@@ -836,7 +922,7 @@ export default function NewJobModal({
             />
           </Grid.Col>
 
-          <Grid.Col span={6}>
+          <Grid.Col span={{ base: 12, sm: 6 }}>
             <Select
               label="Category"
               placeholder="Select category"
@@ -892,6 +978,7 @@ export default function NewJobModal({
 
           <Grid.Col span={12}>
             <Dropzone
+              className={classes.dropzone}
               accept={["image/png", "image/jpeg", "image/webp"]}
               maxFiles={10}
               disabled={isBusy}
@@ -932,7 +1019,8 @@ export default function NewJobModal({
               <Flex direction="column" align="center">
                 <IoImage size={24} />
                 <Text mt="xs" size="xs">
-                  Drag note images here or click to upload (4MB Max, up to 10 images)
+                  Drag note images here or click to upload (4MB Max, up to 10
+                  images)
                 </Text>
                 {isUploading && (
                   <Text mt="xs" size="xs" c="dimmed">
@@ -945,45 +1033,33 @@ export default function NewJobModal({
             {form.values.notes[index]?.uploadedImages?.length ? (
               <Group mt="sm">
                 {form.values.notes[index].uploadedImages.map((img) => (
-                  <Box key={img.fileKey} pos="relative">
-                    <Image
-                      src={img.url}
-                      alt="note_image"
-                      w={80}
-                      h={80}
-                      radius="lg"
-                      fit="cover"
-                    />
-                    <ActionIcon
-                      size="sm"
-                      radius="xl"
-                      color="red"
-                      variant="filled"
-                      style={{ position: "absolute", top: 4, right: 4 }}
-                      onClick={() => removeNoteImage(index, img.fileKey)}
-                      disabled={isBusy}
-                    >
-                      <IoClose size={14} />
-                    </ActionIcon>
-                  </Box>
+                  <ImageViewer
+                    key={img.fileKey}
+                    src={img.url}
+                    alt="Note image"
+                    modalTitle="Note Image"
+                    thumbWidth={80}
+                    thumbHeight={80}
+                    overlay={
+                      <ActionIcon
+                        size="sm"
+                        radius="xl"
+                        color="red"
+                        variant="filled"
+                        className={classes.thumbAction}
+                        onClick={() => removeNoteImage(index, img.fileKey)}
+                        disabled={isBusy}
+                      >
+                        <IoClose size={14} />
+                      </ActionIcon>
+                    }
+                  />
                 ))}
               </Group>
             ) : null}
           </Grid.Col>
-
-          <Grid.Col span={12}>
-            <Button
-              color="red"
-              variant="light"
-              type="button"
-              disabled={isBusy || form.values.notes.length === 1}
-              onClick={() => removeJobNote(note.id)}
-            >
-              Remove Note
-            </Button>
-          </Grid.Col>
         </Grid>
-      </Card>
+      </Paper>
     ));
 
   const renderAppointments = () =>
@@ -1011,26 +1087,9 @@ export default function NewJobModal({
       });
 
       const multiSelectData = visibleStaff.map((member: CandidateStaff) => {
-        const candidateMember = member as CandidateStaff;
-
-        const isRecommended = recommendedMembers.some(
-          (candidate: CandidateRecommendation) =>
-            candidate.staff.id === member.id,
-        );
-
-        const hasLeaveConflict = (candidateMember.leaves?.length ?? 0) > 0;
-
-        const hasAssignmentConflict =
-          (candidateMember.assignments?.length ?? 0) > 0;
-
-        let suffix = "";
-        if (isRecommended) suffix = "Recommended";
-        else if (hasLeaveConflict) suffix = "On leave";
-        else if (hasAssignmentConflict) suffix = "Busy";
-
         return {
           value: member.id,
-          label: suffix ? `${member.name} (${suffix})` : member.name,
+          label: formatStaffOptionLabel(member, recommendedMembers),
         };
       });
       const candidateWindow = buildAppointmentWindow(
@@ -1039,18 +1098,71 @@ export default function NewJobModal({
       );
       const candidatesDisabled =
         !form.values.addressId || !candidateWindow?.appointmentStart;
+      const selectedStaffIds = form.values.appointments[index]?.staffId ?? [];
+      const leadOptions = selectedStaffIds
+        .map((staffId) => {
+          const selectedMember = staffMembers.find(
+            (member: CandidateStaff) => member.id === staffId,
+          );
+
+          return selectedMember
+            ? {
+                value: selectedMember.id,
+                label: formatStaffOptionLabel(
+                  selectedMember,
+                  recommendedMembers,
+                ),
+              }
+            : null;
+        })
+        .filter(
+          (option): option is { value: string; label: string } => !!option,
+        );
 
       return (
-        <Card withBorder mt="sm" key={appt.id}>
+        <Paper
+          withBorder
+          mt="sm"
+          key={appt.id}
+          radius="md"
+          p="md"
+          className={classes.subCard}
+        >
+          <div className={classes.subCardHeader}>
+            <Group gap="xs">
+              <Badge variant="light" color="gray" radius="xl">
+                Appointment {index + 1}
+              </Badge>
+              {selectedStaffIds.length ? (
+                <Badge variant="light" color="lime" radius="xl">
+                  {selectedStaffIds.length} assigned
+                </Badge>
+              ) : null}
+            </Group>
+            <Button
+              color="red"
+              variant="light"
+              type="button"
+              size="xs"
+              disabled={
+                isBusy ||
+                form.values.jobType === "RECURRING" ||
+                form.values.appointments.length === 1
+              }
+              onClick={() => removeAppointment(appt.id)}
+            >
+              Remove
+            </Button>
+          </div>
           <Grid>
-            <Grid.Col span={4}>
+            <Grid.Col span={{ base: 12, sm: 4 }}>
               <DatePickerInput
                 label="Date"
                 {...form.getInputProps(`appointments.${index}.startDate`)}
               />
             </Grid.Col>
 
-            <Grid.Col span={4}>
+            <Grid.Col span={{ base: 12, sm: 4 }}>
               <TimeInput
                 label="Start"
                 min={SUPPORTED_SHIFT_START}
@@ -1059,7 +1171,7 @@ export default function NewJobModal({
               />
             </Grid.Col>
 
-            <Grid.Col span={4}>
+            <Grid.Col span={{ base: 12, sm: 4 }}>
               <TimeInput
                 label="End"
                 min={SUPPORTED_SHIFT_START}
@@ -1103,11 +1215,55 @@ export default function NewJobModal({
                 }
                 data={multiSelectData}
                 onSearchChange={setSearchAssignees}
-                {...form.getInputProps(`appointments.${index}.staffId`)}
+                value={form.values.appointments[index]?.staffId ?? []}
+                onChange={(value) => {
+                  form.setFieldValue(`appointments.${index}.staffId`, value);
+                  form.setFieldValue(
+                    `appointments.${index}.leadStaffId`,
+                    getNextLeadStaffId(
+                      value,
+                      form.values.appointments[index]?.leadStaffId ?? "",
+                    ),
+                  );
+                }}
+              />
+            </Grid.Col>
+
+            <Grid.Col span={12}>
+              <Select
+                label="Team Lead"
+                description="Only the team lead or sole participant can check off the checklist."
+                placeholder={
+                  selectedStaffIds.length
+                    ? "Select team lead"
+                    : "Assign staff first"
+                }
+                disabled={!selectedStaffIds.length || isBusy}
+                data={leadOptions}
+                value={form.values.appointments[index]?.leadStaffId ?? ""}
+                onChange={(value) =>
+                  form.setFieldValue(
+                    `appointments.${index}.leadStaffId`,
+                    value ?? "",
+                  )
+                }
+              />
+            </Grid.Col>
+
+            <Grid.Col span={12}>
+              <ChecklistEditor
+                items={form.values.appointments[index]?.checklist ?? []}
+                disabled={isBusy}
+                label="Appointment Checklist"
+                description="These items will appear on the staff task screen for completion."
+                addLabel="Add checklist item"
+                onChange={(items) =>
+                  form.setFieldValue(`appointments.${index}.checklist`, items)
+                }
               />
             </Grid.Col>
           </Grid>
-        </Card>
+        </Paper>
       );
     });
 
@@ -1122,316 +1278,533 @@ export default function NewJobModal({
       closeOnEscape={!isBusy}
       withCloseButton={!isBusy}
       classNames={{
+        content: "app-modal__content",
         header: "app-modal__header",
         title: "app-modal__title",
+        body: "app-modal__body",
       }}
     >
-      <form onSubmit={form.onSubmit(handleSubmit)}>
-        <Stack gap="sm">
-          {(isUploading || isSubmitting) && (
-            <Paper p="sm" radius="lg" withBorder bg="gray.0">
-              <Group gap="xs">
-                <Loader size="sm" />
-                <Text size="sm">
-                  {isUploading
-                    ? "Uploading images. Please wait..."
-                    : "Saving job..."}
-                </Text>
-              </Group>
-            </Paper>
-          )}
-
-          <Paper>
-            <SegmentedControl
-              mt="sm"
-              color="lime"
-              value={form.values.jobType}
-              disabled={isBusy}
-              onChange={(value) =>
-                form.setFieldValue("jobType", value as JobFormValues["jobType"])
-              }
-              data={[
-                { label: "One-off", value: "ONE_OFF" },
-                { label: "Recurring", value: "RECURRING" },
-              ]}
-            />
-
-            <TextInput
-              mt="sm"
-              label="Title"
-              placeholder="Job Title"
-              disabled={isBusy}
-              {...form.getInputProps("title")}
-            />
-
-            <Grid mt="sm">
-              <Grid.Col span={6}>
-                <Select
-                  label="Client"
-                  searchable
-                  disabled={clientsLoading || isBusy}
-                  placeholder={
-                    clientsLoading
-                      ? "Loading clients..."
-                      : clientsError
-                        ? "Failed to load clients"
-                        : "Select client"
-                  }
-                  rightSection={
-                    clientsFetching ? <Loader size="xs" /> : undefined
-                  }
-                  {...form.getInputProps("clientId")}
-                  data={
-                    clientsData?.data?.map((c: Client) => ({
-                      value: c.id,
-                      label: c.companyName || `${c.firstName} ${c.lastName}`,
-                    })) || []
-                  }
-                  onSearchChange={setSearchClients}
-                />
-              </Grid.Col>
-
-              <Grid.Col span={6}>
-                <Select
-                  label="Client Address"
-                  disabled={!form.values.clientId || addressesLoading || isBusy}
-                  placeholder={
-                    !form.values.clientId
-                      ? "Select client first"
-                      : addressesLoading
-                        ? "Loading addresses..."
-                        : addressesError
-                          ? "Failed to load addresses"
-                          : "Select address"
-                  }
-                  rightSection={
-                    addressesFetching ? <Loader size="xs" /> : undefined
-                  }
-                  {...form.getInputProps("addressId")}
-                  data={
-                    addressesData?.data?.map((a) => ({
-                      value: a.id,
-                      label: `${a.street1}, ${a.city}, ${a.province}`,
-                    })) || []
-                  }
-                />
-              </Grid.Col>
-            </Grid>
-
-            <Divider my="sm" />
-
-            <Group align="center" justify="space-between">
-              <Text fw={500}>Services</Text>
-              <Button
-                size="xs"
-                type="button"
-                disabled={isBusy}
-                onClick={addLineItem}
+      <ScrollArea.Autosize mah="75dvh" offsetScrollbars>
+        <form onSubmit={form.onSubmit(handleSubmit)}>
+          <Stack gap="md" className={classes.shell} pb="xs">
+            {(isUploading || isSubmitting) && (
+              <Paper
+                p="sm"
+                radius="md"
+                withBorder
+                bg="gray.0"
+                className={classes.statusBanner}
               >
-                Add Line Item
-              </Button>
-            </Group>
+                <Group gap="xs">
+                  <Loader size="sm" />
+                  <Text size="sm">
+                    {isUploading
+                      ? "Uploading images. Please wait..."
+                      : "Saving job..."}
+                  </Text>
+                </Group>
+              </Paper>
+            )}
 
-            {form.values.lineItems.map((item, index) => (
-              <Card withBorder mt="sm" key={item.id}>
+            <Paper withBorder radius="md" p="lg" className={classes.heroCard}>
+              <Stack gap="md">
+                <Group justify="space-between" align="flex-start" wrap="wrap">
+                  <Stack gap={4}>
+                    <Text
+                      size="xs"
+                      fw={800}
+                      c="#64748b"
+                      className={classes.sectionEyebrow}
+                    >
+                      Scheduling Workspace
+                    </Text>
+                    <Text size="xl" fw={800} c="#0f172a">
+                      Build the job and its first visits in one pass
+                    </Text>
+                    <Text size="sm" c="#475569" maw={620}>
+                      Set the client, service details, schedule, assignees,
+                      checklist, and internal notes before the job goes live.
+                    </Text>
+                  </Stack>
+                  <SegmentedControl
+                    color="lime"
+                    value={form.values.jobType}
+                    disabled={isBusy}
+                    onChange={(value) =>
+                      form.setFieldValue(
+                        "jobType",
+                        value as JobFormValues["jobType"],
+                      )
+                    }
+                    data={[
+                      { label: "One-off", value: "ONE_OFF" },
+                      { label: "Recurring", value: "RECURRING" },
+                    ]}
+                  />
+                </Group>
+
+                <div className={classes.heroMeta}>
+                  <span className={classes.summaryChip}>
+                    {form.values.lineItems.length} service
+                    {form.values.lineItems.length === 1 ? "" : "s"}
+                  </span>
+                  <span className={classes.summaryChip}>
+                    {form.values.jobType === "RECURRING"
+                      ? "Recurring plan"
+                      : `${form.values.appointments.length} appointment${form.values.appointments.length === 1 ? "" : "s"}`}
+                  </span>
+                  <span className={classes.summaryChip}>
+                    {
+                      form.values.notes.filter(
+                        (note) =>
+                          note.content.trim() ||
+                          note.title.trim() ||
+                          note.uploadedImages.length > 0,
+                      ).length
+                    }{" "}
+                    note
+                    {form.values.notes.filter(
+                      (note) =>
+                        note.content.trim() ||
+                        note.title.trim() ||
+                        note.uploadedImages.length > 0,
+                    ).length === 1
+                      ? ""
+                      : "s"}
+                  </span>
+                  <span className={classes.summaryChip}>
+                    {form.values.clientId ? "Client selected" : "Choose client"}
+                  </span>
+                </div>
+              </Stack>
+            </Paper>
+
+            <Paper
+              withBorder
+              radius="md"
+              p="lg"
+              className={classes.sectionCard}
+            >
+              <Stack gap="md">
+                <div className={classes.sectionHeader}>
+                  <Stack gap={2}>
+                    <Text
+                      size="xs"
+                      fw={800}
+                      c="#64748b"
+                      className={classes.sectionEyebrow}
+                    >
+                      Core Details
+                    </Text>
+                    <Text fw={800} c="#0f172a">
+                      Client, address, and visit setup
+                    </Text>
+                  </Stack>
+                </div>
+
+                <TextInput
+                  label="Title"
+                  placeholder="Job Title"
+                  disabled={isBusy}
+                  {...form.getInputProps("title")}
+                />
+
                 <Grid>
-                  <Grid.Col span={6}>
-                    <TextInput
-                      label="Name"
-                      placeholder="Service Name"
-                      disabled={isBusy}
-                      {...form.getInputProps(`lineItems.${index}.name`)}
+                  <Grid.Col span={{ base: 12, sm: 6 }}>
+                    <Select
+                      label="Client"
+                      searchable
+                      disabled={clientsLoading || isBusy}
+                      placeholder={
+                        clientsLoading
+                          ? "Loading clients..."
+                          : clientsError
+                            ? "Failed to load clients"
+                            : "Select client"
+                      }
+                      rightSection={
+                        clientsFetching ? <Loader size="xs" /> : undefined
+                      }
+                      {...form.getInputProps("clientId")}
+                      data={
+                        clientsData?.data?.map((c: Client) => ({
+                          value: c.id,
+                          label:
+                            c.companyName || `${c.firstName} ${c.lastName}`,
+                        })) || []
+                      }
+                      onSearchChange={setSearchClients}
                     />
                   </Grid.Col>
-                  <Grid.Col span={2}>
-                    <NumberInput
-                      label="Qty"
-                      placeholder="Service Qty"
-                      min={1}
-                      disabled={isBusy}
-                      {...form.getInputProps(`lineItems.${index}.quantity`)}
-                    />
-                  </Grid.Col>
-                  <Grid.Col span={2}>
-                    <NumberInput
-                      label="Unit Cost"
-                      min={0}
-                      prefix="$"
-                      disabled={isBusy}
-                      {...form.getInputProps(`lineItems.${index}.unitCost`)}
-                    />
-                  </Grid.Col>
-                  <Grid.Col span={2}>
-                    <NumberInput
-                      label="Unit Price"
-                      min={0}
-                      prefix="$"
-                      disabled={isBusy}
-                      {...form.getInputProps(`lineItems.${index}.unitPrice`)}
+
+                  <Grid.Col span={{ base: 12, sm: 6 }}>
+                    <Select
+                      label="Client Address"
+                      disabled={
+                        !form.values.clientId || addressesLoading || isBusy
+                      }
+                      placeholder={
+                        !form.values.clientId
+                          ? "Select client first"
+                          : addressesLoading
+                            ? "Loading addresses..."
+                            : addressesError
+                              ? "Failed to load addresses"
+                              : "Select address"
+                      }
+                      rightSection={
+                        addressesFetching ? <Loader size="xs" /> : undefined
+                      }
+                      {...form.getInputProps("addressId")}
+                      data={
+                        addressesData?.data?.map((a) => ({
+                          value: a.id,
+                          label: `${a.street1}, ${a.city}, ${a.province}`,
+                        })) || []
+                      }
                     />
                   </Grid.Col>
                 </Grid>
 
-                <Textarea
-                  mt="sm"
-                  label="Description"
+                <Checkbox
+                  label="Allow anytime scheduling for this job"
                   disabled={isBusy}
-                  {...form.getInputProps(`lineItems.${index}.description`)}
+                  checked={form.values.isAnytime}
+                  onChange={(event) =>
+                    form.setFieldValue("isAnytime", event.currentTarget.checked)
+                  }
                 />
-              </Card>
-            ))}
 
-            <Divider my="sm" />
+                <Textarea
+                  label="Visit Instructions"
+                  placeholder="Parking, access instructions, alarm details, or service expectations"
+                  minRows={3}
+                  disabled={isBusy}
+                  {...form.getInputProps("visitInstructions")}
+                />
+              </Stack>
+            </Paper>
+
+            <Paper
+              withBorder
+              radius="md"
+              p="lg"
+              className={classes.sectionCard}
+            >
+              <Stack gap="md">
+                <div className={classes.sectionHeader}>
+                  <Stack gap={2}>
+                    <Text
+                      size="xs"
+                      fw={800}
+                      c="#64748b"
+                      className={classes.sectionEyebrow}
+                    >
+                      Services
+                    </Text>
+                    <Text fw={800} c="#0f172a">
+                      Define what is being delivered
+                    </Text>
+                  </Stack>
+                  <Button
+                    size="xs"
+                    type="button"
+                    disabled={isBusy}
+                    onClick={addLineItem}
+                  >
+                    Add Line Item
+                  </Button>
+                </div>
+
+                {form.values.lineItems.map((item, index) => (
+                  <Paper
+                    withBorder
+                    radius="md"
+                    p="md"
+                    key={item.id}
+                    className={classes.subCard}
+                  >
+                    <div className={classes.subCardHeader}>
+                      <Badge variant="light" color="gray" radius="xl">
+                        Line Item {index + 1}
+                      </Badge>
+                      <Button
+                        color="red"
+                        variant="light"
+                        size="xs"
+                        type="button"
+                        disabled={isBusy}
+                        onClick={() => removeLineItem(item.id)}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                    <Grid>
+                      <Grid.Col span={{ base: 12, sm: 6 }}>
+                        <TextInput
+                          label="Name"
+                          placeholder="Service Name"
+                          disabled={isBusy}
+                          {...form.getInputProps(`lineItems.${index}.name`)}
+                        />
+                      </Grid.Col>
+                      <Grid.Col span={{ base: 12, sm: 2 }}>
+                        <NumberInput
+                          label="Qty"
+                          placeholder="Service Qty"
+                          min={1}
+                          disabled={isBusy}
+                          {...form.getInputProps(`lineItems.${index}.quantity`)}
+                        />
+                      </Grid.Col>
+                      <Grid.Col span={{ base: 12, sm: 2 }}>
+                        <NumberInput
+                          label="Unit Cost"
+                          min={0}
+                          prefix="$"
+                          disabled={isBusy}
+                          {...form.getInputProps(`lineItems.${index}.unitCost`)}
+                        />
+                      </Grid.Col>
+                      <Grid.Col span={{ base: 12, sm: 2 }}>
+                        <NumberInput
+                          label="Unit Price"
+                          min={0}
+                          prefix="$"
+                          disabled={isBusy}
+                          {...form.getInputProps(
+                            `lineItems.${index}.unitPrice`,
+                          )}
+                        />
+                      </Grid.Col>
+                    </Grid>
+
+                    <Textarea
+                      mt="sm"
+                      label="Description"
+                      disabled={isBusy}
+                      {...form.getInputProps(`lineItems.${index}.description`)}
+                    />
+                  </Paper>
+                ))}
+              </Stack>
+            </Paper>
 
             {form.values.jobType === "RECURRING" && (
-              <Card withBorder mt="sm">
-                <Text fw={500} mb="xs">
-                  Recurrence
-                </Text>
+              <Paper
+                withBorder
+                radius="md"
+                p="lg"
+                className={classes.sectionCard}
+              >
+                <Stack gap="md">
+                  <div className={classes.sectionHeader}>
+                    <Stack gap={2}>
+                      <Text
+                        size="xs"
+                        fw={800}
+                        c="#64748b"
+                        className={classes.sectionEyebrow}
+                      >
+                        Recurrence
+                      </Text>
+                      <Text fw={800} c="#0f172a">
+                        Control how often this job repeats
+                      </Text>
+                    </Stack>
+                  </div>
 
-                <Grid>
-                  <Grid.Col span={6}>
-                    <Select
-                      label="Frequency"
-                      disabled={isBusy}
-                      data={[
-                        { value: "weekly", label: "Weekly" },
-                        { value: "monthly", label: "Monthly" },
-                      ]}
-                      value={form.values.recurrence.frequency}
-                      onChange={(v: string | null) =>
-                        form.setFieldValue(
-                          "recurrence.frequency",
-                          (v ?? "weekly") as RecurrenceForm["frequency"],
-                        )
-                      }
-                    />
-                  </Grid.Col>
+                  <Grid>
+                    <Grid.Col span={{ base: 12, sm: 6 }}>
+                      <Select
+                        label="Frequency"
+                        disabled={isBusy}
+                        data={[
+                          { value: "weekly", label: "Weekly" },
+                          { value: "monthly", label: "Monthly" },
+                        ]}
+                        value={form.values.recurrence.frequency}
+                        onChange={(v: string | null) =>
+                          form.setFieldValue(
+                            "recurrence.frequency",
+                            (v ?? "weekly") as RecurrenceForm["frequency"],
+                          )
+                        }
+                      />
+                    </Grid.Col>
 
-                  <Grid.Col span={6}>
-                    <NumberInput
-                      label={`Every (${form.values.recurrence.frequency === "weekly" ? "weeks" : "months"})`}
-                      min={1}
-                      disabled={isBusy}
-                      value={form.values.recurrence.interval}
-                      onChange={(v) =>
-                        form.setFieldValue(
-                          "recurrence.interval",
-                          Number(v) || 1,
-                        )
-                      }
-                    />
-                  </Grid.Col>
-
-                  <Grid.Col span={12}>
-                    <Radio.Group
-                      label="Ends"
-                      value={form.values.recurrence.endType}
-                      onChange={(v: string) =>
-                        form.setFieldValue(
-                          "recurrence.endType",
-                          v as RecurrenceForm["endType"],
-                        )
-                      }
-                    >
-                      <Stack gap="xs" mt="xs">
-                        <Radio value="after" label="After" disabled={isBusy} />
-                        <Radio value="on" label="On date" disabled={isBusy} />
-                      </Stack>
-                    </Radio.Group>
-                  </Grid.Col>
-
-                  {form.values.recurrence.endType === "after" && (
-                    <Grid.Col span={6}>
+                    <Grid.Col span={{ base: 12, sm: 6 }}>
                       <NumberInput
-                        label="Occurrences"
+                        label={`Every (${form.values.recurrence.frequency === "weekly" ? "weeks" : "months"})`}
                         min={1}
                         disabled={isBusy}
-                        value={form.values.recurrence.endsAfter}
+                        value={form.values.recurrence.interval}
                         onChange={(v) =>
                           form.setFieldValue(
-                            "recurrence.endsAfter",
+                            "recurrence.interval",
                             Number(v) || 1,
                           )
                         }
                       />
                     </Grid.Col>
-                  )}
 
-                  {form.values.recurrence.endType === "on" && (
-                    <Grid.Col span={6}>
-                      <DatePickerInput
-                        label="End date"
-                        placeholder="End date"
-                        disabled={isBusy}
-                        value={form.values.recurrence.endsOn ?? null}
-                        onChange={(d) =>
+                    <Grid.Col span={12}>
+                      <Radio.Group
+                        label="Ends"
+                        value={form.values.recurrence.endType}
+                        onChange={(v: string) =>
                           form.setFieldValue(
-                            "recurrence.endsOn",
-                            d as Date | null,
+                            "recurrence.endType",
+                            v as RecurrenceForm["endType"],
                           )
                         }
-                        minDate={
-                          form.values.appointments?.[0]?.startDate ?? undefined
-                        }
-                      />
+                      >
+                        <Stack gap="xs" mt="xs">
+                          <Radio
+                            value="after"
+                            label="After"
+                            disabled={isBusy}
+                          />
+                          <Radio value="on" label="On date" disabled={isBusy} />
+                        </Stack>
+                      </Radio.Group>
                     </Grid.Col>
-                  )}
-                </Grid>
-              </Card>
+
+                    {form.values.recurrence.endType === "after" && (
+                      <Grid.Col span={{ base: 12, sm: 6 }}>
+                        <NumberInput
+                          label="Occurrences"
+                          min={1}
+                          disabled={isBusy}
+                          value={form.values.recurrence.endsAfter}
+                          onChange={(v) =>
+                            form.setFieldValue(
+                              "recurrence.endsAfter",
+                              Number(v) || 1,
+                            )
+                          }
+                        />
+                      </Grid.Col>
+                    )}
+
+                    {form.values.recurrence.endType === "on" && (
+                      <Grid.Col span={{ base: 12, sm: 6 }}>
+                        <DatePickerInput
+                          label="End date"
+                          placeholder="End date"
+                          disabled={isBusy}
+                          value={form.values.recurrence.endsOn ?? null}
+                          onChange={(d) =>
+                            form.setFieldValue(
+                              "recurrence.endsOn",
+                              d as Date | null,
+                            )
+                          }
+                          minDate={
+                            form.values.appointments?.[0]?.startDate ??
+                            undefined
+                          }
+                        />
+                      </Grid.Col>
+                    )}
+                  </Grid>
+                </Stack>
+              </Paper>
             )}
 
-            <Group align="center" justify="space-between" mt="sm">
-              <Text fw={500}>Appointments</Text>
-              <Button
-                size="xs"
-                type="button"
-                disabled={isBusy || form.values.jobType === "RECURRING"}
-                onClick={addAppointment}
-              >
-                Add Appointment
-              </Button>
-            </Group>
-
-            {renderAppointments()}
-          </Paper>
-
-          <Divider my="sm" />
-
-          <Group align="center" justify="space-between">
-            <Text fw={500}>Notes</Text>
-            <Button
-              size="xs"
-              type="button"
-              disabled={isBusy}
-              onClick={addJobNote}
+            <Paper
+              withBorder
+              radius="md"
+              p="lg"
+              className={classes.sectionCard}
             >
-              Add Notes
-            </Button>
-          </Group>
+              <Stack gap="md">
+                <div className={classes.sectionHeader}>
+                  <Stack gap={2}>
+                    <Text
+                      size="xs"
+                      fw={800}
+                      c="#64748b"
+                      className={classes.sectionEyebrow}
+                    >
+                      Appointments
+                    </Text>
+                    <Text fw={800} c="#0f172a">
+                      Plan who goes, when, and what gets checked off
+                    </Text>
+                  </Stack>
+                  <Button
+                    size="xs"
+                    type="button"
+                    disabled={isBusy || form.values.jobType === "RECURRING"}
+                    onClick={addAppointment}
+                  >
+                    Add Appointment
+                  </Button>
+                </div>
 
-          {renderJobNotes()}
+                {renderAppointments()}
+              </Stack>
+            </Paper>
 
-          <Group justify="right" mt="md">
-            <Button
-              variant="default"
-              onClick={handleClose}
-              type="button"
-              disabled={isBusy}
+            <Paper
+              withBorder
+              radius="md"
+              p="lg"
+              className={classes.sectionCard}
             >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              color="green"
-              loading={isSubmitting}
-              disabled={isBusy}
-            >
-              {isUploading ? "Uploading..." : "Save Job"}
-            </Button>
-          </Group>
-        </Stack>
-      </form>
+              <Stack gap="md">
+                <div className={classes.sectionHeader}>
+                  <Stack gap={2}>
+                    <Text
+                      size="xs"
+                      fw={800}
+                      c="#64748b"
+                      className={classes.sectionEyebrow}
+                    >
+                      Job Notes
+                    </Text>
+                    <Text fw={800} c="#0f172a">
+                      Capture internal context and supporting images
+                    </Text>
+                  </Stack>
+                  <Button
+                    size="xs"
+                    type="button"
+                    disabled={isBusy}
+                    onClick={addJobNote}
+                  >
+                    Add Note
+                  </Button>
+                </div>
+
+                {renderJobNotes()}
+              </Stack>
+            </Paper>
+
+            <Paper withBorder radius="md" p="md">
+              <Group justify="right">
+                <Button
+                  variant="default"
+                  onClick={handleClose}
+                  type="button"
+                  disabled={isBusy}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  color="lime"
+                  loading={isSubmitting}
+                  disabled={isBusy}
+                >
+                  {isUploading ? "Uploading..." : "Save Job"}
+                </Button>
+              </Group>
+            </Paper>
+          </Stack>
+        </form>
+      </ScrollArea.Autosize>
     </Modal>
   );
 }

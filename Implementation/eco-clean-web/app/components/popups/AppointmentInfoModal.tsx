@@ -6,14 +6,13 @@ import {
   Badge,
   Box,
   Button,
-  Divider,
   Group,
-  Image,
   Modal,
   MultiSelect,
   Paper,
   Select,
   SimpleGrid,
+  ScrollArea,
   Stack,
   Text,
   Textarea,
@@ -25,33 +24,46 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { notifications } from "@mantine/notifications";
 import {
   IoCalendar,
+  IoCheckmarkDone,
   IoClose,
   IoDocumentText,
-  IoLocation,
   IoPeople,
   IoPerson,
   IoPricetag,
-  IoTime,
-} from "react-icons/io5";
+  IoTimer,
+} from "@/lib/icons";
 
 import Loader from "../UI/Loader";
 import { useDashboardUI } from "@/stores/store";
 import { useAppointment } from "@/hooks/useAppointment";
 import { getStaff } from "@/lib/api/users";
+import {
+  formatStaffOptionLabel,
+} from "@/lib/appointments/staffAvailability";
 import { updateAppointment } from "@/lib/api/appointments";
 import { dateOnlyAndHHmmToIso, isoToDateOnly, isoToHHmm } from "@/lib/dateTime";
 import { deleteAppointmentImage } from "@/lib/uploadthing";
 import {
   AppointmentStatus,
   AppointmentWithRelations,
+  CandidateResponse,
+  CandidateStaff,
   JobAddress,
   JobClient,
   Staff,
+  StaffUser,
+  WorkSession,
 } from "@/types";
 import { PaginatedResponse } from "@/types/api";
 import { queryKeys } from "@/lib/queryKeys";
+import ChecklistEditor, {
+  ChecklistDraftItem,
+  createChecklistDraftItem,
+} from "../appointments/ChecklistEditor";
+import ImageViewer from "../media/ImageViewer";
 
 import classes from "./AppointmentInfoModal.module.css";
+
 type AppointmentCache = AppointmentWithRelations;
 
 type FormValues = {
@@ -60,6 +72,8 @@ type FormValues = {
   endTime: string;
   status: AppointmentStatus;
   staff: string[];
+  leadStaffId: string;
+  checklist: ChecklistDraftItem[];
   note: string;
 };
 
@@ -91,6 +105,15 @@ function formatDateOnly(value?: string | null) {
   }).format(date);
 }
 
+function formatDurationMinutes(totalMinutes: number) {
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (hours <= 0) return `${minutes}m`;
+  if (minutes === 0) return `${hours}h`;
+  return `${hours}h ${minutes}m`;
+}
+
 function buildClientName(client?: JobClient | null) {
   if (!client) return "—";
 
@@ -118,6 +141,40 @@ function buildAddress(address?: JobAddress | null) {
     .join(", ");
 }
 
+function getStatusColor(status: AppointmentStatus) {
+  if (status === "COMPLETED") return "lime";
+  if (status === "CANCELLED") return "red";
+  if (status === "LATE") return "orange";
+  return "blue";
+}
+
+async function getAssignmentCandidates(
+  addressId: string,
+  appointmentStart: string,
+  appointmentEnd: string,
+): Promise<CandidateResponse> {
+  const params = new URLSearchParams({
+    appointmentStart,
+    appointmentEnd,
+  });
+
+  const res = await fetch(
+    `/api/assignment/candidate/${addressId}?${params.toString()}`,
+    {
+      method: "GET",
+      cache: "no-store",
+    },
+  );
+
+  const data = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    throw new Error(data?.error || "Failed to fetch assignment candidates");
+  }
+
+  return data;
+}
+
 function ReadOnlyItem({
   icon,
   label,
@@ -128,9 +185,9 @@ function ReadOnlyItem({
   value: React.ReactNode;
 }) {
   return (
-    <Paper withBorder radius="lg" p="sm">
+    <Paper withBorder radius="md" p="sm" className={classes.infoCard}>
       <Group align="flex-start" wrap="nowrap">
-        <ThemeIcon variant="filled" size="lg" radius="xl">
+        <ThemeIcon variant="light" size="lg" radius="md" color="lime">
           {icon}
         </ThemeIcon>
 
@@ -147,6 +204,32 @@ function ReadOnlyItem({
   );
 }
 
+function MetricCard({
+  label,
+  value,
+  meta,
+}: {
+  label: string;
+  value: React.ReactNode;
+  meta?: React.ReactNode;
+}) {
+  return (
+    <Paper withBorder radius="md" p="md" className={classes.metricCard}>
+      <Text size="xs" fw={700} tt="uppercase" c="dimmed">
+        {label}
+      </Text>
+      <Text mt={6} size="xl" fw={800}>
+        {value}
+      </Text>
+      {meta ? (
+        <Text mt={4} size="sm" c="dimmed">
+          {meta}
+        </Text>
+      ) : null}
+    </Paper>
+  );
+}
+
 export default function AppointmentInfoModal({ onSuccess }: Props) {
   const {
     appointmentOpen,
@@ -156,7 +239,9 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
     selectedApptId,
   } = useDashboardUI();
 
-  const { data: appointment, isLoading } = useAppointment(selectedApptId);
+  const { data: appointment, isLoading } = useAppointment(selectedApptId, {
+    live: false,
+  });
   const qc = useQueryClient();
 
   const { data: staffData, isLoading: staffLoading } = useQuery<
@@ -167,13 +252,6 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
     staleTime: 60_000,
   });
 
-  const staffOptions = useMemo(() => {
-    return (staffData?.data ?? []).map((s) => ({
-      value: s.id,
-      label: s.name,
-    }));
-  }, [staffData]);
-
   const form = useForm<FormValues>({
     mode: "controlled",
     initialValues: {
@@ -182,14 +260,67 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
       endTime: "",
       status: "SCHEDULED",
       staff: [],
+      leadStaffId: "",
+      checklist: [],
       note: "",
     },
     validate: {
-      date: (v) => (!v ? "Date is required" : null),
-      startTime: (v) => (!isValidHHmm(v) ? "Start time is required" : null),
-      endTime: (v) => (!isValidHHmm(v) ? "End time is required" : null),
+      date: (value) => (!value ? "Date is required" : null),
+      startTime: (value) =>
+        !isValidHHmm(value) ? "Start time is required" : null,
+      endTime: (value) => (!isValidHHmm(value) ? "End time is required" : null),
     },
   });
+
+  const appointmentStartIso =
+    form.values.date && isValidHHmm(form.values.startTime)
+      ? dateOnlyAndHHmmToIso(form.values.date, form.values.startTime)
+      : null;
+  const appointmentEndIso =
+    form.values.date && isValidHHmm(form.values.endTime)
+      ? dateOnlyAndHHmmToIso(form.values.date, form.values.endTime)
+      : null;
+
+  const { data: candidateData, isLoading: candidateLoading } = useQuery({
+    queryKey: [
+      "assignment-candidates",
+      appointment?.job?.address?.id ?? null,
+      appointmentStartIso,
+      appointmentEndIso,
+    ],
+    queryFn: () =>
+      getAssignmentCandidates(
+        appointment!.job!.address!.id,
+        appointmentStartIso!,
+        appointmentEndIso!,
+      ),
+    enabled:
+      appointmentOpen &&
+      !!appointment?.job?.address?.id &&
+      !!appointmentStartIso &&
+      !!appointmentEndIso,
+    staleTime: 60_000,
+  });
+
+  const recommendedMembers = useMemo(
+    () => candidateData?.data.recommendedMembers ?? [],
+    [candidateData],
+  );
+  const staffMembers = useMemo(
+    () =>
+      candidateData?.data.staffMembers?.length
+        ? candidateData.data.staffMembers
+        : ((staffData?.data as CandidateStaff[] | undefined) ?? []),
+    [candidateData, staffData],
+  );
+  const staffOptions = useMemo(
+    () =>
+      staffMembers.map((staff) => ({
+        value: staff.id,
+        label: formatStaffOptionLabel(staff, recommendedMembers),
+      })),
+    [recommendedMembers, staffMembers],
+  );
 
   const latestAppointmentNote =
     appointment?.notes
@@ -215,22 +346,44 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
 
   const assignmentIdsKey =
     appointment?.assignments
-      ?.map((assignment) => assignment.staff.id)
+      ?.map(
+        (assignment) =>
+          `${assignment.staff.id}:${assignment.isTeamLead ? "lead" : "member"}`,
+      )
       .join(",") ?? "";
   const appointmentNotesKey =
     appointment?.notes
       ?.map((note) => `${note.id}-${note.createdAt}`)
       .join(",") ?? "";
+  const checklistKey =
+    appointment?.checklistItems
+      ?.map(
+        (item) =>
+          `${item.id}:${item.label}:${item.sortOrder}:${item.isCompleted ? "1" : "0"}`,
+      )
+      .join(",") ?? "";
 
   useEffect(() => {
     if (!appointment) return;
+
+    const assignedStaffIds = (appointment.assignments ?? []).map(
+      (assignment) => assignment.staff.id,
+    );
+    const explicitLead = appointment.assignments?.find(
+      (assignment) => assignment.isTeamLead,
+    )?.staff.id;
 
     form.setValues({
       date: isoToDateOnly(appointment.startTime),
       startTime: isoToHHmm(appointment.startTime),
       endTime: isoToHHmm(appointment.endTime),
       status: appointment.status,
-      staff: (appointment.assignments ?? []).map((a) => a.staff.id),
+      staff: assignedStaffIds,
+      leadStaffId:
+        explicitLead ?? (assignedStaffIds.length === 1 ? assignedStaffIds[0] : ""),
+      checklist: (appointment.checklistItems ?? []).map((item) =>
+        createChecklistDraftItem(item.label, item.id),
+      ),
       note: latestAppointmentNote,
     });
 
@@ -243,6 +396,7 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
     appointment?.status,
     assignmentIdsKey,
     appointmentNotesKey,
+    checklistKey,
   ]);
 
   const handleClose = () => {
@@ -272,6 +426,13 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
       endTime: endIso,
       status: form.values.status,
       staffIds: form.values.staff,
+      leadStaffId: form.values.leadStaffId || null,
+      checklist: form.values.checklist
+        .map((item) => ({
+          ...(item.persistedId ? { id: item.persistedId } : {}),
+          label: item.label.trim(),
+        }))
+        .filter((item) => item.label.length > 0),
       note: form.values.note?.trim() || null,
     });
 
@@ -292,10 +453,20 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
   };
 
   const apptKey = queryKeys.appointments.detail(selectedApptId);
+  const selectedLeadOptions = form.values.staff
+    .map((staffId) => {
+      const staffMember = staffMembers.find((staff) => staff.id === staffId);
+      return staffMember
+        ? {
+            value: staffMember.id,
+            label: formatStaffOptionLabel(staffMember, recommendedMembers),
+          }
+        : null;
+    })
+    .filter((option): option is { value: string; label: string } => !!option);
 
   const deleteImageMutation = useMutation({
     mutationFn: (imageId: string) => deleteAppointmentImage(imageId),
-
     onMutate: async (imageId: string) => {
       await qc.cancelQueries({ queryKey: apptKey });
 
@@ -312,28 +483,86 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
 
       return { prev };
     },
-
-    onError: (_err, _imageId, ctx) => {
-      if (ctx?.prev) {
-        qc.setQueryData(apptKey, ctx.prev);
+    onError: (_error, _imageId, context) => {
+      if (context?.prev) {
+        qc.setQueryData(apptKey, context.prev);
       }
     },
-
     onSettled: () => {
       qc.invalidateQueries({ queryKey: apptKey });
       onSuccess();
     },
   });
 
+  const start = appointment
+    ? new Date(appointment.startTime)
+    : null;
+  const end = appointment ? new Date(appointment.endTime) : null;
+  const scheduledMinutes =
+    start && end
+      ? Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000))
+      : 0;
+  const workSessions = (appointment?.workSessions ?? []).slice().sort((a, b) => {
+    return new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime();
+  });
+  const totalWorkedMinutes = workSessions.reduce((total, session) => {
+    if (!session.endedAt) return total;
+
+    return (
+      total +
+      Math.max(
+        0,
+        Math.round(
+          (new Date(session.endedAt).getTime() -
+            new Date(session.startedAt).getTime()) /
+            60000,
+        ),
+      )
+    );
+  }, 0);
+  const activeSessionCount = workSessions.filter((session) => !session.endedAt).length;
+  const leadAssignment = appointment?.assignments?.find(
+    (assignment) => assignment.isTeamLead,
+  );
+  const checklistCompletedCount =
+    appointment?.checklistItems?.filter((item) => item.isCompleted).length ?? 0;
+  const checklistTotalCount = appointment?.checklistItems?.length ?? 0;
+  const visitNotesCount = sortedAppointmentNotes.length;
+  const recurrenceSummary = appointment?.job?.recurrence
+    ? `${appointment.job.recurrence.frequency} every ${appointment.job.recurrence.interval}`
+    : "Not recurring";
+
+  if (!appointment) {
+    return (
+      <Modal
+        size="72rem"
+        title="Appointment Details"
+        opened={appointmentOpen}
+        onClose={handleClose}
+        centered
+        closeOnClickOutside={false}
+        classNames={{
+          content: "app-modal__content",
+          header: "app-modal__header",
+          title: "app-modal__title",
+          body: "app-modal__body",
+        }}
+      >
+        {isLoading ? <Loader /> : null}
+      </Modal>
+    );
+  }
+
   return (
     <Modal
-      size="xl"
+      size="72rem"
       title="Appointment Details"
       opened={appointmentOpen}
       onClose={handleClose}
       centered
       closeOnClickOutside={false}
       classNames={{
+        content: "app-modal__content",
         header: "app-modal__header",
         title: "app-modal__title",
         body: "app-modal__body",
@@ -341,376 +570,658 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
     >
       {isLoading ? (
         <Loader />
-      ) : !appointment ? null : (
-        <Paper radius="lg">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleSave();
-            }}
-          >
-            <Stack gap="lg">
-              <Paper withBorder radius="lg" p="md">
-                <Group justify="space-between" align="center" wrap="wrap">
-                  <Group gap="sm" wrap="nowrap" align="flex-start">
+      ) : (
+        <ScrollArea.Autosize mah="75dvh" offsetScrollbars>
+          <Paper radius="md">
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                handleSave();
+              }}
+            >
+              <Stack gap="lg" pb="xs">
+                <Paper withBorder radius="md" p="lg" className={classes.heroCard}>
+                <Group justify="space-between" align="flex-start" gap="md" wrap="wrap">
+                  <Stack gap={8} maw={700}>
+                    <Group gap="xs" wrap="wrap">
+                      <Badge
+                        color={getStatusColor(appointment.status)}
+                        variant="light"
+                        radius="md"
+                      >
+                        {appointment.status}
+                      </Badge>
+                      <Badge color="gray" variant="outline" radius="md">
+                        {appointment.job?.type || "Job"}
+                      </Badge>
+                      {leadAssignment ? (
+                        <Badge color="teal" variant="light" radius="md">
+                          Lead: {leadAssignment.staff.name}
+                        </Badge>
+                      ) : null}
+                    </Group>
+
                     <Box>
-                      <Text size="xs" fw={700} c="dimmed">
+                      <Text size="xs" fw={800} tt="uppercase" c="dimmed">
                         Parent Job
                       </Text>
-                      <Text fw={700} size="md">
+                      <Text fw={800} size="xl" mt={4}>
                         {appointment.job?.title || "Untitled job"}
                       </Text>
-                      <Text size="sm" c="dimmed">
+                      <Text size="sm" c="dimmed" mt={2}>
                         {buildClientName(appointment.job?.client)}
                       </Text>
-                      <Text size="sm" c="dimmed" lineClamp={2}>
+                      <Text size="sm" c="dimmed" mt={2}>
                         {buildAddress(appointment.job?.address)}
                       </Text>
                     </Box>
-                  </Group>
+                  </Stack>
 
-                  <Button
-                    radius="xl"
-                    variant="filled"
-                    size="sm"
-                    onClick={() => {
-                      closeAppointment();
-                      openEditJob();
-                    }}
-                    disabled={!appointment.job?.id}
-                  >
-                    Edit Job
-                  </Button>
+                  <Group gap="xs">
+                    <Button
+                      radius="md"
+                      variant="light"
+                      onClick={() => {
+                        closeAppointment();
+                        openEditJob();
+                      }}
+                      disabled={!appointment.job?.id}
+                    >
+                      Edit Job
+                    </Button>
+                    <Button
+                      color="red"
+                      radius="md"
+                      variant="light"
+                      onClick={() => openConfirmCancel("APPOINTMENT")}
+                    >
+                      Delete Appointment
+                    </Button>
+                  </Group>
                 </Group>
+
+                <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} mt="lg">
+                  <MetricCard
+                    label="Scheduled Window"
+                    value={formatDurationMinutes(scheduledMinutes)}
+                    meta={`${formatDateTime(appointment.startTime)} → ${formatDateTime(
+                      appointment.endTime,
+                    )}`}
+                  />
+                  <MetricCard
+                    label="Logged Time"
+                    value={formatDurationMinutes(totalWorkedMinutes)}
+                    meta={`${workSessions.length} work session${workSessions.length === 1 ? "" : "s"}`}
+                  />
+                  <MetricCard
+                    label="Checklist"
+                    value={`${checklistCompletedCount}/${checklistTotalCount}`}
+                    meta={
+                      checklistTotalCount
+                        ? "Completed items"
+                        : "No checklist assigned"
+                    }
+                  />
+                  <MetricCard
+                    label="Activity"
+                    value={activeSessionCount}
+                    meta={
+                      activeSessionCount === 1
+                        ? "1 active session"
+                        : `${activeSessionCount} active sessions`
+                    }
+                  />
+                </SimpleGrid>
               </Paper>
 
-              <Divider label="Appointment Information" labelPosition="left" />
-
-              <SimpleGrid cols={{ base: 1, sm: 2 }}>
-                <DateInput
-                  label="Date"
-                  value={form.values.date}
-                  onChange={(value) =>
-                    form.setFieldValue("date", value ? new Date(value) : null)
-                  }
-                  error={form.errors.date}
-                />
-
-                <Select
-                  label="Status"
-                  data={[
-                    { value: "SCHEDULED", label: "Scheduled" },
-                    { value: "COMPLETED", label: "Completed" },
-                    { value: "CANCELLED", label: "Cancelled" },
-                  ]}
-                  allowDeselect={false}
-                  {...form.getInputProps("status")}
-                />
-              </SimpleGrid>
-
-              <SimpleGrid cols={{ base: 1, sm: 2 }}>
-                <TimeInput
-                  label="Start Time"
-                  value={form.values.startTime}
-                  onChange={(e) =>
-                    form.setFieldValue("startTime", e.currentTarget.value)
-                  }
-                  error={form.errors.startTime}
-                />
-
-                <TimeInput
-                  label="End Time"
-                  value={form.values.endTime}
-                  onChange={(e) =>
-                    form.setFieldValue("endTime", e.currentTarget.value)
-                  }
-                  error={form.errors.endTime}
-                />
-              </SimpleGrid>
-
-              <MultiSelect
-                label="Assigned Staff"
-                data={staffOptions}
-                searchable
-                nothingFoundMessage={
-                  staffLoading ? "Loading staff..." : "No staff"
-                }
-                {...form.getInputProps("staff")}
-              />
-
-              <Textarea
-                id="appointment-note-textarea"
-                label="Latest Appointment Note"
-                description="This updates the current internal visit note."
-                autosize
-                minRows={3}
-                placeholder="Add internal note for this visit..."
-                {...form.getInputProps("note")}
-              />
-
-              {!!sortedAppointmentNotes.length && (
-                <Stack gap="xs">
-                  <Text fw={600} size="sm">
-                    Appointment Note History
-                  </Text>
-
-                  {sortedAppointmentNotes.map((note) => (
-                    <Paper key={note.id} withBorder radius="lg" p="sm">
-                      <Group justify="space-between" align="flex-start" mb={6}>
-                        <Badge
-                          variant="light"
-                          color={note.isClientVisible ? "blue" : "gray"}
-                        >
-                          {note.isClientVisible ? "Client visible" : "Internal"}
-                        </Badge>
-
-                        <Text size="xs" c="dimmed">
-                          {formatDateTime(note.createdAt)}
+              <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="lg">
+                <Stack gap="lg">
+                  <Paper withBorder radius="md" p="lg" className={classes.sectionCard}>
+                    <Group mb="md" gap="xs">
+                      <ThemeIcon radius="md" variant="light" color="blue">
+                        <IoCalendar size={18} />
+                      </ThemeIcon>
+                      <Box>
+                        <Text fw={700}>Appointment Setup</Text>
+                        <Text size="sm" c="dimmed">
+                          Scheduling, status, assignments, and lead ownership.
                         </Text>
-                      </Group>
+                      </Box>
+                    </Group>
 
-                      <Text size="sm">{note.content || "—"}</Text>
-                    </Paper>
-                  ))}
-                </Stack>
-              )}
-
-              {!!appointment.images?.length && (
-                <Stack gap="xs">
-                  <Text fw={600} size="sm">
-                    Appointment Images
-                  </Text>
-
-                  <Group wrap="wrap" gap="xs">
-                    {appointment.images.map((img) => (
-                      <Paper
-                        key={img.id}
-                        radius="lg"
-                        withBorder
-                        className={classes.thumbnailCard}
-                      >
-                        <Image
-                          src={img.url}
-                          alt="appointment attachment"
-                          w={88}
-                          h={88}
-                          fit="cover"
+                    <Stack gap="md">
+                      <SimpleGrid cols={{ base: 1, sm: 2 }}>
+                        <DateInput
+                          label="Date"
+                          value={form.values.date}
+                          onChange={(value) =>
+                            form.setFieldValue("date", value ? new Date(value) : null)
+                          }
+                          error={form.errors.date}
                         />
 
-                        <ActionIcon
-                          size="sm"
-                          variant="filled"
-                          color="dark"
-                          className={classes.thumbnailAction}
-                          loading={deleteImageMutation.isPending}
-                          onClick={() => deleteImageMutation.mutate(img.id)}
-                          aria-label="Delete image"
-                        >
-                          <IoClose size={14} />
-                        </ActionIcon>
-                      </Paper>
-                    ))}
-                  </Group>
-                </Stack>
-              )}
+                        <Select
+                          label="Status"
+                          data={[
+                            { value: "SCHEDULED", label: "Scheduled" },
+                            { value: "COMPLETED", label: "Completed" },
+                            { value: "CANCELLED", label: "Cancelled" },
+                          ]}
+                          allowDeselect={false}
+                          {...form.getInputProps("status")}
+                        />
+                      </SimpleGrid>
 
-              <Divider label="Job Details" labelPosition="left" />
+                      <SimpleGrid cols={{ base: 1, sm: 2 }}>
+                        <TimeInput
+                          label="Start Time"
+                          value={form.values.startTime}
+                          onChange={(event) =>
+                            form.setFieldValue("startTime", event.currentTarget.value)
+                          }
+                          error={form.errors.startTime}
+                        />
 
-              <SimpleGrid cols={{ base: 1, sm: 2 }}>
-                <ReadOnlyItem
-                  icon={<IoDocumentText size={18} />}
-                  label="Job Title"
-                  value={appointment.job?.title || "—"}
-                />
+                        <TimeInput
+                          label="End Time"
+                          value={form.values.endTime}
+                          onChange={(event) =>
+                            form.setFieldValue("endTime", event.currentTarget.value)
+                          }
+                          error={form.errors.endTime}
+                        />
+                      </SimpleGrid>
 
-                <ReadOnlyItem
-                  icon={<IoPricetag size={18} />}
-                  label="Job Type"
-                  value={appointment.job?.type || "—"}
-                />
+                      <MultiSelect
+                        label="Assigned Staff"
+                        data={staffOptions}
+                        searchable
+                        nothingFoundMessage={
+                          staffLoading || candidateLoading
+                            ? "Loading staff..."
+                            : "No staff"
+                        }
+                        rightSection={
+                          candidateLoading ? <Loader size="xs" /> : undefined
+                        }
+                        value={form.values.staff}
+                        onChange={(value) => {
+                          form.setFieldValue("staff", value);
+                          form.setFieldValue(
+                            "leadStaffId",
+                            value.length === 1
+                              ? value[0]
+                              : value.includes(form.values.leadStaffId)
+                                ? form.values.leadStaffId
+                                : "",
+                          );
+                        }}
+                      />
 
-                <ReadOnlyItem
-                  icon={<IoPerson size={18} />}
-                  label="Client"
-                  value={buildClientName(appointment.job?.client)}
-                />
-
-                <ReadOnlyItem
-                  icon={<IoPeople size={18} />}
-                  label="Preferred Contact"
-                  value={appointment.job?.client?.preferredContact || "—"}
-                />
-
-                <ReadOnlyItem
-                  icon={<IoCalendar size={18} />}
-                  label="Created"
-                  value={formatDateOnly(appointment.createdAt)}
-                />
-
-                <ReadOnlyItem
-                  icon={<IoTime size={18} />}
-                  label="Scheduled Window"
-                  value={`${formatDateTime(appointment.startTime)} → ${formatDateTime(
-                    appointment.endTime,
-                  )}`}
-                />
-              </SimpleGrid>
-
-              <ReadOnlyItem
-                icon={<IoLocation size={18} />}
-                label="Service Address"
-                value={buildAddress(appointment.job?.address)}
-              />
-
-              {!!appointment.job?.visitInstructions && (
-                <Paper withBorder radius="lg" p="sm">
-                  <Text size="xs" c="dimmed" mb={4}>
-                    Visit Instructions
-                  </Text>
-                  <Text size="sm">{appointment.job.visitInstructions}</Text>
-                </Paper>
-              )}
-
-              {!!appointment.job?.client && (
-                <SimpleGrid cols={{ base: 1, sm: 2 }}>
-                  <Paper withBorder radius="lg" p="sm">
-                    <Text size="xs" c="dimmed" mb={4}>
-                      Client Email
-                    </Text>
-                    <Text size="sm">{appointment.job.client.email || "—"}</Text>
+                      <Select
+                        label="Team Lead"
+                        description="Only the team lead or sole participant can update checklist items on the staff app."
+                        data={selectedLeadOptions}
+                        placeholder={
+                          form.values.staff.length
+                            ? "Select team lead"
+                            : "Assign staff first"
+                        }
+                        disabled={!form.values.staff.length}
+                        value={form.values.leadStaffId}
+                        onChange={(value) =>
+                          form.setFieldValue("leadStaffId", value ?? "")
+                        }
+                      />
+                    </Stack>
                   </Paper>
 
-                  <Paper withBorder radius="lg" p="sm">
-                    <Text size="xs" c="dimmed" mb={4}>
-                      Client Phone
-                    </Text>
-                    <Text size="sm">{appointment.job.client.phone || "—"}</Text>
-                  </Paper>
-                </SimpleGrid>
-              )}
-
-              {!!appointment.job?.lineItems?.length && (
-                <Stack gap="xs">
-                  <Text fw={600} size="sm">
-                    Job Line Items
-                  </Text>
-
-                  {appointment.job.lineItems.map((item) => (
-                    <Paper key={item.id} withBorder radius="lg" p="sm">
-                      <Group justify="space-between" align="flex-start" mb={4}>
-                        <Text fw={600} size="sm">
-                          {item.name}
-                        </Text>
-
-                        <Badge variant="light">
-                          Qty {item.quantity} • Total {item.total}
-                        </Badge>
-                      </Group>
-
-                      {item.description ? (
+                  <Paper withBorder radius="md" p="lg" className={classes.sectionCard}>
+                    <Group mb="md" gap="xs">
+                      <ThemeIcon radius="md" variant="light" color="teal">
+                        <IoPeople size={18} />
+                      </ThemeIcon>
+                      <Box>
+                        <Text fw={700}>Team & Work Sessions</Text>
                         <Text size="sm" c="dimmed">
-                          {item.description}
+                          Assigned team members and all recorded work activity.
                         </Text>
-                      ) : null}
-                    </Paper>
-                  ))}
-                </Stack>
-              )}
+                      </Box>
+                    </Group>
 
-              {!!sortedJobNotes.length && (
-                <>
-                  <Divider label="Job Notes" labelPosition="left" />
+                    <Stack gap="sm">
+                      {appointment.assignments?.length ? (
+                        appointment.assignments.map((assignment) => {
+                          const memberSessions = workSessions.filter(
+                            (session) => session.staffId === assignment.staff.id,
+                          );
+                          const activeForMember = memberSessions.some(
+                            (session) => !session.endedAt,
+                          );
 
-                  <Stack gap="sm">
-                    {sortedJobNotes.map((note) => (
-                      <Paper key={note.id} withBorder radius="lg" p="sm">
-                        <Group
-                          justify="space-between"
-                          align="flex-start"
-                          mb={6}
-                        >
-                          <Stack gap={4}>
-                            <Group gap="xs">
-                              <Text fw={600} size="sm">
-                                {note.title || "Untitled note"}
-                              </Text>
+                          return (
+                            <Paper
+                              key={assignment.id}
+                              withBorder
+                              radius="md"
+                              p="sm"
+                              className={classes.timelineCard}
+                            >
+                              <Group justify="space-between" align="flex-start">
+                                <Box>
+                                  <Group gap="xs">
+                                    <Text fw={700} size="sm">
+                                      {assignment.staff.name}
+                                    </Text>
+                                    {assignment.isTeamLead ? (
+                                      <Badge color="teal" variant="light" size="sm">
+                                        Team Lead
+                                      </Badge>
+                                    ) : null}
+                                  </Group>
+                                  <Text size="xs" c="dimmed" mt={4}>
+                                    {assignment.staff.email || "No email"}
+                                  </Text>
+                                </Box>
 
-                              {note.isPinned && (
-                                <Badge color="yellow" variant="light">
-                                  Pinned
+                                <Badge
+                                  color={activeForMember ? "lime" : "gray"}
+                                  variant="light"
+                                >
+                                  {activeForMember ? "Active" : "Idle"}
                                 </Badge>
+                              </Group>
+
+                              {memberSessions.length ? (
+                                <Stack gap={6} mt="sm">
+                                  {memberSessions.map((session) => {
+                                    const sessionStaff = (session as WorkSession & {
+                                      staff?: StaffUser;
+                                    }).staff;
+                                    const sessionLabel = sessionStaff?.name || assignment.staff.name;
+
+                                    return (
+                                      <Group
+                                        key={session.id}
+                                        justify="space-between"
+                                        className={classes.inlineRow}
+                                      >
+                                        <Text size="sm">
+                                          {sessionLabel}: {formatDateTime(session.startedAt)}
+                                        </Text>
+                                        <Text size="xs" c="dimmed">
+                                          {session.endedAt
+                                            ? formatDateTime(session.endedAt)
+                                            : "Running"}
+                                        </Text>
+                                      </Group>
+                                    );
+                                  })}
+                                </Stack>
+                              ) : (
+                                <Text size="sm" c="dimmed" mt="sm">
+                                  No work sessions recorded yet.
+                                </Text>
                               )}
+                            </Paper>
+                          );
+                        })
+                      ) : (
+                        <Text size="sm" c="dimmed">
+                          No staff assigned to this appointment.
+                        </Text>
+                      )}
+                    </Stack>
+                  </Paper>
 
-                              <Badge variant="outline">{note.category}</Badge>
+                  <Paper withBorder radius="md" p="lg" className={classes.sectionCard}>
+                    <Group mb="md" gap="xs">
+                      <ThemeIcon radius="md" variant="light" color="lime">
+                        <IoCheckmarkDone size={18} />
+                      </ThemeIcon>
+                      <Box>
+                        <Text fw={700}>Checklist</Text>
+                        <Text size="sm" c="dimmed">
+                          Edit required steps and review completion progress.
+                        </Text>
+                      </Box>
+                    </Group>
 
+                    <ChecklistEditor
+                      items={form.values.checklist}
+                      disabled={false}
+                      label="Appointment Checklist"
+                      description="Existing completion states stay attached to retained items."
+                      addLabel="Add checklist item"
+                      onChange={(items) => form.setFieldValue("checklist", items)}
+                    />
+
+                    {appointment.checklistItems?.length ? (
+                      <Stack gap="xs" mt="md">
+                        {appointment.checklistItems.map((item) => (
+                          <Group
+                            key={item.id}
+                            justify="space-between"
+                            className={classes.inlineRow}
+                          >
+                            <Text size="sm" fw={item.isCompleted ? 700 : 500}>
+                              {item.label}
+                            </Text>
+                            <Badge
+                              color={item.isCompleted ? "lime" : "gray"}
+                              variant="light"
+                            >
+                              {item.isCompleted ? "Completed" : "Pending"}
+                            </Badge>
+                          </Group>
+                        ))}
+                      </Stack>
+                    ) : null}
+                  </Paper>
+                </Stack>
+
+                <Stack gap="lg">
+                  <Paper withBorder radius="md" p="lg" className={classes.sectionCard}>
+                    <Group mb="md" gap="xs">
+                      <ThemeIcon radius="md" variant="light" color="orange">
+                        <IoDocumentText size={18} />
+                      </ThemeIcon>
+                      <Box>
+                        <Text fw={700}>Visit Notes & Attachments</Text>
+                        <Text size="sm" c="dimmed">
+                          Latest note draft, historical visit notes, and appointment images.
+                        </Text>
+                      </Box>
+                    </Group>
+
+                    <Textarea
+                      id="appointment-note-textarea"
+                      label="Latest Appointment Note"
+                      description="This updates the current internal visit note draft."
+                      autosize
+                      minRows={3}
+                      placeholder="Add internal note for this visit..."
+                      {...form.getInputProps("note")}
+                    />
+
+                    {sortedAppointmentNotes.length ? (
+                      <Stack gap="sm" mt="md">
+                        {sortedAppointmentNotes.map((note) => (
+                          <Paper
+                            key={note.id}
+                            withBorder
+                            radius="md"
+                            p="sm"
+                            className={classes.timelineCard}
+                          >
+                            <Group justify="space-between" align="flex-start" mb={6}>
                               <Badge
                                 variant="light"
                                 color={note.isClientVisible ? "blue" : "gray"}
                               >
-                                {note.isClientVisible
-                                  ? "Client visible"
-                                  : "Internal"}
+                                {note.isClientVisible ? "Client visible" : "Internal"}
+                              </Badge>
+
+                              <Text size="xs" c="dimmed">
+                                {formatDateTime(note.createdAt)}
+                              </Text>
+                            </Group>
+
+                            <Text size="sm">{note.content || "—"}</Text>
+
+                            {!!note.images?.length && (
+                              <Group mt="sm" wrap="wrap" gap="xs">
+                                {note.images.map((img) => (
+                                  <ImageViewer
+                                    key={img.id}
+                                    src={img.url}
+                                    alt="Visit note attachment"
+                                    modalTitle="Visit Note Attachment"
+                                  />
+                                ))}
+                              </Group>
+                            )}
+                          </Paper>
+                        ))}
+                      </Stack>
+                    ) : (
+                      <Text size="sm" c="dimmed" mt="md">
+                        No visit notes have been added yet.
+                      </Text>
+                    )}
+
+                    {!!appointment.images?.length && (
+                      <Stack gap="xs" mt="md">
+                        <Text fw={600} size="sm">
+                          Appointment Images
+                        </Text>
+
+                        <Group wrap="wrap" gap="xs">
+                          {appointment.images.map((img) => (
+                            <ImageViewer
+                              key={img.id}
+                              src={img.url}
+                              alt="Appointment attachment"
+                              modalTitle="Appointment Attachment"
+                              overlay={
+                                <ActionIcon
+                                  size="sm"
+                                  variant="filled"
+                                  color="dark"
+                                  className={classes.thumbnailAction}
+                                  loading={deleteImageMutation.isPending}
+                                  onClick={() => deleteImageMutation.mutate(img.id)}
+                                  aria-label="Delete image"
+                                >
+                                  <IoClose size={14} />
+                                </ActionIcon>
+                              }
+                            />
+                          ))}
+                        </Group>
+                      </Stack>
+                    )}
+                  </Paper>
+
+                  <Paper withBorder radius="md" p="lg" className={classes.sectionCard}>
+                    <Group mb="md" gap="xs">
+                      <ThemeIcon radius="md" variant="light" color="grape">
+                        <IoPricetag size={18} />
+                      </ThemeIcon>
+                      <Box>
+                        <Text fw={700}>Job Context</Text>
+                        <Text size="sm" c="dimmed">
+                          Core job metadata, client details, line items, and notes.
+                        </Text>
+                      </Box>
+                    </Group>
+
+                    <SimpleGrid cols={{ base: 1, sm: 2 }}>
+                      <ReadOnlyItem
+                        icon={<IoDocumentText size={18} />}
+                        label="Job Title"
+                        value={appointment.job?.title || "—"}
+                      />
+                      <ReadOnlyItem
+                        icon={<IoPricetag size={18} />}
+                        label="Job Type"
+                        value={appointment.job?.type || "—"}
+                      />
+                      <ReadOnlyItem
+                        icon={<IoPerson size={18} />}
+                        label="Client"
+                        value={buildClientName(appointment.job?.client)}
+                      />
+                      <ReadOnlyItem
+                        icon={<IoPeople size={18} />}
+                        label="Preferred Contact"
+                        value={appointment.job?.client?.preferredContact || "—"}
+                      />
+                      <ReadOnlyItem
+                        icon={<IoCalendar size={18} />}
+                        label="Created"
+                        value={formatDateOnly(appointment.createdAt)}
+                      />
+                      <ReadOnlyItem
+                        icon={<IoTimer size={18} />}
+                        label="Recurrence"
+                        value={recurrenceSummary}
+                      />
+                    </SimpleGrid>
+
+                    <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md" mt="md">
+                      <Paper withBorder radius="md" p="md" className={classes.infoCard}>
+                        <Text size="xs" fw={700} tt="uppercase" c="dimmed" mb={8}>
+                          Service Address
+                        </Text>
+                        <Text size="sm">{buildAddress(appointment.job?.address)}</Text>
+                      </Paper>
+
+                      <Paper withBorder radius="md" p="md" className={classes.infoCard}>
+                        <Text size="xs" fw={700} tt="uppercase" c="dimmed" mb={8}>
+                          Client Contact
+                        </Text>
+                        <Stack gap={4}>
+                          <Text size="sm">
+                            Email: {appointment.job?.client?.email || "—"}
+                          </Text>
+                          <Text size="sm">
+                            Phone: {appointment.job?.client?.phone || "—"}
+                          </Text>
+                        </Stack>
+                      </Paper>
+                    </SimpleGrid>
+
+                    {!!appointment.job?.visitInstructions && (
+                      <Paper withBorder radius="md" p="md" mt="md" className={classes.infoCard}>
+                        <Text size="xs" fw={700} tt="uppercase" c="dimmed" mb={8}>
+                          Visit Instructions
+                        </Text>
+                        <Text size="sm">{appointment.job.visitInstructions}</Text>
+                      </Paper>
+                    )}
+
+                    {!!appointment.job?.lineItems?.length && (
+                      <Stack gap="sm" mt="md">
+                        <Text fw={700} size="sm" tt="uppercase" c="dimmed">
+                          Job Line Items
+                        </Text>
+                        {appointment.job.lineItems.map((item) => (
+                          <Paper
+                            key={item.id}
+                            withBorder
+                            radius="md"
+                            p="sm"
+                            className={classes.timelineCard}
+                          >
+                            <Group justify="space-between" align="flex-start" mb={4}>
+                              <Text fw={600} size="sm">
+                                {item.name}
+                              </Text>
+
+                              <Badge variant="light">
+                                Qty {item.quantity}
+                                {item.total != null ? ` • Total ${item.total}` : ""}
                               </Badge>
                             </Group>
 
-                            <Text size="xs" c="dimmed">
-                              {formatDateTime(note.createdAt)}
-                            </Text>
-                          </Stack>
-                        </Group>
+                            {item.description ? (
+                              <Text size="sm" c="dimmed">
+                                {item.description}
+                              </Text>
+                            ) : null}
+                          </Paper>
+                        ))}
+                      </Stack>
+                    )}
 
-                        <Text size="sm">{note.content}</Text>
+                    {!!sortedJobNotes.length && (
+                      <Stack gap="sm" mt="md">
+                        <Text fw={700} size="sm" tt="uppercase" c="dimmed">
+                          Job Notes
+                        </Text>
+                        {sortedJobNotes.map((note) => (
+                          <Paper
+                            key={note.id}
+                            withBorder
+                            radius="md"
+                            p="sm"
+                            className={classes.timelineCard}
+                          >
+                            <Group justify="space-between" align="flex-start" mb={6}>
+                              <Stack gap={4}>
+                                <Group gap="xs">
+                                  <Text fw={600} size="sm">
+                                    {note.title || "Untitled note"}
+                                  </Text>
+                                  {note.isPinned ? (
+                                    <Badge color="yellow" variant="light">
+                                      Pinned
+                                    </Badge>
+                                  ) : null}
+                                  {note.category ? (
+                                    <Badge variant="outline">{note.category}</Badge>
+                                  ) : null}
+                                  <Badge
+                                    variant="light"
+                                    color={note.isClientVisible ? "blue" : "gray"}
+                                  >
+                                    {note.isClientVisible
+                                      ? "Client visible"
+                                      : "Internal"}
+                                  </Badge>
+                                </Group>
 
-                        {!!note.images?.length && (
-                          <Group mt="sm" wrap="wrap" gap="xs">
-                            {note.images.map((img) => (
-                              <Paper
-                                key={img.id}
-                                radius="lg"
-                                withBorder
-                                className={classes.thumbnailCard}
-                              >
-                                <Image
-                                  src={img.url}
-                                  alt="job note attachment"
-                                  w={88}
-                                  h={88}
-                                  fit="cover"
-                                />
-                              </Paper>
-                            ))}
-                          </Group>
-                        )}
-                      </Paper>
-                    ))}
-                  </Stack>
-                </>
-              )}
+                                <Text size="xs" c="dimmed">
+                                  {formatDateTime(note.createdAt)}
+                                </Text>
+                              </Stack>
+                            </Group>
 
-              <Stack mt="xs" gap="xs">
-                <Group justify="space-between" wrap="wrap">
-                  <Button
-                    color="red"
-                    variant="light"
-                    onClick={() => openConfirmCancel("APPOINTMENT")}
-                  >
-                    Delete Appointment
-                  </Button>
+                            <Text size="sm">{note.content}</Text>
 
-                  <Group gap="xs" grow>
-                    <Button variant="default" onClick={handleClose}>
-                      Cancel
-                    </Button>
+                            {!!note.images?.length && (
+                              <Group mt="sm" wrap="wrap" gap="xs">
+                                {note.images.map((img) => (
+                                  <ImageViewer
+                                    key={img.id}
+                                    src={img.url}
+                                    alt="Job note attachment"
+                                    modalTitle="Job Note Attachment"
+                                  />
+                                ))}
+                              </Group>
+                            )}
+                          </Paper>
+                        ))}
+                      </Stack>
+                    )}
+                  </Paper>
+                </Stack>
+              </SimpleGrid>
 
-                    <Button type="submit" disabled={!form.isDirty()}>
-                      Save Changes
-                    </Button>
+                <Paper withBorder radius="md" p="md" className={classes.footerBar}>
+                  <Group justify="space-between" wrap="wrap">
+                    <Text size="sm" c="dimmed">
+                      {visitNotesCount} visit note{visitNotesCount === 1 ? "" : "s"} •{" "}
+                      {checklistTotalCount} checklist item{checklistTotalCount === 1 ? "" : "s"} •{" "}
+                      {workSessions.length} work session{workSessions.length === 1 ? "" : "s"}
+                    </Text>
+
+                    <Group gap="xs">
+                      <Button variant="default" onClick={handleClose}>
+                        Cancel
+                      </Button>
+                      <Button type="submit" disabled={!form.isDirty()}>
+                        Save Changes
+                      </Button>
+                    </Group>
                   </Group>
-                </Group>
+                </Paper>
               </Stack>
-            </Stack>
-          </form>
-        </Paper>
+            </form>
+          </Paper>
+        </ScrollArea.Autosize>
       )}
     </Modal>
   );

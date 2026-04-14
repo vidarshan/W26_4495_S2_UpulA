@@ -54,7 +54,7 @@ export default function AdminPageFrame({
           {stats.map((stat) => (
             <Paper
               key={`${stat.label}-${stat.value}`}
-              radius="lg"
+              radius="md"
               p="md"
               withBorder
               className="admin-page-frame__stat"
@@ -68,7 +68,7 @@ export default function AdminPageFrame({
                     {stat.value}
                   </Text>
                 </Box>
-                <ThemeIcon size={40} radius="lg" variant="light" color="gray">
+                <ThemeIcon size={40} radius="md" variant="light" color="gray">
                   <stat.icon size={18} />
                 </ThemeIcon>
               </Group>
@@ -78,7 +78,7 @@ export default function AdminPageFrame({
       ) : null}
 
       <Paper
-        radius="lg"
+        radius="md"
         p={{ base: "md", md: "lg" }}
         withBorder
         className="admin-page-frame__surface"

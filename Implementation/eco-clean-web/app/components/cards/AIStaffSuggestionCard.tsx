@@ -13,7 +13,7 @@ import {
   ThemeIcon,
   Loader,
 } from "@mantine/core";
-import { IoSparkles, IoTrophy } from "react-icons/io5";
+import { IoSparkles, IoTrophy } from "@/lib/icons";
 import { Staff } from "@/types";
 import { StaffRecommendationResponse } from "@/lib/ai/schemas";
 

@@ -15,7 +15,7 @@ import {
   Text,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IoCalendar, IoCheckmarkDone, IoPeople, IoTime } from "react-icons/io5";
+import { IoCalendar, IoCheckmarkDone, IoPeople, IoTime } from "@/lib/icons";
 import AdminPageFrame from "@/app/components/admin/AdminPageFrame";
 
 type TimesheetPeriod = {

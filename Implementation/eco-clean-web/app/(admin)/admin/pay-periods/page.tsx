@@ -21,7 +21,7 @@ import {
   IoDocumentText,
   IoDownload,
   IoPeople,
-} from "react-icons/io5";
+} from "@/lib/icons";
 import AdminPageFrame from "@/app/components/admin/AdminPageFrame";
 import { calculatePayroll } from "@/lib/payroll/calculatePayroll";
 

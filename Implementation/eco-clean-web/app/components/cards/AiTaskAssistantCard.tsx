@@ -17,7 +17,7 @@ import {
   IoArrowUp,
   IoCheckmarkCircle,
   IoSparkles,
-} from "react-icons/io5";
+} from "@/lib/icons";
 import { TaskAssistantResponse } from "@/lib/ai/schemas";
 
 type Props = {

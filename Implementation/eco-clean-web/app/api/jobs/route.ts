@@ -7,6 +7,10 @@ import { DateTime } from "luxon";
 import { LineItem } from "@/lib/api/jobs";
 import { buildUtcWindowFromLocal } from "@/lib/dateTime";
 import { getAuthSession } from "@/lib/session";
+import {
+  normalizeChecklistInput,
+  normalizeLeadStaffId,
+} from "@/lib/appointments/checklist";
 
 const APP_TZ = process.env.APP_TZ ?? "America/Vancouver";
 
@@ -50,6 +54,8 @@ type CreateJobBody = {
     startTime: string | null;
     endTime: string | null;
     staffIds: string[];
+    leadStaffId?: string | null;
+    checklist?: Array<{ id?: string; label: string }>;
     note?: string | null;
     images?: Array<{ url: string; fileKey?: string | null }>;
   }>;
@@ -316,10 +322,21 @@ export async function POST(req: NextRequest) {
             startTime: win!.startUtc,
             endTime: win!.endUtc,
             status: AppointmentStatus.SCHEDULED,
+            checklistItems: normalizeChecklistInput(a.checklist).length
+              ? {
+                  create: normalizeChecklistInput(a.checklist).map((item) => ({
+                    label: item.label,
+                    sortOrder: item.sortOrder,
+                  })),
+                }
+              : undefined,
             assignments: a.staffIds?.length
               ? {
                   create: a.staffIds.map((staffId) => ({
                     staff: { connect: { id: staffId } },
+                    isTeamLead:
+                      staffId ===
+                      normalizeLeadStaffId(a.leadStaffId, a.staffIds ?? []),
                   })),
                 }
               : undefined,
@@ -434,12 +451,23 @@ export async function POST(req: NextRequest) {
               startTime: startUtc,
               endTime: endUtc,
               status: AppointmentStatus.SCHEDULED,
-              assignments: base.staffIds?.length
+              checklistItems: normalizeChecklistInput(base.checklist).length
                 ? {
-                    create: base.staffIds.map((staffId) => ({
-                      staff: { connect: { id: staffId } },
+                    create: normalizeChecklistInput(base.checklist).map((item) => ({
+                      label: item.label,
+                      sortOrder: item.sortOrder,
                     })),
                   }
+                : undefined,
+              assignments: base.staffIds?.length
+                ? {
+                  create: base.staffIds.map((staffId) => ({
+                    staff: { connect: { id: staffId } },
+                    isTeamLead:
+                      staffId ===
+                      normalizeLeadStaffId(base.leadStaffId, base.staffIds ?? []),
+                  })),
+                }
                 : undefined,
             },
           });
@@ -508,6 +536,9 @@ export async function POST(req: NextRequest) {
               },
               notes: true,
               images: true,
+              checklistItems: {
+                orderBy: { sortOrder: "asc" },
+              },
             },
             orderBy: { startTime: "asc" },
           },

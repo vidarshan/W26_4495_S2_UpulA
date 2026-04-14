@@ -336,7 +336,7 @@ export default function ClientPropertyModal({
       opened={opened}
       onClose={isBusy ? () => {} : onClose}
       title={clientId ? "Edit client" : "Add client"}
-      radius="lg"
+      radius="md"
       closeOnClickOutside={!isBusy}
       closeOnEscape={!isBusy}
       withCloseButton={!isBusy}
@@ -348,9 +348,9 @@ export default function ClientPropertyModal({
       }}
     >
       <form onSubmit={form.onSubmit(handleSubmit)}>
-        <Stack gap="xl">
+        <Stack gap="lg">
           {(clientLoading || mutation.isPending) && (
-            <Paper withBorder p="sm" radius="lg">
+            <Paper withBorder p="sm" radius="md" className="app-modal__banner">
               <Group gap="xs">
                 <Loader size="sm" />
                 <Text size="sm">
@@ -363,23 +363,36 @@ export default function ClientPropertyModal({
           )}
 
           {clientError && clientId ? (
-            <Paper withBorder p="sm" radius="lg">
-              <Text size="sm" c="red">
+            <Paper withBorder p="sm" radius="md" className="app-modal__banner">
+              <Text size="sm" className="app-modal__danger-text">
                 Failed to load client details.
               </Text>
             </Paper>
           ) : null}
 
-          <Grid>
-            <Grid.Col span={12}>
-              <Title order={5}>Primary contact details</Title>
-              <Text size="sm" c="dimmed">
-                Provide the main point of contact to ensure smooth communication
-                and reliable client records.
+          <Paper withBorder radius="md" p="lg" className="app-modal__hero">
+            <Stack gap={4}>
+              <Text size="xs" fw={800} c="dimmed" className="app-modal__eyebrow">
+                Client Record
               </Text>
-            </Grid.Col>
+              <Title order={4}>{clientId ? "Update client details" : "Create a client profile"}</Title>
+              <Text size="sm" c="dimmed">
+                Keep contact details, service addresses, and client notes in one consistent admin workspace.
+              </Text>
+            </Stack>
+          </Paper>
 
-            <Grid.Col span={12}>
+          <Paper withBorder radius="md" p="lg" className="app-modal__section">
+            <Grid>
+              <Grid.Col span={12}>
+                <Title order={5}>Primary contact details</Title>
+                <Text size="sm" c="dimmed">
+                  Provide the main point of contact to ensure smooth communication
+                  and reliable client records.
+                </Text>
+              </Grid.Col>
+
+              <Grid.Col span={12}>
               <Stack gap="md">
                 <Grid>
                   <Grid.Col span={3}>
@@ -469,24 +482,24 @@ export default function ClientPropertyModal({
                   {...form.getInputProps("leadSource")}
                 />
               </Stack>
-            </Grid.Col>
-          </Grid>
+              </Grid.Col>
+            </Grid>
+          </Paper>
 
-          <Divider />
+          <Paper withBorder radius="md" p="lg" className="app-modal__section">
+            <Grid>
+              <Grid.Col span={12}>
+                <Title order={5}>Property address</Title>
+                <Text size="sm" c="dimmed">
+                  Enter the primary service address, billing address, or any
+                  additional locations where services may take place.
+                </Text>
+              </Grid.Col>
 
-          <Grid>
-            <Grid.Col span={12}>
-              <Title order={5}>Property address</Title>
-              <Text size="sm" c="dimmed">
-                Enter the primary service address, billing address, or any
-                additional locations where services may take place.
-              </Text>
-            </Grid.Col>
-
-            <Grid.Col span={12}>
+              <Grid.Col span={12}>
               <Stack gap="md">
                 {form.values.addresses.map((_, index) => (
-                  <Paper key={index} withBorder p="md" radius="lg">
+                  <Paper key={index} withBorder p="md" radius="md" className="app-modal__subsection">
                     <Stack>
                       <Group justify="space-between">
                         <strong>Address {index + 1}</strong>
@@ -611,21 +624,23 @@ export default function ClientPropertyModal({
                   Add another address
                 </Button>
               </Stack>
-            </Grid.Col>
-          </Grid>
+              </Grid.Col>
+            </Grid>
+          </Paper>
 
-          <Grid>
-            <Grid.Col span={12}>
-              <Title order={5}>Add notes</Title>
-              <Text size="sm" c="dimmed">
-                Add any relevant information about the client, such as
-                preferences, special instructions, or important details that can
-                help provide better service and maintain a comprehensive client
-                profile.
-              </Text>
-            </Grid.Col>
+          <Paper withBorder radius="md" p="lg" className="app-modal__section">
+            <Grid>
+              <Grid.Col span={12}>
+                <Title order={5}>Add notes</Title>
+                <Text size="sm" c="dimmed">
+                  Add any relevant information about the client, such as
+                  preferences, special instructions, or important details that can
+                  help provide better service and maintain a comprehensive client
+                  profile.
+                </Text>
+              </Grid.Col>
 
-            <Grid.Col span={12}>
+              <Grid.Col span={12}>
               <Textarea
                 id="client-note-textarea"
                 placeholder="Type your note here..."
@@ -634,8 +649,9 @@ export default function ClientPropertyModal({
                 disabled={isBusy}
                 {...form.getInputProps("note")}
               />
-            </Grid.Col>
-          </Grid>
+              </Grid.Col>
+            </Grid>
+          </Paper>
 
           <Group justify="flex-end">
             {clientId ? (
@@ -674,6 +690,12 @@ export default function ClientPropertyModal({
         onClose={() => setConfirmDeleteOpen(false)}
         title="Delete client"
         centered
+        classNames={{
+          content: "app-modal__content",
+          header: "app-modal__header",
+          title: "app-modal__title",
+          body: "app-modal__body",
+        }}
       >
         <Stack gap="md">
           <Text size="sm">

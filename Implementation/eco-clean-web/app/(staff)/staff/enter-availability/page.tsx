@@ -23,7 +23,7 @@ import { notifications } from "@mantine/notifications";
 import { useSession } from "next-auth/react";
 import { addAppDays, appNowDate } from "@/lib/dateTime";
 import { useEffect } from "react";
-import { IoCalendar, IoTime } from "react-icons/io5";
+import { IoCalendar, IoTime } from "@/lib/icons";
 
 type DayAvailability = {
   active: boolean;

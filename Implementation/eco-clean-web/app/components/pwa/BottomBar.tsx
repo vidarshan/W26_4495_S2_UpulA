@@ -14,7 +14,7 @@ import {
   IoCheckbox,
   IoPerson,
   IoTime,
-} from "react-icons/io5";
+} from "@/lib/icons";
 import { JSX } from "react";
 
 type Tab = {

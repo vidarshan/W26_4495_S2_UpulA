@@ -31,7 +31,7 @@ import {
   IoChevronDown,
   IoClipboard,
   IoTime,
-} from "react-icons/io5";
+} from "@/lib/icons";
 import { APP_TZ } from "@/lib/dateTime";
 
 type Week = 1 | 2;

@@ -10,6 +10,11 @@ export type UpdateAppointmentPayload = Partial<{
   endTime: string; // ISO
   status: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "LATE";
   staffIds: string[];
+  leadStaffId: string | null;
+  checklist: Array<{
+    id?: string;
+    label: string;
+  }>;
   note: string | null;
 }>;
 
@@ -138,6 +143,19 @@ export function saveVisitNote(
 ) {
   return apiClient(`/api/appointments/${appointmentId}/visit-note`, {
     method: "POST",
+    body,
+  });
+}
+
+export function updateAppointmentChecklistItem(
+  appointmentId: string,
+  body: {
+    itemId: string;
+    completed: boolean;
+  },
+) {
+  return apiClient(`/api/appointments/${appointmentId}/checklist`, {
+    method: "PATCH",
     body,
   });
 }

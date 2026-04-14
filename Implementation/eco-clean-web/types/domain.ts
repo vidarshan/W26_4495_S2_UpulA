@@ -119,6 +119,7 @@ export type VisitNote = {
   content: string;
   createdAt: string;
   isClientVisible: boolean;
+  images?: NoteImage[];
 };
 
 export type JobNote = {
@@ -177,6 +178,7 @@ export type AppointmentAssignment = {
   id: string;
   appointmentId?: string;
   staffId: string;
+  isTeamLead?: boolean;
   status?: string;
   plannedStart?: string | null;
   plannedEnd?: string | null;
@@ -192,6 +194,17 @@ export type WorkSession = {
   endedAt: string | null;
   appointmentId: string;
   staffId: string;
+  staff?: StaffUser;
+};
+
+export type AppointmentChecklistItem = {
+  id: string;
+  appointmentId: string;
+  label: string;
+  sortOrder: number;
+  isCompleted: boolean;
+  completedAt: string | null;
+  completedById?: string | null;
 };
 
 export interface Appointment {
@@ -242,12 +255,14 @@ export type AppointmentWithRelations = {
     address?: JobAddress | null;
     lineItems?: LineItem[];
     notes?: JobNote[];
+    recurrence?: Recurrence | null;
   };
   assignments: AppointmentAssignment[];
   staff: StaffUser[];
   notes: VisitNote[];
   images: AppointmentImage[];
   workSessions?: WorkSession[];
+  checklistItems?: AppointmentChecklistItem[];
 };
 
 export type CandidateStaff = Staff & {

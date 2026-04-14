@@ -22,7 +22,7 @@ import {
   IoCheckmark,
   IoClose,
   IoPencil,
-} from "react-icons/io5";
+} from "@/lib/icons";
 
 type EmergencyContact = {
   name: string;

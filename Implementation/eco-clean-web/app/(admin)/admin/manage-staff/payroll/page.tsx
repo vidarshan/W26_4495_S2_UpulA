@@ -21,7 +21,7 @@ import {
   IoCalendar,
   IoCheckmarkCircle,
   IoLockClosed,
-} from 'react-icons/io5';
+} from '@/lib/icons';
 import { useRouter } from 'next/navigation';
 import AdminPageFrame from '@/app/components/admin/AdminPageFrame';
 

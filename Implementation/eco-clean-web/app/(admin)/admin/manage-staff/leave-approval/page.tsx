@@ -20,7 +20,7 @@ import {
   IoCheckmarkCircle,
   IoCloseCircle,
   IoTime,
-} from "react-icons/io5";
+} from "@/lib/icons";
 import AdminPageFrame from "@/app/components/admin/AdminPageFrame";
 
 type Leave = {

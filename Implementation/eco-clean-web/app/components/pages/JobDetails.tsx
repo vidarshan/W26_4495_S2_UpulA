@@ -21,7 +21,7 @@ import React, { useState } from "react";
 import AppointmentCard from "../cards/AppointmentCard";
 import ClientCard from "../cards/ClientCard";
 import { useForm } from "@mantine/form";
-import { IoPerson, IoText } from "react-icons/io5";
+import { IoPerson, IoText } from "@/lib/icons";
 import { useQuery } from "@tanstack/react-query";
 import { useDebouncedValue } from "@mantine/hooks";
 import { getClients } from "@/lib/api/client";

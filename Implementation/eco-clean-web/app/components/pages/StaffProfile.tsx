@@ -28,7 +28,7 @@ import {
   IoPerson,
   IoShield,
   IoTime,
-} from "react-icons/io5";
+} from "@/lib/icons";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 

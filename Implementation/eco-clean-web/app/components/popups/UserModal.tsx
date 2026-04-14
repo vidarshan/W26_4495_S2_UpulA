@@ -27,7 +27,7 @@ import {
   IoPeople,
   IoPersonCircle,
   IoText,
-} from "react-icons/io5";
+} from "@/lib/icons";
 import AdminStaffDetailsModal from "@/app/components/popups/AdminStaffDetailsModal";
 import { StaffRole } from "@/types";
 type Mode = "create" | "edit";
@@ -305,14 +305,14 @@ export default function UserUpsertModal({
     >
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Stack gap="md">
-          <Paper withBorder radius="xl" p="lg">
+          <Paper withBorder radius="md" p="lg" className="app-modal__hero">
             <Group justify="space-between" align="flex-start" wrap="wrap">
               <Group align="flex-start" wrap="nowrap" gap="md">
-                <ThemeIcon size={48} radius="xl" color="lime" variant="light">
+                <ThemeIcon size={48} radius="md" color="lime" variant="light" className="app-modal__icon">
                   <IoPersonCircle size={22} />
                 </ThemeIcon>
                 <Stack gap={4}>
-                  <Text size="xs" fw={800} c="dimmed" tt="uppercase">
+                  <Text size="xs" fw={800} c="dimmed" className="app-modal__eyebrow">
                     User Access
                   </Text>
                   <Text fw={800} size="lg">
@@ -328,7 +328,7 @@ export default function UserUpsertModal({
               </Group>
 
               <Badge
-                radius="xl"
+                radius="md"
                 variant="light"
                 color={mode === "create" ? "teal" : "blue"}
               >
@@ -338,7 +338,7 @@ export default function UserUpsertModal({
           </Paper>
 
           {isBusyAny && (
-            <Alert color="gray">
+            <Alert color="gray" className="app-modal__banner">
               <Group gap="xs">
                 <Loader size="sm" />
                 <Text size="sm">
@@ -352,7 +352,7 @@ export default function UserUpsertModal({
             </Alert>
           )}
 
-          <Paper withBorder radius="xl" p="lg">
+          <Paper withBorder radius="md" p="lg" className="app-modal__section">
             <Stack gap="md">
               <Text fw={700}>Account details</Text>
 
@@ -386,14 +386,15 @@ export default function UserUpsertModal({
           </Paper>
 
           {mode === "create" && generatedPassword && (
-            <Paper withBorder radius="xl" p="lg">
+            <Paper withBorder radius="md" p="lg" className="app-modal__section">
               <Stack gap={8}>
                 <Group gap="sm">
                   <ThemeIcon
-                    radius="xl"
+                    radius="md"
                     size="lg"
                     variant="light"
                     color="grape"
+                    className="app-modal__icon"
                   >
                     <IoLockClosed size={18} />
                   </ThemeIcon>
@@ -419,7 +420,7 @@ export default function UserUpsertModal({
           )}
 
           {mode === "edit" && (
-            <Paper withBorder radius="xl" p="lg">
+            <Paper withBorder radius="md" p="lg" className="app-modal__section">
               <Stack gap="md">
                 <Text fw={700}>Password reset</Text>
                 <PasswordInput
@@ -437,7 +438,7 @@ export default function UserUpsertModal({
           )}
 
           {mode === "edit" && form.values.role === "STAFF" && (
-            <Paper withBorder radius="lg" p="md">
+            <Paper withBorder radius="md" p="md" className="app-modal__subsection">
               <Group justify="space-between" align="center" wrap="wrap">
                 <Stack gap={2}>
                   <Text fw={700}>Staff workspace</Text>
@@ -494,6 +495,12 @@ export default function UserUpsertModal({
         onClose={() => setConfirmDeleteOpen(false)}
         title="Delete user"
         centered
+        classNames={{
+          content: "app-modal__content",
+          header: "app-modal__header",
+          title: "app-modal__title",
+          body: "app-modal__body",
+        }}
       >
         <Stack gap="md">
           <Text size="sm">

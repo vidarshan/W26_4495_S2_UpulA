@@ -35,7 +35,7 @@ import {
 } from "@mantine/dates";
 import { useMediaQuery } from "@mantine/hooks";
 import { useSession } from "next-auth/react";
-import { IoCalendar, IoDocumentText } from "react-icons/io5";
+import { IoCalendar, IoDocumentText } from "@/lib/icons";
 import {
   APP_TZ,
   addAppDays,
