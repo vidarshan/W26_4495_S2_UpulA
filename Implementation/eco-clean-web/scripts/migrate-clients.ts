@@ -20,8 +20,6 @@ async function migrateClients() {
       },
     });
   }
-
-  console.log(`Migrated ${users.length} users to clients`);
 }
 
 migrateClients()

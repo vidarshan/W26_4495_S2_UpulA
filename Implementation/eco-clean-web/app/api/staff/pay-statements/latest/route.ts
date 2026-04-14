@@ -3,8 +3,6 @@ import { prisma } from "@/lib/prisma";
 import { getToken } from "next-auth/jwt";
 
 export async function GET(req: NextRequest) {
-  console.log("🔥 LATEST PAY ROUTE HIT");
-
   try {
     const token = await getToken({ req });
 
@@ -29,12 +27,10 @@ export async function GET(req: NextRequest) {
     const latest = statements[0];
     const previous = statements[1] || null;
 
-    console.log("📄 LATEST:", latest);
-
     if (!latest) {
       return NextResponse.json(
         { error: "No statements found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -55,8 +51,6 @@ export async function GET(req: NextRequest) {
       },
       orderBy: { payPeriodStart: "asc" },
     });
-
-    console.log("📊 YTD COUNT:", ytdStatements.length);
 
     // ✅ FULL YTD CALC (match your main route)
     const ytd = ytdStatements.reduce(
@@ -97,10 +91,8 @@ export async function GET(req: NextRequest) {
         qpp: 0,
         qpp2: 0,
         qpip: 0,
-      }
+      },
     );
-
-    console.log("💰 YTD:", ytd);
 
     // ✅ FINAL RESPONSE (MATCH UI EXPECTATION)
     return NextResponse.json({
@@ -118,13 +110,12 @@ export async function GET(req: NextRequest) {
       employeeName: latest.user?.name || "N/A",
       employeeId: latest.user?.staffProfile?.staffId || "N/A",
     });
-
   } catch (error) {
     console.error("❌ GET LATEST PAY ERROR:", error);
 
     return NextResponse.json(
       { error: "Failed to load latest pay statement" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -383,6 +383,16 @@ export async function POST(req: NextRequest) {
       if (jobType === "RECURRING") {
         const rec = b.recurrence as NonNullable<CreateJobBody["recurrence"]>;
         const base = appointments[0] as CreateJobBody["appointments"][number];
+        const recurrenceEndsOn =
+          rec.endType === "on" && rec.endsOn
+            ? DateTime.fromFormat(rec.endsOn, "yyyy-LL-dd", {
+                zone: APP_TZ,
+              })
+            : null;
+
+        if (rec.endType === "on") {
+          must(recurrenceEndsOn?.isValid, "Invalid recurrence end date");
+        }
 
         await tx.recurrence.create({
           data: {
@@ -392,7 +402,9 @@ export async function POST(req: NextRequest) {
             endType: rec.endType,
             endsAfter: rec.endType === "after" ? (rec.endsAfter ?? null) : null,
             endsOn:
-              rec.endType === "on" && rec.endsOn ? new Date(rec.endsOn) : null,
+              rec.endType === "on" && recurrenceEndsOn
+                ? recurrenceEndsOn.toJSDate()
+                : null,
           },
         });
 

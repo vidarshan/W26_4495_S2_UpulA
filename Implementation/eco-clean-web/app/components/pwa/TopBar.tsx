@@ -12,15 +12,8 @@ interface Props {
 const TopBar = ({ back, onClick, title, onRefresh, refreshing }: Props) => {
   return (
     <Box pos="sticky" top={0} className="staff-topbar">
-      <Flex
-        justify="space-between"
-        py={10}
-        px="sm"
-        align="center"
-        gap="sm"
-        className="staff-topbar__inner"
-      >
-        <Flex align="center" gap="xs" style={{ minWidth: 0, flex: 1 }}>
+      <Box className="staff-topbar__inner">
+        <Flex align="center" gap="xs" className="staff-topbar__lead">
           <ThemeIcon
             variant="light"
             color="lime"
@@ -51,7 +44,7 @@ const TopBar = ({ back, onClick, title, onRefresh, refreshing }: Props) => {
         >
           <IoRefresh size={20} />
         </ActionIcon>
-      </Flex>
+      </Box>
     </Box>
   );
 };

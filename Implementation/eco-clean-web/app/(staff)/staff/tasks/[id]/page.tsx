@@ -759,7 +759,6 @@ const Page = () => {
               const member = assignment.staff;
               const isMe = member.id === myStaffId;
               const memberState = getMemberState(member.id);
-              console.log(assignment.isTeamLead);
               return (
                 <Box key={assignment.id}>
                   <Group

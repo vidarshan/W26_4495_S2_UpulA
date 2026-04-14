@@ -399,21 +399,22 @@ export default function DashboardClient() {
             <Button.Group>
               <Button
                 variant="default"
-                radius="lg"
+                radius="xl"
+                leftSection={<IoArrowBack />}
                 onClick={() => calendarRef.current?.getApi().prev()}
               >
                 Prev
               </Button>
               <Button
                 variant="default"
-                radius="lg"
+                radius="xl"
                 onClick={() => calendarRef.current?.getApi().today()}
               >
                 Today
               </Button>
               <Button
                 variant="default"
-                radius="lg"
+                radius="xl"
                 rightSection={<IoArrowForward />}
                 onClick={() => calendarRef.current?.getApi().next()}
               >

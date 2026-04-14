@@ -250,7 +250,17 @@ body {
 }
 
 .staff-topbar__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 10px var(--mantine-spacing-sm);
   min-height: 3.9rem;
+}
+
+.staff-topbar__lead {
+  min-width: 0;
+  flex: 1;
 }
 
 .staff-topbar__nav-icon,

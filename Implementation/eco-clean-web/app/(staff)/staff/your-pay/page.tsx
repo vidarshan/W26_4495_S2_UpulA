@@ -22,7 +22,7 @@ import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
-const COLORS = ["#125f82", "#3f8f6b", "#c88b2b"];
+const COLORS = ["#82c91e", "#607b3a", "#1ec99b"];
 
 type PayHistoryPeriod = {
   id: string;
@@ -116,7 +116,7 @@ export default function YourPayPage() {
   if (loading) {
     return (
       <Center h="100vh">
-        <Loader size="xl" color="#125f82" />
+        <Loader size="xl" />
       </Center>
     );
   }
@@ -175,7 +175,12 @@ export default function YourPayPage() {
   }));
 
   return (
-    <Container size="lg" py="xl" px={{ base: "sm", sm: "md" }} className="staff-app-page">
+    <Container
+      size="lg"
+      py="xl"
+      px={{ base: "sm", sm: "md" }}
+      className="staff-app-page"
+    >
       <Stack gap="xl">
         <Card
           withBorder
@@ -237,7 +242,12 @@ export default function YourPayPage() {
 
         <Grid gutter={{ base: "md", md: "xl" }}>
           <Grid.Col span={{ base: 12, md: 6 }}>
-            <Card p={{ base: "md", sm: "lg" }} withBorder radius="lg" className="staff-app-surface">
+            <Card
+              p={{ base: "md", sm: "lg" }}
+              withBorder
+              radius="lg"
+              className="staff-app-surface"
+            >
               <Title order={4} mb="xs">
                 Earnings Distribution
               </Title>
@@ -323,7 +333,12 @@ export default function YourPayPage() {
                 ytd={ytd.deductions}
               />
 
-              <Card withBorder p={{ base: "md", sm: "lg" }} radius="lg" bg="#e6f4ea">
+              <Card
+                withBorder
+                p={{ base: "md", sm: "lg" }}
+                radius="lg"
+                bg="#e6f4ea"
+              >
                 <Group justify="space-between">
                   <Text fw={700} size="lg">
                     Net Earnings
@@ -346,121 +361,131 @@ export default function YourPayPage() {
           </Grid.Col>
         </Grid>
 
-        <Card withBorder radius="lg" p={{ base: "md", sm: "lg" }} className="staff-app-surface">
+        <Card
+          withBorder
+          radius="lg"
+          p={{ base: "md", sm: "lg" }}
+          className="staff-app-surface"
+        >
           <Stack gap="md">
             <Group justify="space-between" align="end" gap="md">
-            <Box>
-              <Text fw={700}>AI Pay Insights</Text>
-              <Text size="sm" c="dimmed" mt={4}>
-                Compare two pay periods to understand changes in earnings and
-                deductions.
-              </Text>
-            </Box>
+              <Box>
+                <Text fw={700}>AI Pay Insights</Text>
+                <Text size="sm" c="dimmed" mt={4}>
+                  Compare two pay periods to understand changes in earnings and
+                  deductions.
+                </Text>
+              </Box>
 
-            <Button variant="light" onClick={() => setOpened((o) => !o)}>
-              {opened ? "Hide Comparison" : "Compare Pay Periods"}
-            </Button>
+              <Button variant="light" onClick={() => setOpened((o) => !o)}>
+                {opened ? "Hide Comparison" : "Compare Pay Periods"}
+              </Button>
             </Group>
 
             <Collapse in={opened}>
               <Stack mt="xs" gap="md">
-              <Group grow>
-                <Select
-                  placeholder="Select Period A"
-                  data={historyOptionsA}
-                  value={periodA?.id}
-                  onChange={(value) => {
-                    const selected = historyOptionsA.find(
-                      (p) => p.value === value,
-                    );
-                    setPeriodA(selected?.raw ?? null);
-                    setPeriodB(null);
-                  }}
-                />
+                <Group grow>
+                  <Select
+                    placeholder="Select Period A"
+                    data={historyOptionsA}
+                    value={periodA?.id}
+                    onChange={(value) => {
+                      const selected = historyOptionsA.find(
+                        (p) => p.value === value,
+                      );
+                      setPeriodA(selected?.raw ?? null);
+                      setPeriodB(null);
+                    }}
+                  />
 
-                <Select
-                  placeholder="Select Period B"
-                  data={historyOptionsB}
-                  value={periodB?.id}
-                  onChange={(value) => {
-                    const selected = historyOptionsB.find(
-                      (p) => p.value === value,
-                    );
-                    setPeriodB(selected?.raw ?? null);
-                  }}
-                />
-              </Group>
+                  <Select
+                    placeholder="Select Period B"
+                    data={historyOptionsB}
+                    value={periodB?.id}
+                    onChange={(value) => {
+                      const selected = historyOptionsB.find(
+                        (p) => p.value === value,
+                      );
+                      setPeriodB(selected?.raw ?? null);
+                    }}
+                  />
+                </Group>
 
-              <Group justify="flex-end">
-                <Button
-                  onClick={async () => {
-                    const res = await fetch("/api/ai/payroll/compare", {
-                      method: "POST",
-                      body: JSON.stringify({
-                        periodA,
-                        periodB,
-                      }),
-                    });
+                <Group justify="flex-end">
+                  <Button
+                    onClick={async () => {
+                      const res = await fetch("/api/ai/payroll/compare", {
+                        method: "POST",
+                        body: JSON.stringify({
+                          periodA,
+                          periodB,
+                        }),
+                      });
 
-                    const json: PayComparisonResult = await res.json();
-                    setResult(json);
-                  }}
-                >
-                  Compare
-                </Button>
-              </Group>
+                      const json: PayComparisonResult = await res.json();
+                      setResult(json);
+                    }}
+                  >
+                    Compare
+                  </Button>
+                </Group>
 
-              {result && (
-                <Card withBorder radius="lg" className="staff-app-surface">
-                  <Text fw={700}>Summary</Text>
-                  <Text mb="sm">{result.summary}</Text>
+                {result && (
+                  <Card withBorder radius="lg" className="staff-app-surface">
+                    <Text fw={700}>Summary</Text>
+                    <Text mb="sm">{result.summary}</Text>
 
-                  <Text fw={700}>Key Drivers</Text>
-                  {result.keyDrivers.map((d, i) => (
-                    <Text key={i}>• {d}</Text>
-                  ))}
+                    <Text fw={700}>Key Drivers</Text>
+                    {result.keyDrivers.map((d, i) => (
+                      <Text key={i}>• {d}</Text>
+                    ))}
 
-                  <Text fw={700} mt="sm">
-                    Increases
-                  </Text>
-                  {result.increases.map((d, i) => (
-                    <Text key={i} c="green">
-                      + {d}
+                    <Text fw={700} mt="sm">
+                      Increases
                     </Text>
-                  ))}
-
-                  <Text fw={700} mt="sm">
-                    Decreases
-                  </Text>
-                  {result.decreases.map((d, i) => (
-                    <Text key={i} c="red">
-                      - {d}
-                    </Text>
-                  ))}
-
-                  {result.recommendation && (
-                    <>
-                      <Text fw={700} mt="sm">
-                        Recommendation
+                    {result.increases.map((d, i) => (
+                      <Text key={i} c="green">
+                        + {d}
                       </Text>
-                      <Text>{result.recommendation}</Text>
-                    </>
-                  )}
-                </Card>
-              )}
+                    ))}
+
+                    <Text fw={700} mt="sm">
+                      Decreases
+                    </Text>
+                    {result.decreases.map((d, i) => (
+                      <Text key={i} c="red">
+                        - {d}
+                      </Text>
+                    ))}
+
+                    {result.recommendation && (
+                      <>
+                        <Text fw={700} mt="sm">
+                          Recommendation
+                        </Text>
+                        <Text>{result.recommendation}</Text>
+                      </>
+                    )}
+                  </Card>
+                )}
               </Stack>
             </Collapse>
           </Stack>
         </Card>
 
-        <Card withBorder radius="lg" p={{ base: "md", sm: "lg" }} className="staff-app-surface">
+        <Card
+          withBorder
+          radius="lg"
+          p={{ base: "md", sm: "lg" }}
+          className="staff-app-surface"
+        >
           <Group justify="center" gap="md" wrap="wrap">
             <Button
               size="md"
               radius="lg"
               variant="default"
-              styles={{ root: { minWidth: 220, height: 48 } }}
               onClick={() => router.push("/staff/pay-stub/latest")}
+              fullWidth
             >
               Current Statement
             </Button>
@@ -469,8 +494,8 @@ export default function YourPayPage() {
               size="md"
               radius="lg"
               variant="default"
-              styles={{ root: { minWidth: 220, height: 48 } }}
               onClick={() => router.push("/staff/pay-history")}
+              fullWidth
             >
               View History
             </Button>
@@ -494,7 +519,12 @@ function SummaryBlock({
   ytd?: number;
 }) {
   return (
-    <Card withBorder p={{ base: "md", sm: "lg" }} radius="lg" className="staff-app-surface">
+    <Card
+      withBorder
+      p={{ base: "md", sm: "lg" }}
+      radius="lg"
+      className="staff-app-surface"
+    >
       <Group justify="space-between">
         <Text fw={700}>{title}</Text>
         <Text fw={700}>${total.toFixed(2)}</Text>

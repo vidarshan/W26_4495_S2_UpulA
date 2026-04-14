@@ -48,7 +48,7 @@ import {
 import { DateTime } from "luxon";
 import { AI_FEATURES_ENABLED } from "@/lib/config/ai";
 import { formatStaffOptionLabel } from "@/lib/appointments/staffAvailability";
-import { APP_TZ } from "@/lib/dateTime";
+import { appDateKeyToDate, APP_TZ } from "@/lib/dateTime";
 import { useUploadThing } from "@/lib/uploadthing";
 import { notifications } from "@mantine/notifications";
 import AIStaffSuggestionCard from "../cards/AIStaffSuggestionCard";
@@ -233,6 +233,30 @@ function buildAppointmentWindow(
     appointmentStart: start.toUTC().toISO(),
     appointmentEnd: end.toUTC().toISO(),
   };
+}
+
+function toRecurrenceEndsOnDate(value: Date | string | null | undefined) {
+  if (!value) return null;
+
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+
+  if (typeof value === "string") {
+    const formatted = DateTime.fromFormat(value, "yyyy-LL-dd", {
+      zone: APP_TZ,
+    });
+    if (formatted.isValid) {
+      return formatted.startOf("day").toJSDate();
+    }
+
+    const iso = DateTime.fromISO(value, { zone: APP_TZ });
+    if (iso.isValid) {
+      return iso.startOf("day").toJSDate();
+    }
+  }
+
+  return null;
 }
 
 async function getAssignmentCandidates(
@@ -871,10 +895,14 @@ export default function NewJobModal({
                   ? values.recurrence.endsAfter
                   : null,
               endsOn:
-                values.recurrence.endType === "on" && values.recurrence.endsOn
-                  ? DateTime.fromJSDate(values.recurrence.endsOn, {
+                values.recurrence.endType === "on"
+                && toRecurrenceEndsOnDate(values.recurrence.endsOn)
+                  ? DateTime.fromJSDate(
+                      toRecurrenceEndsOnDate(values.recurrence.endsOn)!,
+                      {
                       zone: APP_TZ,
-                    }).toFormat("yyyy-LL-dd")
+                      },
+                    ).toFormat("yyyy-LL-dd")
                   : null,
             },
           }
@@ -1693,16 +1721,17 @@ export default function NewJobModal({
                           label="End date"
                           placeholder="End date"
                           disabled={isBusy}
-                          value={form.values.recurrence.endsOn ?? null}
+                          value={toRecurrenceEndsOnDate(form.values.recurrence.endsOn)}
                           onChange={(d) =>
                             form.setFieldValue(
                               "recurrence.endsOn",
-                              d as Date | null,
+                              toRecurrenceEndsOnDate(d as Date | string | null),
                             )
                           }
                           minDate={
-                            form.values.appointments?.[0]?.startDate ??
-                            undefined
+                            form.values.appointments?.[0]?.startDate
+                              ? appDateKeyToDate(form.values.appointments[0].startDate)
+                              : undefined
                           }
                         />
                       </Grid.Col>

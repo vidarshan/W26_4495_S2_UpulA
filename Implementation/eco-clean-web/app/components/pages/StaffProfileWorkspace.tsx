@@ -6,23 +6,23 @@ import {
   Button,
   Card,
   Container,
+  Divider,
+  Grid,
   Group,
   Loader,
   Modal,
+  Paper,
   SimpleGrid,
   Stack,
   Text,
   TextInput,
+  ThemeIcon,
   Title,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import {
-  IoCheckmark,
-  IoClose,
-  IoPencil,
-} from "@/lib/icons";
+import { IoCall, IoDocumentText, IoMail, IoPerson } from "@/lib/icons";
 
 type EmergencyContact = {
   name: string;
@@ -60,7 +60,7 @@ function DetailField({
       </Text>
       <TextInput
         value={value}
-        readOnly={readOnly}
+        disabled={readOnly}
         variant={readOnly ? "default" : "filled"}
         onChange={(event) => onChange?.(event.currentTarget.value)}
       />
@@ -95,6 +95,65 @@ function ActionTile({
   );
 }
 
+function SectionCard({
+  eyebrow,
+  title,
+  description,
+  children,
+}: {
+  eyebrow: string;
+  title: string;
+  description: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card withBorder radius="lg" p="lg" className="staff-app-surface">
+      <Stack gap="md">
+        <Box>
+          <Text size="xs" fw={700} c="dimmed" tt="uppercase">
+            {eyebrow}
+          </Text>
+          <Text fw={700} mt={4}>
+            {title}
+          </Text>
+          <Text size="sm" c="dimmed" mt={4}>
+            {description}
+          </Text>
+        </Box>
+        {children}
+      </Stack>
+    </Card>
+  );
+}
+
+function SummaryStat({
+  label,
+  value,
+  icon,
+}: {
+  label: string;
+  value: string;
+  icon: React.ReactNode;
+}) {
+  return (
+    <Paper withBorder radius="lg" p="md" className="staff-app-surface">
+      <Group justify="space-between" align="flex-start" wrap="nowrap">
+        <Box>
+          <Text size="sm" c="dimmed">
+            {label}
+          </Text>
+          <Text fw={700} mt={6}>
+            {value}
+          </Text>
+        </Box>
+        <ThemeIcon variant="light" color="lime" radius="lg" size="lg">
+          {icon}
+        </ThemeIcon>
+      </Group>
+    </Paper>
+  );
+}
+
 export default function StaffProfileWorkspace() {
   const [staff, setStaff] = useState<StaffState | null>(null);
   const [loading, setLoading] = useState(true);
@@ -126,7 +185,8 @@ export default function StaffProfileWorkspace() {
           postalCode: result.staffProfile?.staffAddress?.postalCode ?? "",
           emergencyContact: {
             name: result.staffProfile?.emergencyContact?.name ?? "",
-            phoneNumber: result.staffProfile?.emergencyContact?.phoneNumber ?? "",
+            phoneNumber:
+              result.staffProfile?.emergencyContact?.phoneNumber ?? "",
             relationship:
               result.staffProfile?.emergencyContact?.relationship ?? "",
           },
@@ -170,8 +230,7 @@ export default function StaffProfileWorkspace() {
     } catch (error) {
       notifications.show({
         title: "Update failed",
-        message:
-          error instanceof Error ? error.message : "Please try again.",
+        message: error instanceof Error ? error.message : "Please try again.",
         color: "red",
       });
     } finally {
@@ -180,9 +239,7 @@ export default function StaffProfileWorkspace() {
   };
 
   if (loading || !staff) {
-    return (
-      <CenterPage />
-    );
+    return <CenterPage />;
   }
 
   return (
@@ -195,207 +252,280 @@ export default function StaffProfileWorkspace() {
           className="staff-app-surface staff-app-surface--hero"
         >
           <Stack gap="lg">
-            <Group justify="space-between" align="flex-start" gap="md">
-              <Box>
-                <Text
-                  size="xs"
-                  fw={700}
-                  c="#64748b"
-                  tt="uppercase"
-                  style={{ letterSpacing: "0.08em" }}
+            <Grid gutter="lg" align="stretch">
+              <Grid.Col span={{ base: 12, lg: 8 }}>
+                <Stack gap="md" h="100%">
+                  <Group
+                    justify="space-between"
+                    align="flex-start"
+                    gap="md"
+                    wrap="wrap"
+                  >
+                    <Box>
+                      <Text size="xs" fw={700} c="dimmed" tt="uppercase">
+                        Personal workspace
+                      </Text>
+                      <Title order={2} mt={6}>
+                        {staff.name}
+                      </Title>
+                      <Text size="sm" c="dimmed" mt={4}>
+                        Keep your contact details up to date so the team can
+                        reach you when needed.
+                      </Text>
+                    </Box>
+
+                    <Group gap="xs">
+                      <Badge variant="light" color="lime">
+                        {staff.roleLabel}
+                      </Badge>
+                      <Badge variant="light" color="gray">
+                        Staff ID {staff.staffIdDisplay}
+                      </Badge>
+                    </Group>
+                  </Group>
+
+                  <Text size="sm" c="dimmed">
+                    Keep this workspace current so scheduling, payroll, and
+                    emergency contact records stay accurate.
+                  </Text>
+                </Stack>
+              </Grid.Col>
+
+              <Grid.Col span={{ base: 12, lg: 4 }}>
+                <Paper
+                  withBorder
+                  radius="lg"
+                  p="md"
+                  className="staff-app-surface"
                 >
-                  Personal workspace
-                </Text>
-                <Title order={2} mt={6}>
-                  Profile
-                </Title>
-                <Text size="sm" c="dimmed" mt={4}>
-                  Keep your contact details up to date so the team can reach you when needed.
-                </Text>
-              </Box>
+                  <Stack gap="sm" h="100%" justify="space-between">
+                    <Box>
+                      <Text size="xs" fw={700} c="dimmed" tt="uppercase">
+                        Workspace actions
+                      </Text>
+                      <Text fw={700} mt={4}>
+                        {isEditing
+                          ? "Editing profile"
+                          : "Profile is up to date"}
+                      </Text>
+                      <Text size="sm" c="dimmed" mt={4}>
+                        Review your details, update contact information, and
+                        manage your emergency contact.
+                      </Text>
+                    </Box>
 
-              <Stack gap="xs" align="flex-end">
-                <Badge variant="light" color="lime">
-                  {staff.roleLabel}
-                </Badge>
-                <Badge variant="light" color="gray">
-                  Staff ID {staff.staffIdDisplay}
-                </Badge>
-              </Stack>
-            </Group>
+                    {!isEditing ? (
+                      <Button
+                        variant="light"
+                        color="lime"
+                        fullWidth
+                        onClick={() => setIsEditing(true)}
+                      >
+                        Edit Details
+                      </Button>
+                    ) : (
+                      <Stack gap="xs">
+                        <Button
+                          color="lime"
+                          fullWidth
+                          loading={saving}
+                          onClick={handleSave}
+                        >
+                          Save Changes
+                        </Button>
+                        <Button
+                          variant="default"
+                          fullWidth
+                          onClick={() => setIsEditing(false)}
+                        >
+                          Cancel
+                        </Button>
+                      </Stack>
+                    )}
+                  </Stack>
+                </Paper>
+              </Grid.Col>
+            </Grid>
 
-            <SimpleGrid cols={{ base: 2, sm: 2, lg: 4 }} className="staff-summary-grid">
-              <Card withBorder radius="lg" p="md" className="staff-app-surface">
-                <Text size="sm" c="dimmed">
-                  Full name
-                </Text>
-                <Text fw={700} mt={6}>
-                  {staff.name}
-                </Text>
-              </Card>
-              <Card withBorder radius="lg" p="md" className="staff-app-surface">
-                <Text size="sm" c="dimmed">
-                  Email
-                </Text>
-                <Text fw={700} mt={6}>
-                  {staff.email}
-                </Text>
-              </Card>
-              <Card withBorder radius="lg" p="md" className="staff-app-surface">
-                <Text size="sm" c="dimmed">
-                  Phone
-                </Text>
-                <Text fw={700} mt={6}>
-                  {staff.phone || "Not added"}
-                </Text>
-              </Card>
-              <Card withBorder radius="lg" p="md" className="staff-app-surface">
-                <Text size="sm" c="dimmed">
-                  Emergency contact
-                </Text>
-                <Text fw={700} mt={6}>
-                  {staff.emergencyContact.name || "Not added"}
-                </Text>
-              </Card>
+            <SimpleGrid
+              cols={{ base: 1, sm: 2, lg: 4 }}
+              className="staff-summary-grid"
+            >
+              <SummaryStat
+                label="Full name"
+                value={staff.name}
+                icon={<IoPerson size={18} />}
+              />
+              <SummaryStat
+                label="Email"
+                value={staff.email}
+                icon={<IoMail size={18} />}
+              />
+              <SummaryStat
+                label="Phone"
+                value={staff.phone || "Not added"}
+                icon={<IoCall size={18} />}
+              />
+              <SummaryStat
+                label="Emergency contact"
+                value={staff.emergencyContact.name || "Not added"}
+                icon={<IoDocumentText size={18} />}
+              />
             </SimpleGrid>
           </Stack>
         </Card>
 
-        <Group justify="space-between" gap="sm" wrap="wrap">
-          {!isEditing ? (
-            <Button
-              variant="light"
-              color="lime"
-              onClick={() => setIsEditing(true)}
-            >
-              Edit Details
-            </Button>
-          ) : (
-            <Group gap="xs" wrap="wrap">
-              <Button
-                color="lime"
-                loading={saving}
-                onClick={handleSave}
+        <Grid gutter="lg">
+          <Grid.Col span={{ base: 12, xl: 8 }}>
+            <Stack gap="lg">
+              <SectionCard
+                eyebrow="Contact record"
+                title="Personal details"
+                description="Your identity and direct contact details in one place."
               >
-                Save Changes
-              </Button>
-              <Button
-                variant="default"
-                onClick={() => setIsEditing(false)}
+                <Stack gap="md">
+                  <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                    <DetailField
+                      label="Full name"
+                      value={staff.name}
+                      readOnly
+                    />
+                    <DetailField label="Email" value={staff.email} readOnly />
+                    <DetailField
+                      label="Phone number"
+                      value={staff.phone}
+                      readOnly={!isEditing}
+                      onChange={(value) => setStaff({ ...staff, phone: value })}
+                    />
+                    <DetailField
+                      label="Postal code"
+                      value={staff.postalCode}
+                      readOnly={!isEditing}
+                      onChange={(value) =>
+                        setStaff({ ...staff, postalCode: value })
+                      }
+                    />
+                  </SimpleGrid>
+
+                  <Divider />
+
+                  <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                    <Paper
+                      withBorder
+                      radius="lg"
+                      p="md"
+                      className="staff-app-surface"
+                    >
+                      <Text size="xs" fw={700} c="dimmed" tt="uppercase">
+                        Staff role
+                      </Text>
+                      <Text fw={700} mt={6}>
+                        {staff.roleLabel}
+                      </Text>
+                    </Paper>
+                    <Paper
+                      withBorder
+                      radius="lg"
+                      p="md"
+                      className="staff-app-surface"
+                    >
+                      <Text size="xs" fw={700} c="dimmed" tt="uppercase">
+                        Staff identifier
+                      </Text>
+                      <Text fw={700} mt={6}>
+                        {staff.staffIdDisplay}
+                      </Text>
+                    </Paper>
+                  </SimpleGrid>
+                </Stack>
+              </SectionCard>
+
+              <SectionCard
+                eyebrow="Address book"
+                title="Home address"
+                description="Use this section to keep your stored address current."
               >
-                Cancel
-              </Button>
-            </Group>
-          )}
-        </Group>
-
-        <SimpleGrid cols={{ base: 1, lg: 2 }} className="staff-form-grid">
-          <Card withBorder radius="lg" p="lg" className="staff-app-surface">
-            <Stack gap="md">
-              <Box>
-                <Text fw={700}>Personal details</Text>
-                <Text size="sm" c="dimmed" mt={4}>
-                  Your basic contact details in one place.
-                </Text>
-              </Box>
-
-              <DetailField label="Full name" value={staff.name} readOnly />
-              <DetailField label="Email" value={staff.email} readOnly />
-              <DetailField
-                label="Phone number"
-                value={staff.phone}
-                readOnly={!isEditing}
-                onChange={(value) => setStaff({ ...staff, phone: value })}
-              />
+                <Stack gap="md">
+                  <DetailField
+                    label="Street address"
+                    value={staff.address}
+                    readOnly={!isEditing}
+                    onChange={(value) => setStaff({ ...staff, address: value })}
+                  />
+                </Stack>
+              </SectionCard>
             </Stack>
-          </Card>
+          </Grid.Col>
 
-          <Card withBorder radius="lg" p="lg" className="staff-app-surface">
-            <Stack gap="md">
-              <Box>
-                <Text fw={700}>Address and support</Text>
-                <Text size="sm" c="dimmed" mt={4}>
-                  Home address and emergency contact details.
-                </Text>
-              </Box>
-
-              <DetailField
-                label="Street address"
-                value={staff.address}
-                readOnly={!isEditing}
-                onChange={(value) => setStaff({ ...staff, address: value })}
-              />
-              <DetailField
-                label="Postal code"
-                value={staff.postalCode}
-                readOnly={!isEditing}
-                onChange={(value) => setStaff({ ...staff, postalCode: value })}
-              />
-
-              <Card
-                withBorder
-                radius="lg"
-                p="md"
-                className="staff-app-surface"
-                style={{
-                  background:
-                    "linear-gradient(180deg, rgba(248, 250, 252, 0.98), rgba(255, 255, 255, 0.98))",
-                }}
+          <Grid.Col span={{ base: 12, xl: 4 }}>
+            <Stack gap="lg">
+              <SectionCard
+                eyebrow="Support contact"
+                title="Emergency contact"
+                description="Review the person we should contact if something urgent comes up."
               >
-                <Stack gap={6}>
-                  <Text fw={700}>Emergency contact</Text>
-                  <Text size="sm" c="dimmed">
-                    {staff.emergencyContact.name
-                      ? `${staff.emergencyContact.name} • ${staff.emergencyContact.phoneNumber || "No phone"}`
-                      : "No emergency contact added yet."}
-                  </Text>
+                <Stack gap="md">
+                  <Stack gap={6}>
+                    <Text fw={700}>
+                      {staff.emergencyContact.name || "No contact added"}
+                    </Text>
+                    <Text size="sm" c="dimmed">
+                      {staff.emergencyContact.phoneNumber || "No phone number"}
+                    </Text>
+                    <Text size="sm" c="dimmed">
+                      {staff.emergencyContact.relationship || "No relationship"}
+                    </Text>
+                  </Stack>
+
                   <Group>
                     <Button
                       variant="default"
                       onClick={() => setEmergencyModalOpen(true)}
                     >
-                      {staff.emergencyContact.name ? "Review Contact" : "Add Contact"}
+                      {staff.emergencyContact.name
+                        ? "Review Contact"
+                        : "Add Contact"}
                     </Button>
                   </Group>
                 </Stack>
-              </Card>
+              </SectionCard>
+
+              <SectionCard
+                eyebrow="Navigation"
+                title="Quick links"
+                description="Go straight to the pages you use most often."
+              >
+                <Stack gap="md">
+                  <SimpleGrid
+                    cols={{ base: 1, sm: 2, xl: 1 }}
+                    className="staff-form-grid"
+                  >
+                    <ActionTile
+                      title="Enter Time"
+                      description="Review your current pay period and submit timesheets."
+                      onClick={() => router.push("/staff/enter-time")}
+                    />
+                    <ActionTile
+                      title="Pay History"
+                      description="Look back at older pay slips."
+                      onClick={() => router.push("/staff/pay-history")}
+                    />
+                    <ActionTile
+                      title="Availability"
+                      description="Choose the days and times you can work."
+                      onClick={() => router.push("/staff/enter-availability")}
+                    />
+                    <ActionTile
+                      title="Apply Leave"
+                      description="Ask for time off."
+                      onClick={() => router.push("/staff/apply-leave")}
+                    />
+                  </SimpleGrid>
+                </Stack>
+              </SectionCard>
             </Stack>
-          </Card>
-        </SimpleGrid>
-
-        <Card withBorder radius="lg" p="lg" className="staff-app-surface">
-          <Stack gap="md">
-            <Box>
-              <Text fw={700}>Quick links</Text>
-              <Text size="sm" c="dimmed" mt={4}>
-                Go straight to the pages you use most often.
-              </Text>
-            </Box>
-
-            <SimpleGrid cols={{ base: 1, sm: 2 }} className="staff-form-grid">
-              <ActionTile
-                title="Enter Time"
-                description="Review your current pay period and submit timesheets."
-                onClick={() => router.push("/staff/enter-time")}
-              />
-              <ActionTile
-                title="Pay History"
-                description="Look back at older pay slips."
-                onClick={() => router.push("/staff/pay-history")}
-              />
-              <ActionTile
-                title="Availability"
-                description="Choose the days and times you can work."
-                onClick={() => router.push("/staff/enter-availability")}
-              />
-              <ActionTile
-                title="Apply Leave"
-                description="Ask for time off."
-                onClick={() => router.push("/staff/apply-leave")}
-              />
-            </SimpleGrid>
-          </Stack>
-        </Card>
+          </Grid.Col>
+        </Grid>
       </Stack>
 
       <Modal
@@ -452,7 +582,10 @@ export default function StaffProfileWorkspace() {
           />
 
           <Group justify="flex-end">
-            <Button variant="default" onClick={() => setEmergencyModalOpen(false)}>
+            <Button
+              variant="default"
+              onClick={() => setEmergencyModalOpen(false)}
+            >
               Close
             </Button>
           </Group>
@@ -465,7 +598,12 @@ export default function StaffProfileWorkspace() {
 function CenterPage() {
   return (
     <Container p={0} className="staff-app-page">
-      <Stack className="staff-page-stack" align="center" justify="center" style={{ minHeight: "50vh" }}>
+      <Stack
+        className="staff-page-stack"
+        align="center"
+        justify="center"
+        mih="50vh"
+      >
         <Loader size="lg" color="lime" />
       </Stack>
     </Container>
