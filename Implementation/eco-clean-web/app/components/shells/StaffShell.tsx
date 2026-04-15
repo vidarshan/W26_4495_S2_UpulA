@@ -160,6 +160,7 @@ export default function StaffShell({
     drawerOpened,
     openDrawer,
     closeDrawer,
+    back,
     refreshing,
     onRefresh,
     onBack,
@@ -175,9 +176,7 @@ export default function StaffShell({
     [pathname],
   );
   const effectiveTitle = routeMeta.title;
-  const effectiveBack = !isPrimaryRoute && !!routeMeta.backHref;
-  const showHomeShortcut =
-    pathname !== "/staff" && pathname !== "/staff/tasks";
+  const effectiveBack = back || (!isPrimaryRoute && !!routeMeta.backHref);
   const handleTopBarClick = () => {
     if (effectiveBack) {
       if (onBack) {
@@ -348,7 +347,6 @@ export default function StaffShell({
         title={effectiveTitle}
         onRefresh={onRefresh ?? undefined}
         refreshing={refreshing}
-        onHome={showHomeShortcut ? () => router.push("/staff") : undefined}
       />
 
       <Box className="staff-shell__main">{children}</Box>

@@ -35,6 +35,32 @@ import { WorkSession } from "@/types";
 import { formatSeconds, getElapsedSeconds } from "./taskTime";
 import { useDocumentVisibility } from "@mantine/hooks";
 
+function toAppDateKey(date: Date | string): string {
+  const value =
+    typeof date === "string"
+      ? DateTime.fromISO(date, { zone: APP_TZ })
+      : DateTime.fromJSDate(date, { zone: APP_TZ });
+
+  return value.toISODate() ?? "";
+}
+
+function toAppMonthKey(date: Date | string): string {
+  const value =
+    typeof date === "string"
+      ? DateTime.fromISO(date, { zone: APP_TZ })
+      : DateTime.fromJSDate(date, { zone: APP_TZ });
+
+  return (
+    value.startOf("month").toISODate() ?? ""
+  );
+}
+
+function toCalendarDate(dateKey: string): Date {
+  return (
+    DateTime.fromISO(dateKey, { zone: APP_TZ }).startOf("day").toJSDate()
+  );
+}
+
 type Appointment = {
   id: string;
   startTime: string;
@@ -221,7 +247,7 @@ const Page = () => {
         start: currentDayRange.start,
         end: currentDayRange.end,
       }),
-    enabled: !!staffId,
+    enabled: !!staffId && selectedDate !== today,
     refetchInterval: visibility === "visible" ? 5000 : false,
     refetchOnWindowFocus: true,
   });
@@ -286,10 +312,6 @@ const Page = () => {
     () => (Array.isArray(data) ? data : []),
     [data],
   );
-  const currentDayTasks: Appointment[] = useMemo(
-    () => (Array.isArray(currentDayData) ? currentDayData : []),
-    [currentDayData],
-  );
 
   const effectiveSelectedDate = useMemo(() => {
     if (selectedDate) {
@@ -305,6 +327,16 @@ const Page = () => {
 
     return today;
   }, [selectedDate, tasks, today]);
+
+  const currentDayTasks: Appointment[] = useMemo(
+    () =>
+      effectiveSelectedDate === today
+        ? tasks
+        : Array.isArray(currentDayData)
+          ? currentDayData
+          : [],
+    [currentDayData, effectiveSelectedDate, tasks, today],
+  );
 
   const handleSelect = (date: string) => {
     setSelectedDate(date);
@@ -407,12 +439,12 @@ const Page = () => {
               </Group>
               <Center>
                 <Calendar
-                  date={calendarMonth}
-                  onDateChange={(date) => setCalendarMonth(date)}
-                  onNextMonth={(date) => setCalendarMonth(date)}
-                  onPreviousMonth={(date) => setCalendarMonth(date)}
+                  date={toCalendarDate(calendarMonth)}
+                  onDateChange={(date) => setCalendarMonth(toAppMonthKey(date))}
+                  onNextMonth={(date) => setCalendarMonth(toAppMonthKey(date))}
+                  onPreviousMonth={(date) => setCalendarMonth(toAppMonthKey(date))}
                   renderDay={(date) => {
-                    const hasAppointments = markedDates.has(date);
+                    const hasAppointments = markedDates.has(toAppDateKey(date));
                     return (
                       <Box
                         style={{
@@ -441,13 +473,11 @@ const Page = () => {
                     );
                   }}
                   getDayProps={(date) => {
-                    const isoDate = DateTime.fromISO(date)
-                      .setZone(APP_TZ)
-                      .toISODate();
+                    const isoDate = toAppDateKey(date);
 
                     return {
                       selected: isoDate === effectiveSelectedDate,
-                      onClick: () => handleSelect(date),
+                      onClick: () => handleSelect(isoDate),
                     };
                   }}
                 />

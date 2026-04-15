@@ -99,6 +99,39 @@ export async function GET(req: NextRequest) {
       ...(staffId ? { assignments: { some: { staffId } } } : {}),
     };
    
+    if (view === "tasks") {
+      const taskAppointments = await prisma.appointment.findMany({
+        where,
+        select: {
+          id: true,
+          startTime: true,
+          endTime: true,
+          status: true,
+          job: {
+            select: {
+              title: true,
+              client: {
+                select: {
+                  firstName: true,
+                  lastName: true,
+                },
+              },
+              address: {
+                select: {
+                  street1: true,
+                  city: true,
+                  province: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: { startTime: "asc" },
+      });
+
+      return NextResponse.json(taskAppointments);
+    }
+
     const appointments = await prisma.appointment.findMany({
       where,
       include: {
@@ -118,10 +151,6 @@ export async function GET(req: NextRequest) {
       },
       orderBy: { startTime: "asc" },
     });
-
-    if (view === "tasks") {
-      return NextResponse.json(appointments);
-    }
 
     const events = appointments.map((a) => {
       const staffMembers = a.assignments.map((assignment) => assignment.staff);
