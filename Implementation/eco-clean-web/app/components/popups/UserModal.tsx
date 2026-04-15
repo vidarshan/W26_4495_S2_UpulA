@@ -12,6 +12,7 @@ import {
   PasswordInput,
   Paper,
   Select,
+  ScrollArea,
   Stack,
   Text,
   TextInput,
@@ -293,9 +294,20 @@ export default function UserUpsertModal({
       title={mode === "create" ? "Add User" : "Edit User"}
       size={mode === "edit" ? "lg" : "sm"}
       centered
+      yOffset="2vh"
+      scrollAreaComponent={ScrollArea.Autosize}
       closeOnClickOutside={!isBusyAny}
       closeOnEscape={!isBusyAny}
       withCloseButton={!isBusyAny}
+      styles={{
+        content: {
+          maxHeight: "calc(100dvh - 4vh)",
+        },
+        body: {
+          maxHeight: "calc(100dvh - 11rem)",
+          overflowY: "auto",
+        },
+      }}
       classNames={{
         content: "app-modal__content",
         header: "app-modal__header",

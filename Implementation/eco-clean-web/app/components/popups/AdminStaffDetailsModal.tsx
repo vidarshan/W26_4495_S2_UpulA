@@ -11,6 +11,7 @@ import {
   Modal,
   NumberInput,
   Paper,
+  ScrollArea,
   SegmentedControl,
   SimpleGrid,
   Stack,
@@ -255,6 +256,17 @@ export default function AdminStaffDetailsModal({
       title="Staff Details"
       size="xl"
       centered
+      yOffset="2vh"
+      scrollAreaComponent={ScrollArea.Autosize}
+      styles={{
+        content: {
+          maxHeight: "calc(100dvh - 4vh)",
+        },
+        body: {
+          maxHeight: "calc(100dvh - 11rem)",
+          overflowY: "auto",
+        },
+      }}
       classNames={{
         content: "app-modal__content",
         header: "app-modal__header",
