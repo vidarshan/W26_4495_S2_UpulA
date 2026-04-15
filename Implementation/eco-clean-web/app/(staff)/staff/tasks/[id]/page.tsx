@@ -99,13 +99,7 @@ function buildDirectionsUrl(address?: {
   const fullAddress = formatAddress(address);
   if (!fullAddress) return "";
 
-  const isAppleMobile =
-    typeof navigator !== "undefined" &&
-    /iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-  return isAppleMobile
-    ? `https://maps.apple.com/?daddr=${encodeURIComponent(fullAddress)}`
-    : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(fullAddress)}`;
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(fullAddress)}`;
 }
 
 function openDirections(address?: {
@@ -119,7 +113,7 @@ function openDirections(address?: {
   const url = buildDirectionsUrl(address);
   if (!url) return;
 
-  window.open(url, "_blank", "noopener,noreferrer");
+  window.location.assign(url);
 }
 
 function getElapsedSeconds(
