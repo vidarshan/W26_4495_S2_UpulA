@@ -16,14 +16,33 @@ export const useAppointment = (
   options?: UseAppointmentOptions,
 ) => {
   const visibility = useDocumentVisibility();
+
   const live = options?.live ?? true;
-  const intervalMs = options?.intervalMs ?? 3000;
+  const baseInterval = options?.intervalMs ?? 10000;
 
   return useQuery<AppointmentWithRelations>({
     queryKey: queryKeys.appointments.detail(id),
     queryFn: () => getAppointmentById(id!),
     enabled: !!id,
-    refetchInterval: live && visibility === "visible" ? intervalMs : false,
+
     refetchOnWindowFocus: live,
+
+    refetchInterval: (query) => {
+      if (!live || visibility !== "visible") return false;
+
+      const data = query.state.data as AppointmentWithRelations | undefined;
+
+      if (!data) return baseInterval;
+
+      const isFinished =
+        data.status === "COMPLETED" || data.status === "CANCELLED";
+
+      if (isFinished) return false;
+
+      const isActive = data.workSessions?.some((s) => !s.endedAt);
+
+      if (isActive) return 30000;
+      return 60000;
+    },
   });
 };
