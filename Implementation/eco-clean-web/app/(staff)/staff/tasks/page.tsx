@@ -233,7 +233,7 @@ const Page = () => {
         end: dayRange.end,
       }),
     enabled: !!staffId,
-    refetchInterval: visibility === "visible" ? 5000 : false,
+    staleTime: 60 * 1000,
     refetchOnWindowFocus: true,
   });
   const { data: currentDayData } = useQuery({
@@ -250,7 +250,8 @@ const Page = () => {
         end: currentDayRange.end,
       }),
     enabled: !!staffId && selectedDate !== today,
-    staleTime: 60 * 1000,
+    staleTime: 10 * 60 * 1000,
+    refetchInterval: false,
     refetchOnWindowFocus: true,
   });
   const { data: markerData } = useQuery({

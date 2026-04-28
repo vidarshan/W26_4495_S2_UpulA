@@ -142,7 +142,9 @@ export default function EnterAvailabilityPage() {
       notifications.show({
         title: "Update failed",
         message:
-          error instanceof Error ? error.message : "Failed to update availability.",
+          error instanceof Error
+            ? error.message
+            : "Failed to update availability.",
         color: "red",
       });
     }
@@ -150,10 +152,7 @@ export default function EnterAvailabilityPage() {
 
   return (
     <Container p={0} className="staff-app-page">
-      <Box
-        component="form"
-        onSubmit={form.onSubmit(handleSubmit)}
-      >
+      <Box component="form" onSubmit={form.onSubmit(handleSubmit)}>
         <Stack className="staff-page-stack">
           <Card
             withBorder
@@ -163,7 +162,13 @@ export default function EnterAvailabilityPage() {
           >
             <Group justify="space-between" align="flex-start" gap="md">
               <Box>
-                <Text size="xs" fw={700} c="#64748b" tt="uppercase" style={{ letterSpacing: "0.08em" }}>
+                <Text
+                  size="xs"
+                  fw={700}
+                  c="#64748b"
+                  tt="uppercase"
+                  style={{ letterSpacing: "0.08em" }}
+                >
                   Schedule preferences
                 </Text>
                 <Title order={2} mt={6}>
@@ -241,7 +246,12 @@ export default function EnterAvailabilityPage() {
             </Stack>
           </Card>
 
-          <Card withBorder radius="lg" p={0} className="staff-app-surface staff-mobile-table-card">
+          <Card
+            withBorder
+            radius="lg"
+            p={0}
+            className="staff-app-surface staff-mobile-table-card"
+          >
             <Box p="md">
               <Text fw={700}>Weekly shift availability</Text>
               <Text size="sm" c="dimmed" mt={4}>
@@ -306,13 +316,7 @@ export default function EnterAvailabilityPage() {
           </Card>
 
           <Group justify="center" mt="md">
-            <Button
-              type="submit"
-              size="lg"
-              radius="lg"
-              color="lime"
-              styles={{ root: { minWidth: 220, height: 52, fontWeight: 700 } }}
-            >
+            <Button type="submit" size="md" radius="xl" color="lime" fullWidth>
               Save Availability
             </Button>
           </Group>

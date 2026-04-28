@@ -9,7 +9,6 @@ import {
   Divider,
   Grid,
   Group,
-  Modal,
   Paper,
   SimpleGrid,
   Stack,
@@ -159,7 +158,6 @@ export default function StaffProfileWorkspace() {
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [emergencyModalOpen, setEmergencyModalOpen] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -476,18 +474,53 @@ export default function StaffProfileWorkspace() {
                       {staff.emergencyContact.relationship || "No relationship"}
                     </Text>
                   </Stack>
-
-                  <Group>
-                    <Button
-                      variant="default"
-                      onClick={() => setEmergencyModalOpen(true)}
-                    >
-                      {staff.emergencyContact.name
-                        ? "Review Contact"
-                        : "Add Contact"}
-                    </Button>
-                  </Group>
                 </Stack>
+                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                  <DetailField
+                    label="Name"
+                    value={staff.emergencyContact.name}
+                    readOnly={!isEditing}
+                    onChange={(value) =>
+                      setStaff({
+                        ...staff,
+                        emergencyContact: {
+                          ...staff.emergencyContact,
+                          name: value,
+                        },
+                      })
+                    }
+                  />
+
+                  <DetailField
+                    label="Phone number"
+                    value={staff.emergencyContact.phoneNumber}
+                    readOnly={!isEditing}
+                    onChange={(value) =>
+                      setStaff({
+                        ...staff,
+                        emergencyContact: {
+                          ...staff.emergencyContact,
+                          phoneNumber: value,
+                        },
+                      })
+                    }
+                  />
+
+                  <DetailField
+                    label="Relationship"
+                    value={staff.emergencyContact.relationship}
+                    readOnly={!isEditing}
+                    onChange={(value) =>
+                      setStaff({
+                        ...staff,
+                        emergencyContact: {
+                          ...staff.emergencyContact,
+                          relationship: value,
+                        },
+                      })
+                    }
+                  />
+                </SimpleGrid>
               </SectionCard>
 
               <SectionCard
@@ -527,70 +560,6 @@ export default function StaffProfileWorkspace() {
           </Grid.Col>
         </Grid>
       </Stack>
-
-      <Modal
-        opened={emergencyModalOpen}
-        onClose={() => setEmergencyModalOpen(false)}
-        title="Emergency Contact"
-        centered
-        classNames={{
-          content: "app-modal__content",
-          header: "app-modal__header",
-          title: "app-modal__title",
-          body: "app-modal__body",
-        }}
-      >
-        <Stack gap="md">
-          <DetailField
-            label="Name"
-            value={staff.emergencyContact.name}
-            readOnly={!isEditing}
-            onChange={(value) =>
-              setStaff({
-                ...staff,
-                emergencyContact: { ...staff.emergencyContact, name: value },
-              })
-            }
-          />
-          <DetailField
-            label="Phone number"
-            value={staff.emergencyContact.phoneNumber}
-            readOnly={!isEditing}
-            onChange={(value) =>
-              setStaff({
-                ...staff,
-                emergencyContact: {
-                  ...staff.emergencyContact,
-                  phoneNumber: value,
-                },
-              })
-            }
-          />
-          <DetailField
-            label="Relationship"
-            value={staff.emergencyContact.relationship}
-            readOnly={!isEditing}
-            onChange={(value) =>
-              setStaff({
-                ...staff,
-                emergencyContact: {
-                  ...staff.emergencyContact,
-                  relationship: value,
-                },
-              })
-            }
-          />
-
-          <Group justify="flex-end">
-            <Button
-              variant="default"
-              onClick={() => setEmergencyModalOpen(false)}
-            >
-              Close
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
     </Container>
   );
 }
