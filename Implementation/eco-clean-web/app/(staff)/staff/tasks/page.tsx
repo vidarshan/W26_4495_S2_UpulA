@@ -8,7 +8,7 @@ import {
   Container,
   Flex,
   Group,
-  Loader,
+  Paper,
   SegmentedControl,
   Stack,
   Text,
@@ -21,11 +21,7 @@ import { APP_TZ } from "@/lib/dateTime";
 import { useQuery } from "@tanstack/react-query";
 import { getMarkedDates, getStaffAppointments } from "@/lib/api/appointments";
 import { useRouter } from "next/navigation";
-import {
-  IoLocation,
-  IoPerson,
-  IoTime,
-} from "react-icons/io5";
+import { IoLocation, IoPerson, IoTime } from "@/lib/icons";
 import { useSession } from "next-auth/react";
 import { AppointmentReminderWatcher } from "@/app/components/AppointmentReminderWatcher";
 import { LocalNotificationDemo } from "@/app/components/LocalNotificationDemo";
@@ -33,6 +29,33 @@ import { requestPermission } from "@/lib/notifications/showNotification";
 import { Calendar } from "@mantine/dates";
 import dayjs from "dayjs";
 import { useStaffUiStore } from "@/stores/store";
+import { useAppointmentDetails } from "@/hooks/useAppointmentDetails";
+import { WorkSession } from "@/types";
+import { formatSeconds, getElapsedSeconds } from "./taskTime";
+import { useDocumentVisibility } from "@mantine/hooks";
+import Loader from "@/app/components/UI/Loader";
+
+function toAppDateKey(date: Date | string): string {
+  const value =
+    typeof date === "string"
+      ? DateTime.fromISO(date, { zone: APP_TZ })
+      : DateTime.fromJSDate(date, { zone: APP_TZ });
+
+  return value.toISODate() ?? "";
+}
+
+function toAppMonthKey(date: Date | string): string {
+  const value =
+    typeof date === "string"
+      ? DateTime.fromISO(date, { zone: APP_TZ })
+      : DateTime.fromJSDate(date, { zone: APP_TZ });
+
+  return value.startOf("month").toISODate() ?? "";
+}
+
+function toCalendarDate(dateKey: string): Date {
+  return DateTime.fromISO(dateKey, { zone: APP_TZ }).startOf("day").toJSDate();
+}
 
 type Appointment = {
   id: string;
@@ -54,11 +77,117 @@ type Appointment = {
   notes?: { id: string; content: string }[];
 };
 
+function CurrentlyWorkingCard({
+  appointment,
+  myStaffId,
+  nowMs,
+  onOpen,
+}: {
+  appointment: Appointment;
+  myStaffId?: string;
+  nowMs: number;
+  onOpen: (appointmentId: string) => void;
+}) {
+  const {
+    data: appointmentData,
+    isLoading,
+    error,
+  } = useAppointmentDetails(appointment.id);
+
+  if (error || isLoading || !appointmentData || !myStaffId) {
+    return null;
+  }
+
+  const allSessions = appointmentData.workSessions ?? [];
+  const mySessions = allSessions.filter(
+    (session: WorkSession & { staffId?: string }) =>
+      session.staffId === myStaffId,
+  );
+  const isRunning = mySessions.some((session: WorkSession) => !session.endedAt);
+
+  if (!isRunning) {
+    return null;
+  }
+
+  const elapsedSeconds = getElapsedSeconds(mySessions, nowMs);
+  const scheduledSeconds = Math.max(
+    0,
+    Math.floor(
+      (new Date(appointment.endTime).getTime() -
+        new Date(appointment.startTime).getTime()) /
+        1000,
+    ),
+  );
+  const remainingSeconds = Math.max(0, scheduledSeconds - elapsedSeconds);
+
+  return (
+    <Paper
+      p="md"
+      className="staff-app-surface staff-app-surface--hero"
+      onClick={() => onOpen(appointment.id)}
+    >
+      <Group justify="space-between" align="start" gap="md" wrap="nowrap">
+        <Group gap="sm" align="start" wrap="nowrap">
+          <ThemeIcon
+            size={44}
+            radius="xl"
+            color="lime"
+            variant="light"
+            className="staff-currently-working-card__icon"
+          >
+            <Loader />
+          </ThemeIcon>
+
+          <Stack gap={4}>
+            <Group gap="xs">
+              <Text
+                fw={800}
+                size="xs"
+                tt="uppercase"
+                className="staff-currently-working-card__eyebrow"
+              >
+                Currently Running
+              </Text>
+              <Badge
+                size="sm"
+                radius="xl"
+                color="lime"
+                variant="light"
+                className="staff-currently-working-card__badge"
+              >
+                Live
+              </Badge>
+            </Group>
+            <Text
+              size="lg"
+              fw={700}
+              className="staff-currently-working-card__title"
+            >
+              {appointment.job.title}
+            </Text>
+            <Text
+              size="sm"
+              fw={700}
+              className="staff-currently-working-card__title"
+            >
+              {formatSeconds(remainingSeconds)} remaining
+            </Text>
+          </Stack>
+        </Group>
+
+        <Text size="sm" fw={700} className="staff-currently-working-card__cta">
+          Open
+        </Text>
+      </Group>
+    </Paper>
+  );
+}
+
 const Page = () => {
   const { data: session } = useSession();
   const staffId = session?.user?.id;
   const router = useRouter();
-
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const [value, setValue] = useState<string>("upcoming");
   const today = DateTime.now().setZone(APP_TZ).toISODate()!;
   const [selectedDate, setSelectedDate] = useState<string | null>(today);
@@ -74,6 +203,14 @@ const Page = () => {
       end: base.endOf("day").toUTC().toISO()!,
     };
   }, [selectedDate, today]);
+  const currentDayRange = useMemo(() => {
+    const base = DateTime.now().setZone(APP_TZ);
+
+    return {
+      start: base.startOf("day").toUTC().toISO()!,
+      end: base.endOf("day").toUTC().toISO()!,
+    };
+  }, []);
   const markerRange = useMemo(() => {
     const base = DateTime.fromISO(calendarMonth, { zone: APP_TZ });
     return {
@@ -81,7 +218,7 @@ const Page = () => {
       end: base.endOf("month").toUTC().toISO()!,
     };
   }, [calendarMonth]);
-
+  const visibility = useDocumentVisibility();
   const setTitle = useStaffUiStore((s) => s.setTitle);
   const setBack = useStaffUiStore((s) => s.setBack);
   const setRefreshing = useStaffUiStore((s) => s.setRefreshing);
@@ -96,6 +233,26 @@ const Page = () => {
         end: dayRange.end,
       }),
     enabled: !!staffId,
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: true,
+  });
+  const { data: currentDayData } = useQuery({
+    queryKey: [
+      "staff-current-day-tasks",
+      staffId,
+      currentDayRange.start,
+      currentDayRange.end,
+    ],
+    queryFn: () =>
+      getStaffAppointments({
+        staffId: staffId!,
+        start: currentDayRange.start,
+        end: currentDayRange.end,
+      }),
+    enabled: !!staffId && selectedDate !== today,
+    staleTime: 10 * 60 * 1000,
+    refetchInterval: false,
+    refetchOnWindowFocus: true,
   });
   const { data: markerData } = useQuery({
     queryKey: [
@@ -111,6 +268,8 @@ const Page = () => {
         end: markerRange.end,
       }),
     enabled: !!staffId,
+    refetchInterval: visibility === "visible" ? 10000 : false,
+    refetchOnWindowFocus: true,
   });
 
   const markedDates = useMemo(
@@ -144,6 +303,14 @@ const Page = () => {
     requestPermission();
   }, []);
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNowMs(Date.now());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   const tasks: Appointment[] = useMemo(
     () => (Array.isArray(data) ? data : []),
     [data],
@@ -163,6 +330,16 @@ const Page = () => {
 
     return today;
   }, [selectedDate, tasks, today]);
+
+  const currentDayTasks: Appointment[] = useMemo(
+    () =>
+      effectiveSelectedDate === today
+        ? tasks
+        : Array.isArray(currentDayData)
+          ? currentDayData
+          : [],
+    [currentDayData, effectiveSelectedDate, tasks, today],
+  );
 
   const handleSelect = (date: string) => {
     setSelectedDate(date);
@@ -207,6 +384,20 @@ const Page = () => {
       <AppointmentReminderWatcher appointments={tasks} />
       <LocalNotificationDemo />
       <Stack gap="lg" p="md">
+        {currentDayTasks.map(
+          (t) =>
+            t.status === "SCHEDULED" && (
+              <CurrentlyWorkingCard
+                key={t.id}
+                appointment={t}
+                myStaffId={staffId}
+                nowMs={nowMs}
+                onOpen={(appointmentId) =>
+                  router.push(`/staff/tasks/${appointmentId}`)
+                }
+              />
+            ),
+        )}
         <Card
           radius="lg"
           withBorder
@@ -235,7 +426,7 @@ const Page = () => {
             <SegmentedControl
               value={value}
               color="lime"
-              radius="lg"
+              radius="xl"
               onChange={(v) => setValue(v || "upcoming")}
               className="staff-app-segmented"
               data={[
@@ -253,12 +444,14 @@ const Page = () => {
               </Group>
               <Center>
                 <Calendar
-                  date={calendarMonth}
-                  onDateChange={(date) => setCalendarMonth(date)}
-                  onNextMonth={(date) => setCalendarMonth(date)}
-                  onPreviousMonth={(date) => setCalendarMonth(date)}
+                  date={toCalendarDate(calendarMonth)}
+                  onDateChange={(date) => setCalendarMonth(toAppMonthKey(date))}
+                  onNextMonth={(date) => setCalendarMonth(toAppMonthKey(date))}
+                  onPreviousMonth={(date) =>
+                    setCalendarMonth(toAppMonthKey(date))
+                  }
                   renderDay={(date) => {
-                    const hasAppointments = markedDates.has(date);
+                    const hasAppointments = markedDates.has(toAppDateKey(date));
                     return (
                       <Box
                         style={{
@@ -287,13 +480,11 @@ const Page = () => {
                     );
                   }}
                   getDayProps={(date) => {
-                    const isoDate = DateTime.fromISO(date)
-                      .setZone(APP_TZ)
-                      .toISODate();
+                    const isoDate = toAppDateKey(date);
 
                     return {
                       selected: isoDate === effectiveSelectedDate,
-                      onClick: () => handleSelect(date),
+                      onClick: () => handleSelect(isoDate),
                     };
                   }}
                 />
@@ -306,7 +497,7 @@ const Page = () => {
           {isLoading ? (
             <Card radius="lg" withBorder p="lg" className="staff-app-surface">
               <Flex direction="column" align="center" justify="center" py="md">
-                <Loader size="sm" color="lime" />
+                <Loader />
                 <Text size="sm" fw={600} mt="sm">
                   Loading tasks...
                 </Text>
@@ -320,7 +511,9 @@ const Page = () => {
             </Card>
           ) : filteredTasks.length === 0 ? (
             <Card radius="lg" withBorder p="lg" className="staff-app-surface">
-              <Text c="dimmed">Nothing is waiting for you in this section.</Text>
+              <Text c="dimmed">
+                Nothing is waiting for you in this section.
+              </Text>
             </Card>
           ) : (
             <>

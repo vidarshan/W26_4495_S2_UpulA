@@ -7,15 +7,14 @@ import {
   Flex,
   Group,
   Paper,
-  Skeleton,
   Stack,
   Text,
   ThemeIcon,
-  Loader,
 } from "@mantine/core";
-import { IoSparkles, IoTrophy } from "react-icons/io5";
+import { IoSparkles, IoTrophy } from "@/lib/icons";
 import { Staff } from "@/types";
 import { StaffRecommendationResponse } from "@/lib/ai/schemas";
+import Loader from "../UI/Loader";
 
 type CandidateRecommendation = {
   staff: Staff;
@@ -106,12 +105,12 @@ const AIStaffSuggestionCard = ({
           </Text>
         ) : isLoading ? (
           <Group>
-            <Loader size="sm" />
+            <Loader />
             <Text size="sm">Loading staff recommendations...</Text>
           </Group>
         ) : isAiLoading ? (
           <Group>
-            <Loader size="sm" />
+            <Loader  />
             <Text size="sm">Loading staff recommendations...</Text>
           </Group>
         ) : aiError ? (

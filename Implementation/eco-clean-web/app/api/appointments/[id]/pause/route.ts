@@ -99,8 +99,20 @@ export async function POST(
             },
             orderBy: { createdAt: "asc" },
           },
-          notes: true,
+          notes: {
+            orderBy: { createdAt: "desc" },
+            select: {
+              id: true,
+              content: true,
+              createdAt: true,
+              isClientVisible: true,
+              images: true,
+            },
+          },
           images: true,
+          checklistItems: {
+            orderBy: { sortOrder: "asc" },
+          },
           job: {
             include: {
               client: true,

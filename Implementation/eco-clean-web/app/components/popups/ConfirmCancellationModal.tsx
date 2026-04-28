@@ -1,9 +1,8 @@
 import { deleteAppointment } from "@/lib/api/appointments";
 import { cancelJob } from "@/lib/api/jobs";
-import { Modal, Button, Group, Text } from "@mantine/core";
+import { Modal, Button, Group, Text, Paper, Stack } from "@mantine/core";
 import { useState } from "react";
-import { IoClose, IoTrashBin } from "react-icons/io5";
-import { useCalendarStore, useDashboardUI } from "@/stores/store";
+import { useDashboardUI } from "@/stores/store";
 
 interface Props {
   onSuccess: () => void;
@@ -19,8 +18,6 @@ const ConfirmCancellationModal = ({ onSuccess }: Props) => {
   } = useDashboardUI();
 
   const [loading, setLoading] = useState(false);
-  const triggerRefresh = useCalendarStore((state) => state.triggerRefresh);
-
   const handleCancel = async () => {
     setLoading(true);
 
@@ -47,26 +44,25 @@ const ConfirmCancellationModal = ({ onSuccess }: Props) => {
         body: "app-modal__body",
       }}
     >
-      <Text>
-        Are you sure that you want to proceed? This action is irreversible.
-      </Text>
+      <Stack gap="md">
+        <Paper withBorder radius="md" p="md" className="app-modal__section">
+          <Text size="sm">
+            Are you sure that you want to proceed? This action is irreversible.
+          </Text>
+        </Paper>
 
-      <Group mt="xs" justify="flex-end">
-        <Button
-          color="gray"
-          onClick={closeConfirmCancel}
-        >
-          Cancel
-        </Button>
+        <Paper withBorder radius="md" p="md" className="app-modal__footer">
+          <Group justify="flex-end">
+            <Button color="gray" onClick={closeConfirmCancel}>
+              Cancel
+            </Button>
 
-        <Button
-          color="red"
-          onClick={handleCancel}
-          loading={loading}
-        >
-          Delete
-        </Button>
-      </Group>
+            <Button color="red" onClick={handleCancel} loading={loading}>
+              Delete
+            </Button>
+          </Group>
+        </Paper>
+      </Stack>
     </Modal>
   );
 };

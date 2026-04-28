@@ -46,6 +46,11 @@ export type CreateJobPayload = {
     startTime: string | null;
     endTime: string | null;
     staffIds: string[];
+    leadStaffId?: string | null;
+    checklist?: Array<{
+      id?: string;
+      label: string;
+    }>;
     note?: string | null;
     images?: Array<{ url: string; fileKey?: string | null }>;
   }>;

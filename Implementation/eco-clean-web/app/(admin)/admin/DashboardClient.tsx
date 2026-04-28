@@ -42,10 +42,9 @@ import {
   IoArrowBack,
   IoArrowForward,
   IoPerson,
-  IoRefresh,
   IoSearch,
   IoToggle,
-} from "react-icons/io5";
+} from "@/lib/icons";
 import AppointmentInfoModal from "../../components/popups/AppointmentInfoModal";
 import ConfirmCancellationModal from "../../components/popups/ConfirmCancellationModal";
 import JobEditModal from "../../components/popups/JobEditModal";
@@ -300,6 +299,14 @@ export default function DashboardClient() {
     [debounced, status, assignee],
   );
 
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      calendarRef.current?.getApi().updateSize();
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [view, isNarrow, calendarLoading]);
+
   const activeFilterCount = [status, assignee, debounced.trim()].filter(
     Boolean,
   ).length;
@@ -399,21 +406,22 @@ export default function DashboardClient() {
             <Button.Group>
               <Button
                 variant="default"
-                radius="lg"
+                radius="xl"
+                leftSection={<IoArrowBack />}
                 onClick={() => calendarRef.current?.getApi().prev()}
               >
                 Prev
               </Button>
               <Button
                 variant="default"
-                radius="lg"
+                radius="xl"
                 onClick={() => calendarRef.current?.getApi().today()}
               >
                 Today
               </Button>
               <Button
                 variant="default"
-                radius="lg"
+                radius="xl"
                 rightSection={<IoArrowForward />}
                 onClick={() => calendarRef.current?.getApi().next()}
               >
@@ -587,6 +595,7 @@ export default function DashboardClient() {
               nowIndicator
               weekends={weekends}
               allDaySlot={false}
+              slotEventOverlap={false}
               eventDisplay={view === "month" ? "list-item" : "block"}
               stickyHeaderDates
               expandRows
@@ -673,20 +682,23 @@ export default function DashboardClient() {
                 }
 
                 return (
-                  <div className="calendar-event-card" style={{ fontSize: 12 }}>
-                    <div className="calendar-event-card__top">
-                      <div className="calendar-event-card__title">{title}</div>
+                  <div
+                    className="calendar-event-card calendar-event-card--timegrid"
+                    style={{ fontSize: 12 }}
+                  >
+                    <div className="calendar-event-card__title">{title}</div>
+                    <div className="calendar-event-card__meta">
+                      {timeLabel && (
+                        <div className="calendar-event-card__time calendar-event-card__time--inline">
+                          {timeLabel}
+                        </div>
+                      )}
                       {statusValue && (
                         <span className="calendar-event-card__status">
                           {STATUS_LABELS[statusValue]}
                         </span>
                       )}
                     </div>
-                    {timeLabel && (
-                      <div className="calendar-event-card__time">
-                        {timeLabel}
-                      </div>
-                    )}
                     {staffNames && (
                       <div className="calendar-event-card__staff">
                         {staffNames}

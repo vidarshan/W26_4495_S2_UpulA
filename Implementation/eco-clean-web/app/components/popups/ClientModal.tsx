@@ -16,18 +16,19 @@ import {
   Grid,
   Stack,
   Group,
+  ScrollArea,
   Title,
   Text,
   Paper,
   Divider,
   Textarea,
   Radio,
-  Loader,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { notifications } from "@mantine/notifications";
+import Loader from "../UI/Loader";
 
 type AddressForm = {
   id?: string;
@@ -336,7 +337,7 @@ export default function ClientPropertyModal({
       opened={opened}
       onClose={isBusy ? () => {} : onClose}
       title={clientId ? "Edit client" : "Add client"}
-      radius="lg"
+      radius="md"
       closeOnClickOutside={!isBusy}
       closeOnEscape={!isBusy}
       withCloseButton={!isBusy}
@@ -347,333 +348,357 @@ export default function ClientPropertyModal({
         body: "app-modal__body",
       }}
     >
-      <form onSubmit={form.onSubmit(handleSubmit)}>
-        <Stack gap="xl">
-          {(clientLoading || mutation.isPending) && (
-            <Paper withBorder p="sm" radius="lg">
-              <Group gap="xs">
-                <Loader size="sm" />
-                <Text size="sm">
-                  {clientLoading
-                    ? "Loading client details..."
-                    : "Saving client..."}
+      <ScrollArea.Autosize mah="75dvh" offsetScrollbars>
+        <form onSubmit={form.onSubmit(handleSubmit)}>
+          <Stack gap="lg" pb="xs">
+            {(clientLoading || mutation.isPending) && (
+              <Paper withBorder p="sm" radius="md" className="app-modal__banner">
+                <Group gap="xs">
+                  <Loader />
+                  <Text size="sm">
+                    {clientLoading
+                      ? "Loading client details..."
+                      : "Saving client..."}
+                  </Text>
+                </Group>
+              </Paper>
+            )}
+
+            {clientError && clientId ? (
+              <Paper withBorder p="sm" radius="md" className="app-modal__banner">
+                <Text size="sm" className="app-modal__danger-text">
+                  Failed to load client details.
                 </Text>
-              </Group>
-            </Paper>
-          )}
+              </Paper>
+            ) : null}
 
-          {clientError && clientId ? (
-            <Paper withBorder p="sm" radius="lg">
-              <Text size="sm" c="red">
-                Failed to load client details.
-              </Text>
-            </Paper>
-          ) : null}
-
-          <Grid>
-            <Grid.Col span={12}>
-              <Title order={5}>Primary contact details</Title>
-              <Text size="sm" c="dimmed">
-                Provide the main point of contact to ensure smooth communication
-                and reliable client records.
-              </Text>
-            </Grid.Col>
-
-            <Grid.Col span={12}>
-              <Stack gap="md">
-                <Grid>
-                  <Grid.Col span={3}>
-                    <Select
-                      label="Title"
-                      data={["No title", "Mr.", "Mrs.", "Ms.", "Dr."]}
-                      disabled={isBusy}
-                      {...form.getInputProps("title")}
-                    />
-                  </Grid.Col>
-
-                  <Grid.Col span={4.5}>
-                    <TextInput
-                      label="First name"
-                      placeholder="Enter first name"
-                      withAsterisk
-                      disabled={isBusy}
-                      {...form.getInputProps("firstName")}
-                    />
-                  </Grid.Col>
-
-                  <Grid.Col span={4.5}>
-                    <TextInput
-                      label="Last name"
-                      placeholder="Enter last name"
-                      withAsterisk
-                      disabled={isBusy}
-                      {...form.getInputProps("lastName")}
-                    />
-                  </Grid.Col>
-                </Grid>
-
-                <TextInput
-                  label="Company name"
-                  placeholder="Enter company name"
-                  disabled={isBusy}
-                  {...form.getInputProps("company")}
-                />
-
-                <Divider />
-
-                <Title order={6}>Communication</Title>
-
-                <TextInput
-                  label="Phone number"
-                  type="tel"
-                  placeholder="(604) 123-4567"
-                  disabled={isBusy}
-                  {...form.getInputProps("phone")}
-                  onChange={(e) =>
-                    form.setFieldValue(
-                      "phone",
-                      formatPhone(e.currentTarget.value),
-                    )
-                  }
-                />
-
-                <TextInput
-                  label="Email"
-                  placeholder="Enter email address"
-                  withAsterisk
-                  type="email"
-                  disabled={isBusy}
-                  {...form.getInputProps("email")}
-                />
-
-                <Radio.Group
-                  label="Preferred communication method"
-                  disabled={isBusy}
-                  {...form.getInputProps("preferredContact")}
-                >
-                  <Group mt="xs">
-                    <Radio value="call" label="Call" />
-                    <Radio value="sms" label="SMS" />
-                    <Radio value="email" label="Email" />
-                  </Group>
-                </Radio.Group>
-
-                <Divider />
-
-                <Title order={6}>Lead information</Title>
-
-                <TextInput
-                  label="Lead source"
-                  placeholder="How did this client hear about us?"
-                  disabled={isBusy}
-                  {...form.getInputProps("leadSource")}
-                />
+            <Paper withBorder radius="md" p="lg" className="app-modal__hero">
+              <Stack gap={4}>
+                <Text size="xs" fw={800} c="dimmed" className="app-modal__eyebrow">
+                  Client Record
+                </Text>
+                <Title order={4}>{clientId ? "Update client details" : "Create a client profile"}</Title>
+                <Text size="sm" c="dimmed">
+                  Keep contact details, service addresses, and client notes in one consistent admin workspace.
+                </Text>
               </Stack>
-            </Grid.Col>
-          </Grid>
+            </Paper>
 
-          <Divider />
+            <Paper withBorder radius="md" p="lg" className="app-modal__section">
+              <Grid>
+                <Grid.Col span={12}>
+                  <Title order={5}>Primary contact details</Title>
+                  <Text size="sm" c="dimmed">
+                    Provide the main point of contact to ensure smooth communication
+                    and reliable client records.
+                  </Text>
+                </Grid.Col>
 
-          <Grid>
-            <Grid.Col span={12}>
-              <Title order={5}>Property address</Title>
-              <Text size="sm" c="dimmed">
-                Enter the primary service address, billing address, or any
-                additional locations where services may take place.
-              </Text>
-            </Grid.Col>
+                <Grid.Col span={12}>
+                <Stack gap="md">
+                  <Grid>
+                    <Grid.Col span={3}>
+                      <Select
+                        label="Title"
+                        data={["No title", "Mr.", "Mrs.", "Ms.", "Dr."]}
+                        disabled={isBusy}
+                        {...form.getInputProps("title")}
+                      />
+                    </Grid.Col>
 
-            <Grid.Col span={12}>
-              <Stack gap="md">
-                {form.values.addresses.map((_, index) => (
-                  <Paper key={index} withBorder p="md" radius="lg">
-                    <Stack>
-                      <Group justify="space-between">
-                        <strong>Address {index + 1}</strong>
-
-                        {form.values.addresses.length > 1 && (
-                          <Button
-                            size="xs"
-                            variant="light"
-                            color="red"
-                            type="button"
-                            disabled={isBusy}
-                            onClick={() =>
-                              form.removeListItem("addresses", index)
-                            }
-                          >
-                            Remove
-                          </Button>
-                        )}
-                      </Group>
-
+                    <Grid.Col span={4.5}>
                       <TextInput
-                        label="Street 1"
-                        placeholder="Enter address"
+                        label="First name"
+                        placeholder="Enter first name"
+                        withAsterisk
                         disabled={isBusy}
-                        {...form.getInputProps(`addresses.${index}.street1`)}
+                        {...form.getInputProps("firstName")}
                       />
+                    </Grid.Col>
 
+                    <Grid.Col span={4.5}>
                       <TextInput
-                        label="Street 2"
-                        placeholder="Enter address"
+                        label="Last name"
+                        placeholder="Enter last name"
+                        withAsterisk
                         disabled={isBusy}
-                        {...form.getInputProps(`addresses.${index}.street2`)}
+                        {...form.getInputProps("lastName")}
                       />
+                    </Grid.Col>
+                  </Grid>
 
-                      <Grid>
-                        <Grid.Col span={6}>
-                          <TextInput
-                            label="City"
-                            placeholder="Enter city"
-                            disabled={isBusy}
-                            {...form.getInputProps(`addresses.${index}.city`)}
-                          />
-                        </Grid.Col>
+                  <TextInput
+                    label="Company name"
+                    placeholder="Enter company name"
+                    disabled={isBusy}
+                    {...form.getInputProps("company")}
+                  />
 
-                        <Grid.Col span={6}>
-                          <Select
-                            label="Province"
-                            placeholder="Select province"
-                            data={PROVINCES}
-                            disabled={isBusy}
-                            {...form.getInputProps(
-                              `addresses.${index}.province`,
-                            )}
-                          />
-                        </Grid.Col>
-                      </Grid>
+                  <Divider />
 
-                      <Grid>
-                        <Grid.Col span={6}>
-                          <TextInput
-                            label="Postal code"
-                            placeholder="H3B 4G5"
-                            disabled={isBusy}
-                            {...form.getInputProps(
-                              `addresses.${index}.postalCode`,
-                            )}
-                            onChange={(e) =>
-                              form.setFieldValue(
+                  <Title order={6}>Communication</Title>
+
+                  <TextInput
+                    label="Phone number"
+                    type="tel"
+                    placeholder="(604) 123-4567"
+                    disabled={isBusy}
+                    {...form.getInputProps("phone")}
+                    onChange={(e) =>
+                      form.setFieldValue(
+                        "phone",
+                        formatPhone(e.currentTarget.value),
+                      )
+                    }
+                  />
+
+                  <TextInput
+                    label="Email"
+                    placeholder="Enter email address"
+                    withAsterisk
+                    type="email"
+                    disabled={isBusy}
+                    {...form.getInputProps("email")}
+                  />
+
+                  <Radio.Group
+                    label="Preferred communication method"
+                    disabled={isBusy}
+                    {...form.getInputProps("preferredContact")}
+                  >
+                    <Group mt="xs">
+                      <Radio value="call" label="Call" />
+                      <Radio value="sms" label="SMS" />
+                      <Radio value="email" label="Email" />
+                    </Group>
+                  </Radio.Group>
+
+                  <Divider />
+
+                  <Title order={6}>Lead information</Title>
+
+                  <TextInput
+                    label="Lead source"
+                    placeholder="How did this client hear about us?"
+                    disabled={isBusy}
+                    {...form.getInputProps("leadSource")}
+                  />
+                </Stack>
+                </Grid.Col>
+              </Grid>
+            </Paper>
+
+            <Paper withBorder radius="md" p="lg" className="app-modal__section">
+              <Grid>
+                <Grid.Col span={12}>
+                  <Title order={5}>Property address</Title>
+                  <Text size="sm" c="dimmed">
+                    Enter the primary service address, billing address, or any
+                    additional locations where services may take place.
+                  </Text>
+                </Grid.Col>
+
+                <Grid.Col span={12}>
+                <Stack gap="md">
+                  {form.values.addresses.map((_, index) => (
+                    <Paper key={index} withBorder p="md" radius="md" className="app-modal__subsection">
+                      <Stack>
+                        <Group justify="space-between">
+                          <strong>Address {index + 1}</strong>
+
+                          {form.values.addresses.length > 1 && (
+                            <Button
+                              size="xs"
+                              variant="light"
+                              color="red"
+                              type="button"
+                              disabled={isBusy}
+                              onClick={() =>
+                                form.removeListItem("addresses", index)
+                              }
+                            >
+                              Remove
+                            </Button>
+                          )}
+                        </Group>
+
+                        <TextInput
+                          label="Street 1"
+                          placeholder="Enter address"
+                          disabled={isBusy}
+                          {...form.getInputProps(`addresses.${index}.street1`)}
+                        />
+
+                        <TextInput
+                          label="Street 2"
+                          placeholder="Enter address"
+                          disabled={isBusy}
+                          {...form.getInputProps(`addresses.${index}.street2`)}
+                        />
+
+                        <Grid>
+                          <Grid.Col span={6}>
+                            <TextInput
+                              label="City"
+                              placeholder="Enter city"
+                              disabled={isBusy}
+                              {...form.getInputProps(`addresses.${index}.city`)}
+                            />
+                          </Grid.Col>
+
+                          <Grid.Col span={6}>
+                            <Select
+                              label="Province"
+                              placeholder="Select province"
+                              data={PROVINCES}
+                              disabled={isBusy}
+                              {...form.getInputProps(
+                                `addresses.${index}.province`,
+                              )}
+                            />
+                          </Grid.Col>
+                        </Grid>
+
+                        <Grid>
+                          <Grid.Col span={6}>
+                            <TextInput
+                              label="Postal code"
+                              placeholder="H3B 4G5"
+                              disabled={isBusy}
+                              {...form.getInputProps(
                                 `addresses.${index}.postalCode`,
-                                e.currentTarget.value.toUpperCase(),
-                              )
-                            }
-                            onBlur={(e) =>
-                              form.setFieldValue(
-                                `addresses.${index}.postalCode`,
-                                formatPostalCode(e.currentTarget.value),
-                              )
-                            }
-                          />
-                        </Grid.Col>
+                              )}
+                              onChange={(e) =>
+                                form.setFieldValue(
+                                  `addresses.${index}.postalCode`,
+                                  e.currentTarget.value.toUpperCase(),
+                                )
+                              }
+                              onBlur={(e) =>
+                                form.setFieldValue(
+                                  `addresses.${index}.postalCode`,
+                                  formatPostalCode(e.currentTarget.value),
+                                )
+                              }
+                            />
+                          </Grid.Col>
 
-                        <Grid.Col span={6}>
-                          <Select
-                            label="Country"
-                            data={["Canada"]}
-                            disabled={isBusy}
-                            {...form.getInputProps(
-                              `addresses.${index}.country`,
-                            )}
-                          />
-                        </Grid.Col>
-                      </Grid>
+                          <Grid.Col span={6}>
+                            <Select
+                              label="Country"
+                              data={["Canada"]}
+                              disabled={isBusy}
+                              {...form.getInputProps(
+                                `addresses.${index}.country`,
+                              )}
+                            />
+                          </Grid.Col>
+                        </Grid>
 
-                      <Checkbox
-                        label="Billing address is the same as property address"
-                        disabled={isBusy}
-                        {...form.getInputProps(
-                          `addresses.${index}.billingSameAsProperty`,
-                          { type: "checkbox" },
-                        )}
-                      />
-                    </Stack>
-                  </Paper>
-                ))}
+                        <Checkbox
+                          label="Billing address is the same as property address"
+                          disabled={isBusy}
+                          {...form.getInputProps(
+                            `addresses.${index}.billingSameAsProperty`,
+                            { type: "checkbox" },
+                          )}
+                        />
+                      </Stack>
+                    </Paper>
+                  ))}
 
+                  <Button
+                    variant="light"
+                    type="button"
+                    disabled={isBusy}
+                    onClick={() =>
+                      form.insertListItem("addresses", {
+                        street1: "",
+                        street2: "",
+                        city: "",
+                        province: "",
+                        postalCode: "",
+                        country: "Canada",
+                        billingSameAsProperty: true,
+                      })
+                    }
+                  >
+                    Add another address
+                  </Button>
+                </Stack>
+                </Grid.Col>
+              </Grid>
+            </Paper>
+
+            <Paper withBorder radius="md" p="lg" className="app-modal__section">
+              <Grid>
+                <Grid.Col span={12}>
+                  <Title order={5}>Add notes</Title>
+                  <Text size="sm" c="dimmed">
+                    Add any relevant information about the client, such as
+                    preferences, special instructions, or important details that can
+                    help provide better service and maintain a comprehensive client
+                    profile.
+                  </Text>
+                </Grid.Col>
+
+                <Grid.Col span={12}>
+                <Textarea
+                  id="client-note-textarea"
+                  placeholder="Type your note here..."
+                  minRows={4}
+                  autosize
+                  disabled={isBusy}
+                  {...form.getInputProps("note")}
+                />
+                </Grid.Col>
+              </Grid>
+            </Paper>
+
+            <Group justify="flex-end">
+              {clientId ? (
                 <Button
+                  color="red"
                   variant="light"
                   type="button"
                   disabled={isBusy}
-                  onClick={() =>
-                    form.insertListItem("addresses", {
-                      street1: "",
-                      street2: "",
-                      city: "",
-                      province: "",
-                      postalCode: "",
-                      country: "Canada",
-                      billingSameAsProperty: true,
-                    })
-                  }
+                  loading={deleteMutation.isPending}
+                  onClick={() => setConfirmDeleteOpen(true)}
                 >
-                  Add another address
+                  Delete
                 </Button>
-              </Stack>
-            </Grid.Col>
-          </Grid>
-
-          <Grid>
-            <Grid.Col span={12}>
-              <Title order={5}>Add notes</Title>
-              <Text size="sm" c="dimmed">
-                Add any relevant information about the client, such as
-                preferences, special instructions, or important details that can
-                help provide better service and maintain a comprehensive client
-                profile.
-              </Text>
-            </Grid.Col>
-
-            <Grid.Col span={12}>
-              <Textarea
-                id="client-note-textarea"
-                placeholder="Type your note here..."
-                minRows={4}
-                autosize
-                disabled={isBusy}
-                {...form.getInputProps("note")}
-              />
-            </Grid.Col>
-          </Grid>
-
-          <Group justify="flex-end">
-            {clientId ? (
+              ) : null}
               <Button
-                color="red"
-                variant="light"
+                variant="default"
                 type="button"
                 disabled={isBusy}
-                loading={deleteMutation.isPending}
-                onClick={() => setConfirmDeleteOpen(true)}
+                onClick={onClose}
               >
-                Delete
+                Cancel
               </Button>
-            ) : null}
-            <Button
-              variant="default"
-              type="button"
-              disabled={isBusy}
-              onClick={onClose}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              loading={mutation.isPending}
-              disabled={isBusy}
-            >
-              {clientId ? "Update" : "Create"}
-            </Button>
-          </Group>
-        </Stack>
-      </form>
+              <Button
+                type="submit"
+                loading={mutation.isPending}
+                disabled={isBusy}
+              >
+                {clientId ? "Update" : "Create"}
+              </Button>
+            </Group>
+          </Stack>
+        </form>
+      </ScrollArea.Autosize>
 
       <Modal
         opened={confirmDeleteOpen}
         onClose={() => setConfirmDeleteOpen(false)}
         title="Delete client"
         centered
+        classNames={{
+          content: "app-modal__content",
+          header: "app-modal__header",
+          title: "app-modal__title",
+          body: "app-modal__body",
+        }}
       >
         <Stack gap="md">
           <Text size="sm">

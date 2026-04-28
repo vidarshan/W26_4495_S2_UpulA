@@ -46,8 +46,17 @@ const comicNeue = Comic_Neue({
   variable: "--font-comic-neue",
 });
 
+const SHARED_RADIUS = "xl";
+
 const theme = createTheme({
-  defaultRadius: "lg",
+  defaultRadius: SHARED_RADIUS,
+  radius: {
+    xs: "8px",
+    sm: "10px",
+    md: "14px",
+    lg: "18px",
+    xl: "22px",
+  },
   primaryColor: "lime",
   fontFamily: "Comic Neue, sans-serif",
   headings: {
@@ -56,78 +65,126 @@ const theme = createTheme({
   components: {
     Button: {
       defaultProps: {
-        radius: "lg",
+        radius: SHARED_RADIUS,
         size: "md",
         color: "lime",
       },
     },
     Badge: {
       defaultProps: {
-        radius: "lg",
+        radius: SHARED_RADIUS,
         size: "md",
       },
     },
     Paper: {
       defaultProps: {
-        radius: "lg",
+        radius: SHARED_RADIUS,
       },
     },
     ThemeIcon: {
       defaultProps: {
-        radius: "lg",
+        radius: SHARED_RADIUS,
       },
     },
     Card: {
       defaultProps: {
-        radius: "lg",
+        radius: SHARED_RADIUS,
+      },
+    },
+    Modal: {
+      defaultProps: {
+        radius: SHARED_RADIUS,
+      },
+    },
+    Drawer: {
+      defaultProps: {
+        radius: SHARED_RADIUS,
+      },
+    },
+    Menu: {
+      defaultProps: {
+        radius: SHARED_RADIUS,
+      },
+    },
+    Popover: {
+      defaultProps: {
+        radius: SHARED_RADIUS,
       },
     },
     ActionIcon: {
       defaultProps: {
-        radius: "lg",
+        radius: SHARED_RADIUS,
         size: "md",
       },
     },
     TextInput: {
       defaultProps: {
-        radius: "lg",
-        size: "md",
+        radius: SHARED_RADIUS,
+        size: "sm",
       },
     },
     PasswordInput: {
       defaultProps: {
-        radius: "lg",
-        size: "md",
+        radius: SHARED_RADIUS,
+        size: "sm",
+      },
+    },
+    Textarea: {
+      defaultProps: {
+        radius: SHARED_RADIUS,
+        size: "sm",
       },
     },
     Select: {
       defaultProps: {
-        radius: "lg",
-        size: "md",
+        radius: SHARED_RADIUS,
+        size: "sm",
+      },
+    },
+    MultiSelect: {
+      defaultProps: {
+        radius: SHARED_RADIUS,
+        size: "sm",
       },
     },
     NumberInput: {
       defaultProps: {
-        radius: "lg",
-        size: "md",
+        radius: SHARED_RADIUS,
+        size: "sm",
       },
     },
     SegmentedControl: {
       defaultProps: {
-        radius: "lg",
-        size: "md",
+        radius: SHARED_RADIUS,
+        size: "sm",
       },
     },
     DatePickerInput: {
       defaultProps: {
-        radius: "lg",
-        size: "md",
+        radius: SHARED_RADIUS,
+        size: "sm",
+      },
+    },
+    DateInput: {
+      defaultProps: {
+        radius: SHARED_RADIUS,
+        size: "sm",
       },
     },
     TimeInput: {
       defaultProps: {
-        radius: "lg",
-        size: "md",
+        radius: SHARED_RADIUS,
+        size: "sm",
+      },
+    },
+    Checkbox: {
+      defaultProps: {
+        size: "sm",
+      },
+    },
+    Radio: {
+      defaultProps: {
+        size: "sm",
       },
     },
   },

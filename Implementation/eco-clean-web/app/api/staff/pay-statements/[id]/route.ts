@@ -7,7 +7,6 @@ export async function GET(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
-  console.log("PAY STATEMENT ROUTE HIT");
 
   try {
     const token = await getToken({ req });

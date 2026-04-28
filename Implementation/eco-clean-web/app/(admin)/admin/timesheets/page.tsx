@@ -7,7 +7,6 @@ import {
   Button,
   Divider,
   Group,
-  Loader,
   Paper,
   Select,
   SimpleGrid,
@@ -15,8 +14,9 @@ import {
   Text,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IoCalendar, IoCheckmarkDone, IoPeople, IoTime } from "react-icons/io5";
+import { IoCalendar, IoCheckmarkDone, IoPeople, IoTime } from "@/lib/icons";
 import AdminPageFrame from "@/app/components/admin/AdminPageFrame";
+import Loader from "@/app/components/UI/Loader";
 
 type TimesheetPeriod = {
   id: string;
@@ -374,7 +374,7 @@ export default function AdminTimesheetOverviewPage() {
 
           {loadingOverview ? (
             <Group justify="center" py="xl">
-              <Loader color="lime" />
+              <Loader />
             </Group>
           ) : overview ? (
             <Stack gap="lg">

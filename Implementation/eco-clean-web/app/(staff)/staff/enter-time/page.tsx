@@ -9,7 +9,6 @@ import {
   Container,
   Divider,
   Group,
-  Loader,
   Modal,
   Paper,
   SegmentedControl,
@@ -31,8 +30,9 @@ import {
   IoChevronDown,
   IoClipboard,
   IoTime,
-} from "react-icons/io5";
+} from "@/lib/icons";
 import { APP_TZ } from "@/lib/dateTime";
+import Loader from "@/app/components/UI/Loader";
 
 type Week = 1 | 2;
 
@@ -384,7 +384,7 @@ export default function EnterTimePage() {
     return (
       <Container p={0} className="staff-app-page">
         <Center mih="70vh">
-          <Loader size="lg" color="lime" />
+          <Loader />
         </Center>
       </Container>
     );
@@ -471,7 +471,7 @@ export default function EnterTimePage() {
 
             {loadingEntries ? (
               <Group gap="xs">
-                <Loader size="sm" />
+                <Loader />
                 <Text size="sm" c="dimmed">
                   Updating your hours...
                 </Text>

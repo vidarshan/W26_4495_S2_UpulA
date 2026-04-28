@@ -8,7 +8,6 @@ import {
   Divider,
   Grid,
   Group,
-  Loader,
   Paper,
   Stack,
   Table,
@@ -20,14 +19,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import {
-  IoArrowBack,
   IoCalendar,
   IoCash,
-  IoDownload,
   IoDocumentText,
   IoPerson,
-} from "react-icons/io5";
+} from "@/lib/icons";
 import AdminPageFrame from "@/app/components/admin/AdminPageFrame";
+import Loader from "@/app/components/UI/Loader";
 
 type PayBreakdown = {
   regularRate?: number | null;
@@ -122,9 +120,12 @@ export default function AdminPayStubPage({ params }: PageProps) {
     async function fetchPayData() {
       try {
         setLoading(true);
-        const response = await fetch(`/api/admin/pay-statements/${statementId}`, {
-          cache: "no-store",
-        });
+        const response = await fetch(
+          `/api/admin/pay-statements/${statementId}`,
+          {
+            cache: "no-store",
+          },
+        );
 
         if (!response.ok) {
           const payload = await response.json().catch(() => ({}));
@@ -169,7 +170,7 @@ export default function AdminPayStubPage({ params }: PageProps) {
   if (loading) {
     return (
       <Center mih="70vh">
-        <Loader size="lg" color="lime" />
+        <Loader />
       </Center>
     );
   }
@@ -229,11 +230,7 @@ export default function AdminPayStubPage({ params }: PageProps) {
       description="Review a generated statement in the newer admin layout and export a PDF when needed."
       action={
         <Group gap="sm">
-          <Button
-            component={Link}
-            href="/admin/pay-periods"
-            variant="default"
-          >
+          <Button component={Link} href="/admin/pay-periods" variant="default">
             Back to pay periods
           </Button>
           <Button
@@ -247,13 +244,26 @@ export default function AdminPayStubPage({ params }: PageProps) {
       }
       stats={[
         { label: "Employee", value: data.employeeId || "N/A", icon: IoPerson },
-        { label: "Pay date", value: formatDate(data.payDate), icon: IoCalendar },
-        { label: "Net earnings", value: formatMoney(data.netEarnings), icon: IoCash },
+        {
+          label: "Pay date",
+          value: formatDate(data.payDate),
+          icon: IoCalendar,
+        },
+        {
+          label: "Net earnings",
+          value: formatMoney(data.netEarnings),
+          icon: IoCash,
+        },
       ]}
     >
       <Stack gap="lg">
         <Stack gap="lg">
-          <Paper withBorder radius="lg" p="lg" className="admin-page-frame__stat">
+          <Paper
+            withBorder
+            radius="lg"
+            p="lg"
+            className="admin-page-frame__stat"
+          >
             <Grid gutter="md">
               <Grid.Col span={{ base: 12, md: 4 }}>
                 <Text size="sm" c="dimmed">
@@ -271,7 +281,8 @@ export default function AdminPayStubPage({ params }: PageProps) {
                   Period
                 </Text>
                 <Text fw={700} mt={6}>
-                  {formatDate(data.payPeriodStart)} → {formatDate(data.payPeriodEnd)}
+                  {formatDate(data.payPeriodStart)} →{" "}
+                  {formatDate(data.payPeriodEnd)}
                 </Text>
               </Grid.Col>
               <Grid.Col span={{ base: 12, md: 4 }}>
@@ -308,7 +319,12 @@ export default function AdminPayStubPage({ params }: PageProps) {
                       border: "1px solid rgba(132, 204, 22, 0.24)",
                     }}
                   >
-                    <Image src="/logo.png" alt="Eco Clean" width={44} height={44} />
+                    <Image
+                      src="/logo.png"
+                      alt="Eco Clean"
+                      width={44}
+                      height={44}
+                    />
                   </Box>
 
                   <div>
@@ -321,7 +337,12 @@ export default function AdminPayStubPage({ params }: PageProps) {
                   </div>
                 </Group>
 
-                <Paper withBorder radius="lg" p="sm" className="admin-page-frame__stat">
+                <Paper
+                  withBorder
+                  radius="lg"
+                  p="sm"
+                  className="admin-page-frame__stat"
+                >
                   <Text size="xs" tt="uppercase" fw={700} c="#64748b">
                     Pay Date
                   </Text>
@@ -333,7 +354,12 @@ export default function AdminPayStubPage({ params }: PageProps) {
 
               <Grid gutter="md">
                 <Grid.Col span={{ base: 12, sm: 6 }}>
-                  <Paper withBorder radius="lg" p="md" className="admin-page-frame__stat">
+                  <Paper
+                    withBorder
+                    radius="lg"
+                    p="md"
+                    className="admin-page-frame__stat"
+                  >
                     <Text size="xs" tt="uppercase" fw={700} c="#64748b">
                       Employee
                     </Text>
@@ -346,12 +372,18 @@ export default function AdminPayStubPage({ params }: PageProps) {
                   </Paper>
                 </Grid.Col>
                 <Grid.Col span={{ base: 12, sm: 6 }}>
-                  <Paper withBorder radius="lg" p="md" className="admin-page-frame__stat">
+                  <Paper
+                    withBorder
+                    radius="lg"
+                    p="md"
+                    className="admin-page-frame__stat"
+                  >
                     <Text size="xs" tt="uppercase" fw={700} c="#64748b">
                       Pay Period
                     </Text>
                     <Text fw={700} mt={6}>
-                      {formatDate(data.payPeriodStart)} → {formatDate(data.payPeriodEnd)}
+                      {formatDate(data.payPeriodStart)} →{" "}
+                      {formatDate(data.payPeriodEnd)}
                     </Text>
                   </Paper>
                 </Grid.Col>
@@ -381,8 +413,12 @@ export default function AdminPayStubPage({ params }: PageProps) {
                         <Table.Td ta="right">
                           {row.rate != null ? formatMoney(row.rate) : "—"}
                         </Table.Td>
-                        <Table.Td ta="right">{row.units != null ? row.units : "—"}</Table.Td>
-                        <Table.Td ta="right">{formatMoney(row.amount)}</Table.Td>
+                        <Table.Td ta="right">
+                          {row.units != null ? row.units : "—"}
+                        </Table.Td>
+                        <Table.Td ta="right">
+                          {formatMoney(row.amount)}
+                        </Table.Td>
                       </Table.Tr>
                     ))}
                     <Table.Tr>
@@ -417,13 +453,17 @@ export default function AdminPayStubPage({ params }: PageProps) {
                       deductions.map((row) => (
                         <Table.Tr key={row.label}>
                           <Table.Td>{row.label}</Table.Td>
-                          <Table.Td ta="right">{formatMoney(row.amount)}</Table.Td>
+                          <Table.Td ta="right">
+                            {formatMoney(row.amount)}
+                          </Table.Td>
                         </Table.Tr>
                       ))
                     ) : (
                       <Table.Tr>
                         <Table.Td colSpan={2}>
-                          <Text c="dimmed">No deductions recorded for this statement.</Text>
+                          <Text c="dimmed">
+                            No deductions recorded for this statement.
+                          </Text>
                         </Table.Td>
                       </Table.Tr>
                     )}
@@ -432,7 +472,9 @@ export default function AdminPayStubPage({ params }: PageProps) {
                         <Text fw={700}>Total deductions</Text>
                       </Table.Td>
                       <Table.Td ta="right">
-                        <Text fw={700}>{formatMoney(data.totalDeductions)}</Text>
+                        <Text fw={700}>
+                          {formatMoney(data.totalDeductions)}
+                        </Text>
                       </Table.Td>
                     </Table.Tr>
                   </Table.Tbody>

@@ -21,7 +21,7 @@ import {
   IoDocumentText,
   IoDownload,
   IoPeople,
-} from "react-icons/io5";
+} from "@/lib/icons";
 import AdminPageFrame from "@/app/components/admin/AdminPageFrame";
 import { calculatePayroll } from "@/lib/payroll/calculatePayroll";
 
@@ -58,6 +58,8 @@ type StaffPayRow = {
   manualQpp: boolean;
   manualQpp2: boolean;
   manualQpip: boolean;
+  totalRegularHours?: number;
+  totalOtHours?: number;
 };
 
 type DeductionField =
@@ -187,45 +189,74 @@ export default function ManagePayPeriodsPage() {
             staffId: string;
             staffName: string;
             hourlyRate?: number | null;
+
+            totalRegularHours?: number;
+            totalOtHours?: number;
+
             federalClaimAmount?: number | null;
             quebecClaimAmount?: number | null;
             additionalFederalTax?: number | null;
             additionalQuebecTax?: number | null;
             isExempt?: boolean | null;
-          }): StaffPayRow => ({
-            userId: row.userId,
-            staffId: row.staffId,
-            staffName: row.staffName,
-            regularHours: 0,
-            regularRate: row.hourlyRate ?? 0,
-            regularAmount: 0,
-            otHours: 0,
-            otRate: row.hourlyRate ?? 0,
-            otAmount: 0,
-            transportAllowance: 0,
-            federalClaimAmount: row.federalClaimAmount ?? 16452,
-            quebecClaimAmount: row.quebecClaimAmount ?? 0,
-            additionalFederalTax: row.additionalFederalTax ?? 0,
-            additionalQuebecTax: row.additionalQuebecTax ?? 0,
-            isExempt: row.isExempt ?? false,
-            federalTax: 0,
-            quebecTax: 0,
-            ei: 0,
-            qpp: 0,
-            qpp2: 0,
-            qpip: 0,
-            health: 0,
-            other: 0,
-            grossEarnings: 0,
-            deductions: 0,
-            netEarnings: 0,
-            manualFederalTax: false,
-            manualQuebecTax: false,
-            manualEi: false,
-            manualQpp: false,
-            manualQpp2: false,
-            manualQpip: false,
-          }),
+          }): StaffPayRow => {
+            // ✅ Step 1: get values from API
+            let regular = row.totalRegularHours ?? 0;
+            let ot = row.totalOtHours ?? 0;
+
+            // ✅ Step 2: enforce 40-hour rule
+            if (regular > 40) {
+              ot += regular - 40;
+              regular = 40;
+            }
+
+            // ✅ Step 3: return row
+            return {
+              userId: row.userId,
+              staffId: row.staffId,
+              staffName: row.staffName,
+
+              regularHours: regular,
+              otHours: ot,
+
+              regularAmount: 0,
+              otAmount: 0,
+
+              regularRate: round2(row.hourlyRate ?? 0),
+              otRate: round2((row.hourlyRate ?? 0) * 1.5),
+              transportAllowance: 0,
+
+              federalClaimAmount: row.federalClaimAmount ?? 16452,
+              quebecClaimAmount: row.quebecClaimAmount ?? 0,
+
+              additionalFederalTax: row.additionalFederalTax ?? 0,
+              additionalQuebecTax: row.additionalQuebecTax ?? 0,
+
+              isExempt: row.isExempt ?? false,
+
+              // deductions (initial)
+              federalTax: 0,
+              quebecTax: 0,
+              ei: 0,
+              qpp: 0,
+              qpp2: 0,
+              qpip: 0,
+
+              health: 0,
+              other: 0,
+
+              grossEarnings: 0,
+              deductions: 0,
+              netEarnings: 0,
+
+              // manual flags
+              manualFederalTax: false,
+              manualQuebecTax: false,
+              manualEi: false,
+              manualQpp: false,
+              manualQpp2: false,
+              manualQpip: false,
+            };
+          }
         );
 
         setRows(mapped.map(recalculateRow));
@@ -281,21 +312,36 @@ export default function ManagePayPeriodsPage() {
 
   function resetSuggestedDeductions(index: number) {
     setRows((prev) => {
-      const updated = [...prev];
+      return prev.map((row, i) => {
+        if (i !== index) return row;
 
-      updated[index] = recalculateRow({
-        ...updated[index],
-        manualFederalTax: false,
-        manualQuebecTax: false,
-        manualEi: false,
-        manualQpp: false,
-        manualQpp2: false,
-        manualQpip: false,
+        const cleanRow: StaffPayRow = {
+          ...row,
+
+          manualFederalTax: false,
+          manualQuebecTax: false,
+          manualEi: false,
+          manualQpp: false,
+          manualQpp2: false,
+          manualQpip: false,
+
+          federalTax: 0,
+          quebecTax: 0,
+          ei: 0,
+          qpp: 0,
+          qpp2: 0,
+          qpip: 0,
+        };
+
+        // 👇 VERY IMPORTANT: return NEW object
+        return {
+          ...recalculateRow(cleanRow),
+        };
       });
-
-      return updated;
     });
   }
+
+
 
   const totals = useMemo(
     () =>
@@ -463,6 +509,8 @@ export default function ManagePayPeriodsPage() {
                                 label="Regular rate"
                                 value={row.regularRate}
                                 min={0}
+                                decimalScale={2}
+                                fixedDecimalScale
                                 onChange={(value) =>
                                   updateRow(index, "regularRate", Number(value) || 0)
                                 }
@@ -478,6 +526,8 @@ export default function ManagePayPeriodsPage() {
                               <NumberInput
                                 label="OT rate"
                                 value={row.otRate}
+                                decimalScale={2}
+                                fixedDecimalScale
                                 min={0}
                                 onChange={(value) =>
                                   updateRow(index, "otRate", Number(value) || 0)
@@ -547,7 +597,7 @@ export default function ManagePayPeriodsPage() {
                           <Paper withBorder p="md" radius="lg">
                             <Stack gap="sm">
                               <Text fw={700} c="#0f172a">
-                                Other and totals
+                                Other Deductions and totals
                               </Text>
                               <NumberInput
                                 label="Health"
@@ -628,8 +678,11 @@ export default function ManagePayPeriodsPage() {
 }
 
 function recalculateRow(row: StaffPayRow): StaffPayRow {
-  const regularAmount = row.regularHours * row.regularRate;
-  const otAmount = row.otHours * row.otRate;
+  const regularRate = round2(row.regularRate);
+  const otRate = round2(row.otRate);
+
+  const regularAmount = row.regularHours * regularRate;
+  const otAmount = row.otHours * otRate;
   const gross = regularAmount + otAmount + (row.transportAllowance ?? 0);
 
   const result = calculatePayroll({
@@ -652,17 +705,40 @@ function recalculateRow(row: StaffPayRow): StaffPayRow {
   const totalDeductions = result.totalDeductions + extraDeductions;
   const net = gross - totalDeductions;
 
+
   return {
     ...row,
-    regularAmount,
-    otAmount,
-    grossEarnings: gross,
-    qpp: result.qpp,
-    ei: result.ei,
-    qpip: result.qpip,
-    federalTax: result.federalTax,
-    quebecTax: result.quebecTax,
-    deductions: totalDeductions,
-    netEarnings: net,
+    regularAmount: round2(regularAmount),
+    otAmount: round2(otAmount),
+    grossEarnings: round2(gross),
+
+    federalTax: row.manualFederalTax
+      ? row.federalTax
+      : round2(result.federalTax),
+
+    quebecTax: row.manualQuebecTax
+      ? row.quebecTax
+      : round2(result.quebecTax),
+
+    qpp: row.manualQpp
+      ? row.qpp
+      : round2(result.qpp),
+
+    ei: row.manualEi
+      ? row.ei
+      : round2(result.ei),
+
+    qpip: row.manualQpip
+      ? row.qpip
+      : round2(result.qpip),
+
+    deductions: round2(totalDeductions),
+    netEarnings: round2(net),
   };
+
+
+};
+function round2(value: number) {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
 }
+

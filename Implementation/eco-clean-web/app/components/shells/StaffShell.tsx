@@ -27,11 +27,11 @@ import {
   IoLogOut,
   IoPerson,
   IoTime,
-} from "react-icons/io5";
+} from "@/lib/icons";
 
-const PANEL_RADIUS = 18;
-const ITEM_RADIUS = 16;
-const ICON_RADIUS = 14;
+const PANEL_RADIUS = 14;
+const ITEM_RADIUS = 12;
+const ICON_RADIUS = 10;
 
 const PRIMARY_NAV_ROUTES = [
   "/staff/tasks",
@@ -160,6 +160,7 @@ export default function StaffShell({
     drawerOpened,
     openDrawer,
     closeDrawer,
+    back,
     refreshing,
     onRefresh,
     onBack,
@@ -175,7 +176,7 @@ export default function StaffShell({
     [pathname],
   );
   const effectiveTitle = routeMeta.title;
-  const effectiveBack = !isPrimaryRoute && !!routeMeta.backHref;
+  const effectiveBack = back || (!isPrimaryRoute && !!routeMeta.backHref);
   const handleTopBarClick = () => {
     if (effectiveBack) {
       if (onBack) {

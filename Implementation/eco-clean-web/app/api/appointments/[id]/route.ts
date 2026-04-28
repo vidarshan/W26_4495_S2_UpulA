@@ -6,6 +6,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { parseAppDateTimeInput } from "@/lib/dateTime";
 import { UTApi } from "uploadthing/server";
 import { getAuthSession } from "@/lib/session";
+import {
+  normalizeChecklistInput,
+  normalizeLeadStaffId,
+} from "@/lib/appointments/checklist";
 
 type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
 const utapi = new UTApi();
@@ -15,6 +19,8 @@ type PatchBody = {
   endTime?: string;
   status?: AppointmentStatus;
   staffIds?: string[];
+  leadStaffId?: string | null;
+  checklist?: Array<{ id?: string; label: string }>;
   note?: string | null;
   noteIsClientVisible?: boolean;
 };
@@ -72,6 +78,13 @@ export async function GET(
         },
         notes: {
           orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            content: true,
+            createdAt: true,
+            isClientVisible: true,
+            images: true,
+          },
         },
         images: true,
         workSessions: {
@@ -91,6 +104,9 @@ export async function GET(
           where: { type: "task_assistant.plan" },
           take: 1,
           orderBy: { updatedAt: "desc" },
+        },
+        checklistItems: {
+          orderBy: { sortOrder: "asc" },
         },
         job: {
           include: {
@@ -160,8 +176,18 @@ export async function PATCH(
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { startTime, endTime, status, staffIds, note, noteIsClientVisible } =
-    body;
+  const {
+    startTime,
+    endTime,
+    status,
+    staffIds,
+    leadStaffId,
+    checklist,
+    note,
+    noteIsClientVisible,
+  } = body;
+  const normalizedChecklist =
+    checklist !== undefined ? normalizeChecklistInput(checklist) : undefined;
 
   if ((startTime && !endTime) || (!startTime && endTime)) {
     return NextResponse.json(
@@ -225,7 +251,19 @@ export async function PATCH(
     const updated = await prisma.$transaction(async (tx: Tx) => {
       const existingAppointment = await tx.appointment.findUnique({
         where: { id },
-        select: { id: true },
+        select: {
+          id: true,
+          assignments: {
+            select: {
+              staffId: true,
+            },
+          },
+          checklistItems: {
+            select: {
+              id: true,
+            },
+          },
+        },
       });
 
       if (!existingAppointment) {
@@ -287,6 +325,7 @@ export async function PATCH(
               data: toCreate.map((staffId) => ({
                 appointmentId: id,
                 staffId,
+                isTeamLead: false,
                 ...(parsedStartTime ? { plannedStart: parsedStartTime } : {}),
                 ...(parsedEndTime ? { plannedEnd: parsedEndTime } : {}),
               })),
@@ -302,14 +341,100 @@ export async function PATCH(
               },
             });
           }
+
+          const effectiveLeadStaffId = normalizeLeadStaffId(
+            leadStaffId,
+            validStaffIds,
+          );
+
+          await tx.assignment.updateMany({
+            where: { appointmentId: id },
+            data: { isTeamLead: false },
+          });
+
+          if (effectiveLeadStaffId) {
+            await tx.assignment.updateMany({
+              where: {
+                appointmentId: id,
+                staffId: effectiveLeadStaffId,
+              },
+              data: { isTeamLead: true },
+            });
+          }
         } else {
           await tx.assignment.deleteMany({
             where: { appointmentId: id },
           });
         }
+      } else if (leadStaffId !== undefined) {
+        const existingStaffIds = existingAppointment.assignments.map(
+          (assignment) => assignment.staffId,
+        );
+        const effectiveLeadStaffId = normalizeLeadStaffId(
+          leadStaffId,
+          existingStaffIds,
+        );
+
+        await tx.assignment.updateMany({
+          where: { appointmentId: id },
+          data: { isTeamLead: false },
+        });
+
+        if (effectiveLeadStaffId) {
+          await tx.assignment.updateMany({
+            where: {
+              appointmentId: id,
+              staffId: effectiveLeadStaffId,
+            },
+            data: { isTeamLead: true },
+          });
+        }
       }
 
-      // 3) Handle note updates
+      // 3) Sync checklist items
+      if (normalizedChecklist !== undefined) {
+        const existingIds = new Set(
+          existingAppointment.checklistItems.map((item) => item.id),
+        );
+        const keepIds = new Set(
+          normalizedChecklist
+            .map((item) => item.id)
+            .filter((itemId): itemId is string => !!itemId),
+        );
+
+        const deleteIds = [...existingIds].filter((itemId) => !keepIds.has(itemId));
+
+        if (deleteIds.length > 0) {
+          await tx.appointmentChecklistItem.deleteMany({
+            where: {
+              appointmentId: id,
+              id: { in: deleteIds },
+            },
+          });
+        }
+
+        for (const item of normalizedChecklist) {
+          if (item.id && existingIds.has(item.id)) {
+            await tx.appointmentChecklistItem.update({
+              where: { id: item.id },
+              data: {
+                label: item.label,
+                sortOrder: item.sortOrder,
+              },
+            });
+          } else {
+            await tx.appointmentChecklistItem.create({
+              data: {
+                appointmentId: id,
+                label: item.label,
+                sortOrder: item.sortOrder,
+              },
+            });
+          }
+        }
+      }
+
+      // 4) Handle note updates
       if (note !== undefined) {
         const trimmed = typeof note === "string" ? note.trim() : "";
 
@@ -348,7 +473,7 @@ export async function PATCH(
         }
       }
 
-      // 4) Return fresh data
+      // 5) Return fresh data
       return tx.appointment.findUnique({
         where: { id },
         include: {
@@ -388,7 +513,16 @@ export async function PATCH(
               },
             },
           },
-          notes: true,
+          notes: {
+            orderBy: { createdAt: "desc" },
+            select: {
+              id: true,
+              content: true,
+              createdAt: true,
+              isClientVisible: true,
+              images: true,
+            },
+          },
           images: true,
           workSessions: {
             orderBy: { startedAt: "asc" },
@@ -402,6 +536,9 @@ export async function PATCH(
                 },
               },
             },
+          },
+          checklistItems: {
+            orderBy: { sortOrder: "asc" },
           },
         },
       });

@@ -29,5 +29,6 @@ export function useStaff(params: StaffParams) {
     queryFn: () => getStaff(keyParams),
     placeholderData: keepPreviousData,
     staleTime: 60_000,
+    
   });
 }

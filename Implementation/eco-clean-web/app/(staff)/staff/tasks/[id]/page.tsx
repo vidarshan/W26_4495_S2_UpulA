@@ -7,6 +7,7 @@ import {
   pauseAppointment,
   saveVisitNote,
   startAppointment,
+  updateAppointmentChecklistItem,
 } from "@/lib/api/appointments";
 import { showLocalNotification } from "@/lib/notifications/showNotification";
 import { useUploadThing } from "@/lib/uploadthing";
@@ -14,19 +15,18 @@ import formatPrettyDate from "@/lib/utils/formatPrettyDate";
 import { TaskAssistantResponse } from "@/lib/ai/schemas";
 import { AI_FEATURES_ENABLED } from "@/lib/config/ai";
 import { APP_TZ } from "@/lib/dateTime";
-import { JobNote, WorkSession } from "@/types";
+import { AppointmentWithRelations, JobNote, WorkSession } from "@/types";
+import { queryKeys } from "@/lib/queryKeys";
 import {
   Badge,
   Box,
   Button,
   Card,
+  Checkbox,
   Container,
-  Drawer,
+  Divider,
   Flex,
   Group,
-  Image,
-  Loader,
-  Paper,
   Progress,
   SimpleGrid,
   Stack,
@@ -40,19 +40,10 @@ import { DateTime } from "luxon";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import {
-  IoArrowBack,
-  IoCall,
-  IoChatbubbleEllipses,
-  IoDocumentText,
-  IoLocation,
-  IoMap,
-  IoPause,
-  IoPerson,
-  IoPlay,
-  IoTime,
-} from "react-icons/io5";
+import { IoDocumentText, IoLocation, IoPerson, IoTime } from "@/lib/icons";
 import { useStaffUiStore } from "@/stores/store";
+import ImageViewer from "@/app/components/media/ImageViewer";
+import Loader from "@/app/components/UI/Loader";
 
 const CARD_RADIUS = "md";
 const HERO_PADDING = "lg";
@@ -80,15 +71,10 @@ function formatAddress(address?: {
     .join(", ");
 }
 
-type AppointmentImage = {
-  id: string;
-  url: string;
-  fileKey?: string | null;
-};
-
 export type NoteImage = {
   id: string;
   url: string;
+  fileKey?: string | null;
 };
 
 export type Note = {
@@ -111,7 +97,23 @@ function buildDirectionsUrl(address?: {
   country?: string | null;
 }) {
   const fullAddress = formatAddress(address);
+  if (!fullAddress) return "";
+
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(fullAddress)}`;
+}
+
+function openDirections(address?: {
+  street1?: string | null;
+  street2?: string | null;
+  city?: string | null;
+  province?: string | null;
+  postalCode?: string | null;
+  country?: string | null;
+}) {
+  const url = buildDirectionsUrl(address);
+  if (!url) return;
+
+  window.location.assign(url);
 }
 
 function getElapsedSeconds(
@@ -145,8 +147,6 @@ const Page = () => {
   const { data: session, status: sessionStatus } = useSession();
   const myStaffId = session?.user?.id;
 
-  const [imgOpened, setImgOpened] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [visitNote, setVisitNote] = useState("");
   const [, setVisitImages] = useState<File[]>([]);
   const [uploadedVisitImages, setUploadedVisitImages] = useState<
@@ -163,6 +163,7 @@ const Page = () => {
 
   const qc = useQueryClient();
   const { startUpload, isUploading } = useUploadThing("appointmentImages");
+  const appointmentQueryKey = queryKeys.appointments.detail(appointmentId);
 
   const {
     data: appointment,
@@ -204,11 +205,23 @@ const Page = () => {
   }, []);
 
   const refreshAppointment = (updated: unknown) => {
-    qc.setQueryData(["appointments", "detail", appointmentId ?? null], updated);
+    qc.setQueryData(appointmentQueryKey, updated);
     qc.invalidateQueries({
-      queryKey: ["appointments", "detail", appointmentId ?? null],
+      queryKey: appointmentQueryKey,
     });
     qc.invalidateQueries({ queryKey: ["staff-tasks"] });
+  };
+
+  const mutateAppointmentCache = (
+    updater: (current: AppointmentWithRelations) => AppointmentWithRelations,
+  ) => {
+    qc.setQueryData<AppointmentWithRelations | undefined>(
+      appointmentQueryKey,
+      (current) => {
+        if (!current) return current;
+        return updater(current);
+      },
+    );
   };
 
   const saveVisitNoteMutation = useMutation({
@@ -247,11 +260,39 @@ const Page = () => {
       }
       return startAppointment(appointment.id, myStaffId);
     },
+    onMutate: async () => {
+      await qc.cancelQueries({ queryKey: appointmentQueryKey });
+
+      const previous =
+        qc.getQueryData<AppointmentWithRelations>(appointmentQueryKey);
+      const optimisticStartedAt = new Date().toISOString();
+
+      if (myStaffId) {
+        mutateAppointmentCache((current) => ({
+          ...current,
+          workSessions: [
+            ...(current.workSessions ?? []),
+            {
+              id: `optimistic-start-${myStaffId}`,
+              appointmentId: current.id,
+              staffId: myStaffId,
+              startedAt: optimisticStartedAt,
+              endedAt: null,
+            },
+          ],
+        }));
+      }
+
+      return { previous };
+    },
     onSuccess: (updated) => {
       refreshAppointment(updated);
       showLocalNotification("Job started", `/staff/tasks/${appointment!.id}`);
     },
-    onError: (error: unknown) => {
+    onError: (error: unknown, _vars, context) => {
+      if (context?.previous) {
+        qc.setQueryData(appointmentQueryKey, context.previous);
+      }
       showLocalNotification(
         getErrorMessage(error) || "Failed to start job",
         "/staff/tasks",
@@ -266,11 +307,49 @@ const Page = () => {
       }
       return pauseAppointment(appointment.id, myStaffId);
     },
+    onMutate: async () => {
+      await qc.cancelQueries({ queryKey: appointmentQueryKey });
+
+      const previous =
+        qc.getQueryData<AppointmentWithRelations>(appointmentQueryKey);
+      const optimisticEndedAt = new Date().toISOString();
+
+      if (myStaffId) {
+        mutateAppointmentCache((current) => {
+          const sessions = [...(current.workSessions ?? [])];
+          const activeIndex = [...sessions]
+            .reverse()
+            .findIndex(
+              (session) => session.staffId === myStaffId && !session.endedAt,
+            );
+
+          if (activeIndex === -1) {
+            return current;
+          }
+
+          const actualIndex = sessions.length - 1 - activeIndex;
+          sessions[actualIndex] = {
+            ...sessions[actualIndex],
+            endedAt: optimisticEndedAt,
+          };
+
+          return {
+            ...current,
+            workSessions: sessions,
+          };
+        });
+      }
+
+      return { previous };
+    },
     onSuccess: (updated) => {
       refreshAppointment(updated);
       showLocalNotification("Job paused", `/staff/tasks/${appointment!.id}`);
     },
-    onError: (error: unknown) => {
+    onError: (error: unknown, _vars, context) => {
+      if (context?.previous) {
+        qc.setQueryData(appointmentQueryKey, context.previous);
+      }
       showLocalNotification(
         getErrorMessage(error) || "Job pause failed",
         `/staff/tasks/${appointment!.id}`,
@@ -285,6 +364,28 @@ const Page = () => {
       }
       return completeAppointment(appointment.id, myStaffId);
     },
+    onMutate: async () => {
+      await qc.cancelQueries({ queryKey: appointmentQueryKey });
+
+      const previous =
+        qc.getQueryData<AppointmentWithRelations>(appointmentQueryKey);
+      const optimisticEndedAt = new Date().toISOString();
+
+      mutateAppointmentCache((current) => ({
+        ...current,
+        status: "COMPLETED",
+        workSessions: (current.workSessions ?? []).map((session) =>
+          session.endedAt
+            ? session
+            : {
+                ...session,
+                endedAt: optimisticEndedAt,
+              },
+        ),
+      }));
+
+      return { previous };
+    },
     onSuccess: (updated) => {
       refreshAppointment(updated);
       showLocalNotification(
@@ -292,10 +393,66 @@ const Page = () => {
         `/staff/tasks/${appointment!.id}`,
       );
     },
-    onError: (error: unknown) => {
+    onError: (error: unknown, _vars, context) => {
+      if (context?.previous) {
+        qc.setQueryData(appointmentQueryKey, context.previous);
+      }
       showLocalNotification(
         getErrorMessage(error) || "Job completion failed",
         `/staff/tasks/${appointment!.id}`,
+      );
+    },
+  });
+
+  const checklistMutation = useMutation({
+    mutationFn: ({
+      itemId,
+      completed,
+    }: {
+      itemId: string;
+      completed: boolean;
+    }) => {
+      if (!appointment?.id) {
+        throw new Error("Missing appointment");
+      }
+
+      return updateAppointmentChecklistItem(appointment.id, {
+        itemId,
+        completed,
+      });
+    },
+    onMutate: async ({ itemId, completed }) => {
+      await qc.cancelQueries({ queryKey: appointmentQueryKey });
+
+      const previous =
+        qc.getQueryData<AppointmentWithRelations>(appointmentQueryKey);
+
+      mutateAppointmentCache((current) => ({
+        ...current,
+        checklistItems: (current.checklistItems ?? []).map((item) =>
+          item.id === itemId
+            ? {
+                ...item,
+                isCompleted: completed,
+                completedAt: completed ? new Date().toISOString() : null,
+                completedById: completed ? (myStaffId ?? null) : null,
+              }
+            : item,
+        ),
+      }));
+
+      return { previous };
+    },
+    onSuccess: (updated) => {
+      refreshAppointment(updated);
+    },
+    onError: (error: unknown, _vars, context) => {
+      if (context?.previous) {
+        qc.setQueryData(appointmentQueryKey, context.previous);
+      }
+      showLocalNotification(
+        getErrorMessage(error) || "Failed to update checklist",
+        `/staff/tasks/${appointment?.id}`,
       );
     },
   });
@@ -338,10 +495,7 @@ const Page = () => {
   if (error || !appointment) {
     return (
       <Container py="md">
-        <Button
-          variant="subtle"
-          onClick={() => router.back()}
-        >
+        <Button variant="subtle" onClick={() => router.back()}>
           Back
         </Button>
         <Text c="red" mt="md">
@@ -350,11 +504,6 @@ const Page = () => {
       </Container>
     );
   }
-
-  const openImagePreview = (imgUrl: string) => {
-    setSelectedImage(imgUrl);
-    setImgOpened(true);
-  };
 
   const start = DateTime.fromISO(appointment.startTime).setZone(APP_TZ);
   const end = DateTime.fromISO(appointment.endTime).setZone(APP_TZ);
@@ -379,6 +528,12 @@ const Page = () => {
     images: note.images,
   }));
   const fullAddress = formatAddress(address);
+  const visitNotes = (appointment.notes ?? []).filter(
+    (note) => !note.isClientVisible,
+  );
+  const visitNoteCount = visitNotes.length;
+  const visitNoteLimit = 10;
+  const visitNoteLimitReached = visitNoteCount >= visitNoteLimit;
 
   const allSessions = appointment.workSessions ?? [];
 
@@ -414,6 +569,16 @@ const Page = () => {
   );
 
   const assignedStaff = appointment.assignments ?? [];
+  const leadAssignment = assignedStaff.find(
+    (assignment) => assignment.isTeamLead,
+  );
+  const isOnlyParticipant =
+    !!myStaffId &&
+    assignedStaff.length === 1 &&
+    assignedStaff[0]?.staff.id === myStaffId;
+  const isTeamLead = !!myStaffId && leadAssignment?.staff.id === myStaffId;
+  const canToggleChecklist = isOnlyParticipant || isTeamLead;
+  const checklistItems = appointment.checklistItems ?? [];
 
   const canAct =
     sessionStatus !== "loading" &&
@@ -427,50 +592,13 @@ const Page = () => {
     );
     const isActive = memberSessions.some((s: WorkSession) => !s.endedAt);
 
-    if (isActive) return "Running";
+    if (isActive) return "Active";
     if (memberSessions.length > 0) return "Paused";
     return "Not started";
   };
 
   return (
     <Container p={0} mih="100vh" className="staff-app-page">
-      <Drawer
-        opened={imgOpened}
-        overlayProps={{ backgroundOpacity: 0.55, blur: 3 }}
-        onClose={() => {
-          setImgOpened(false);
-          setSelectedImage(null);
-        }}
-        position="bottom"
-        size="90%"
-        radius="lg"
-        title="Image Preview"
-        padding="md"
-        styles={{
-          content: {
-            background:
-              "linear-gradient(180deg, rgba(251, 253, 247, 0.99), rgba(243, 247, 236, 0.99))",
-          },
-          body: {
-            background:
-              "linear-gradient(180deg, rgba(251, 253, 247, 0.99), rgba(243, 247, 236, 0.99))",
-          },
-        }}
-      >
-        {selectedImage ? (
-          <Flex justify="center" align="center" h="100%">
-            <Image
-              src={selectedImage}
-              alt="Preview"
-              fit="contain"
-              radius="lg"
-              mah="75vh"
-              w="100%"
-            />
-          </Flex>
-        ) : null}
-      </Drawer>
-
       <Stack gap="sm" p="md">
         <Card
           radius="lg"
@@ -480,15 +608,6 @@ const Page = () => {
         >
           <Group justify="space-between" align="start" mb="sm">
             <Box>
-              <Text
-                size="xs"
-                fw={800}
-                tt="uppercase"
-                c="#64748b"
-                style={{ letterSpacing: "0.08em" }}
-              >
-                Job for today
-              </Text>
               <Text fw={800} size="xl" mt={4}>
                 {job?.title ?? "Appointment"}
               </Text>
@@ -507,7 +626,7 @@ const Page = () => {
             </Badge>
           </Group>
 
-            <Text size="sm" c={isRunning ? "green" : "dimmed"} fw={600}>
+          <Text size="sm" c={isRunning ? "green" : "dimmed"} fw={600}>
             {appointment.status === "COMPLETED"
               ? "Completed"
               : appointment.status === "CANCELLED"
@@ -627,7 +746,7 @@ const Page = () => {
         {aiFeaturesEnabled && isAssistantLoading ? (
           <Card radius={CARD_RADIUS} withBorder p={CARD_PADDING}>
             <Group gap="sm">
-              <Loader size="sm" />
+              <Loader />
               <Text size="sm" c="dimmed">
                 Loading AI task assistant...
               </Text>
@@ -652,40 +771,105 @@ const Page = () => {
               {activeStaffIds.size} of {assignedStaff.length} working right now
             </Text>
 
-            {assignedStaff.map((assignment) => {
+            {assignedStaff.map((assignment, index) => {
               const member = assignment.staff;
               const isMe = member.id === myStaffId;
               const memberState = getMemberState(member.id);
-
               return (
-                <Group
-                  key={member.id}
-                  justify="space-between"
-                  className="staff-task-detail__row"
-                >
-                  <Text size="sm" fw={isMe ? 700 : 500}>
-                    {member.name} {isMe ? "(You)" : ""}
-                  </Text>
-
-                  <Badge
-                    size="sm"
-                    radius="lg"
-                    color={
-                      memberState === "Running"
-                        ? "green"
-                        : memberState === "Paused"
-                          ? "yellow"
-                          : "gray"
-                    }
-                    variant="light"
+                <Box key={assignment.id}>
+                  <Group
+                    key={member.id}
+                    justify="space-between"
+                    className="staff-task-detail__row"
                   >
-                    {memberState}
-                  </Badge>
-                </Group>
+                    <Box>
+                      <Text size="sm" lh={0} fw={isMe ? 700 : 500}>
+                        {member.name} {isMe ? "(You)" : ""}
+                      </Text>
+                      {assignment.isTeamLead && (
+                        <Badge mt="sm" size="xs">
+                          Team Lead
+                        </Badge>
+                      )}
+                    </Box>
+                    <Badge
+                      size="sm"
+                      radius="lg"
+                      color={
+                        memberState === "Active"
+                          ? "green"
+                          : memberState === "Paused"
+                            ? "yellow"
+                            : "gray"
+                      }
+                      variant="filled"
+                    >
+                      {memberState}
+                    </Badge>
+                  </Group>
+                  {index === assignedStaff.length - 1 ? null : (
+                    <Divider mt="xs" mb="xs" />
+                  )}
+                </Box>
               );
             })}
           </Stack>
         </Card>
+
+        {checklistItems.length ? (
+          <Card
+            radius="lg"
+            withBorder
+            p={CARD_PADDING}
+            className="staff-app-surface"
+          >
+            <Group mb="sm" gap="xs">
+              <ThemeIcon radius="lg" variant="light" color="lime">
+                <IoDocumentText size={16} />
+              </ThemeIcon>
+              <Box style={{ flex: 1 }}>
+                <Text fw={700} size="sm">
+                  Appointment Checklist
+                </Text>
+                <Text size="xs" c="dimmed">
+                  {canToggleChecklist
+                    ? "You can update this checklist."
+                    : "Only the team lead or sole participant can update this checklist."}
+                </Text>
+              </Box>
+            </Group>
+
+            <Stack gap="xs">
+              {checklistItems.map((item, index) => (
+                <Box key={item.id}>
+                  <Checkbox
+                    checked={item.isCompleted}
+                    disabled={
+                      !canToggleChecklist || checklistMutation.isPending
+                    }
+                    label={
+                      <Text
+                        size="sm"
+                        td={item.isCompleted ? "line-through" : "none"}
+                      >
+                        {item.label}
+                      </Text>
+                    }
+                    onChange={(event) =>
+                      checklistMutation.mutate({
+                        itemId: item.id,
+                        completed: event.currentTarget.checked,
+                      })
+                    }
+                  />
+                  {index === checklistItems.length - 1 ? null : (
+                    <Divider mt="xs" mb="xs" />
+                  )}
+                </Box>
+              ))}
+            </Stack>
+          </Card>
+        ) : null}
 
         <Card
           radius="lg"
@@ -722,11 +906,10 @@ const Page = () => {
             </Box>
 
             <Button
-              component="a"
-              href={buildDirectionsUrl(address)}
               radius="lg"
               color="lime"
               disabled={!address}
+              onClick={() => openDirections(address)}
             >
               Directions
             </Button>
@@ -808,14 +991,8 @@ const Page = () => {
 
           <Stack gap="xs">
             {notes?.length ? (
-              notes.map((note) => (
-                <Paper
-                  key={note.id}
-                  radius="lg"
-                  p="sm"
-                  withBorder
-                  className="staff-task-detail__note"
-                >
+              notes.map((note, index) => (
+                <Box key={note.id}>
                   <Group justify="space-between" align="flex-start" mb={6}>
                     <Box style={{ flex: 1 }}>
                       <Text fw={600} size="sm">
@@ -855,20 +1032,22 @@ const Page = () => {
                   {note.images?.length ? (
                     <Group mt="sm" gap="xs">
                       {note.images.map((img) => (
-                        <Image
-                          onClick={() => openImagePreview(img.url)}
+                        <ImageViewer
                           key={img.id}
                           src={img.url}
-                          alt="note image"
-                          w={76}
-                          h={76}
-                          radius="lg"
-                          fit="cover"
+                          alt="Job note image"
+                          modalTitle="Job Note Image"
+                          thumbWidth={76}
+                          thumbHeight={76}
+                          thumbRadius="lg"
                         />
                       ))}
                     </Group>
                   ) : null}
-                </Paper>
+                  {index === notes.length - 1 ? null : (
+                    <Divider mt="md" mb="md" />
+                  )}
+                </Box>
               ))
             ) : (
               <Text size="sm" c="dimmed">
@@ -888,25 +1067,21 @@ const Page = () => {
             <ThemeIcon radius="lg" variant="light" color="orange">
               <IoDocumentText size={16} />
             </ThemeIcon>
-            <Text fw={700} size="sm">
-              Previous notes
-            </Text>
+            <Box style={{ flex: 1 }}>
+              <Text fw={700} size="sm">
+                Previous notes
+              </Text>
+              <Text size="xs" c="dimmed">
+                {visitNoteCount} of {visitNoteLimit} visit notes used
+              </Text>
+            </Box>
           </Group>
 
           <Stack gap="xs">
-            {appointment.notes?.length ? (
-              appointment.notes.map((note) => (
-                <Paper
-                  key={note.id}
-                  radius="lg"
-                  p="sm"
-                  withBorder
-                  className="staff-task-detail__note"
-                >
+            {visitNotes.length ? (
+              visitNotes.map((note, index) => (
+                <Box key={note.id}>
                   <Group justify="space-between" mb={6}>
-                    <Text fw={600} size="sm">
-                      Visit note
-                    </Text>
                     <Text size="xs" c="dimmed">
                       {formatPrettyDate(note.createdAt)}
                     </Text>
@@ -916,23 +1091,25 @@ const Page = () => {
                     {note.content}
                   </Text>
 
-                  {appointment.images?.length ? (
+                  {note.images?.length ? (
                     <Group mt="sm" gap="xs">
-                      {appointment.images.map((img: AppointmentImage) => (
-                        <Image
-                          onClick={() => openImagePreview(img.url)}
+                      {note.images.map((img) => (
+                        <ImageViewer
                           key={img.id}
                           src={img.url}
-                          alt="note image"
-                          w={76}
-                          h={76}
-                          radius="lg"
-                          fit="cover"
+                          alt="Visit note image"
+                          modalTitle="Visit Note Image"
+                          thumbWidth={76}
+                          thumbHeight={76}
+                          thumbRadius="lg"
                         />
                       ))}
                     </Group>
                   ) : null}
-                </Paper>
+                  {index === visitNotes.length - 1 ? null : (
+                    <Divider mt="md" mb="md" />
+                  )}
+                </Box>
               ))
             ) : (
               <Text size="sm" c="dimmed">
@@ -941,94 +1118,106 @@ const Page = () => {
             )}
           </Stack>
         </Card>
-
-        <Card
-          radius="lg"
-          withBorder
-          p={CARD_PADDING}
-          className="staff-app-surface"
-        >
-          <Group mb="sm" gap="xs">
-            <ThemeIcon radius="lg" variant="light" color="orange">
-              <IoDocumentText size={16} />
-            </ThemeIcon>
-            <Text fw={700} size="sm">
-              Add a note
-            </Text>
-          </Group>
-
-          <Stack gap="sm">
-            <Textarea
-              id="visit-note-textarea"
-              label="What should the team know?"
-              placeholder="Add anything helpful from this visit."
-              minRows={4}
-              value={visitNote}
-              onChange={(e) => setVisitNote(e.currentTarget.value)}
-              radius="lg"
-            />
-
-            {uploadedVisitImages.length ? (
-              <Group gap="xs">
-                {uploadedVisitImages.map((img) => (
-                  <Image
-                    key={img.fileKey}
-                    src={img.url}
-                    alt="visit image"
-                    w={76}
-                    h={76}
-                    radius="lg"
-                    fit="cover"
-                  />
-                ))}
-              </Group>
-            ) : null}
-
-            <Dropzone
-              accept={["image/png", "image/jpeg", "image/webp"]}
-              maxFiles={10}
-              className="staff-task-detail__dropzone"
-              onDrop={async (files) => {
-                const uploaded = await startUpload(files);
-
-                const imgs = (uploaded ?? []).map((u) => ({
-                  url: u.url,
-                  fileKey: u.key,
-                }));
-
-                setVisitImages((prev) => [...prev, ...files].slice(0, 10));
-                setUploadedVisitImages((prev) =>
-                  [...prev, ...imgs].slice(0, 10),
-                );
-              }}
-            >
-              <Flex direction="column" align="center" py="xs">
-                <IoDocumentText size={24} />
-                <Text mt="xs" size="xs">
-                  Drag visit images here or click to upload (4MB Max, up to 10 images)
+        {!visitNoteLimitReached && (
+          <Card
+            radius="lg"
+            withBorder
+            p={CARD_PADDING}
+            className="staff-app-surface"
+          >
+            <Group mb="sm" gap="xs">
+              <ThemeIcon radius="lg" variant="light" color="orange">
+                <IoDocumentText size={16} />
+              </ThemeIcon>
+              <Box style={{ flex: 1 }}>
+                <Text fw={700} size="sm">
+                  Add a note
                 </Text>
-                {isUploading ? (
-                  <Text mt="xs" size="xs" c="dimmed">
-                    Uploading...
-                  </Text>
-                ) : null}
-              </Flex>
-            </Dropzone>
+                <Text size="xs" c="dimmed">
+                  {visitNoteLimitReached
+                    ? `This appointment already has the maximum ${visitNoteLimit} visit notes.`
+                    : `${visitNoteLimit - visitNoteCount} visit notes remaining.`}
+                </Text>
+              </Box>
+            </Group>
 
-            <Button
-              radius="xl"
-              color="orange"
-              loading={saveVisitNoteMutation.isPending}
-              disabled={
-                isUploading ||
-                (!visitNote.trim() && !uploadedVisitImages.length)
-              }
-              onClick={() => saveVisitNoteMutation.mutate()}
-            >
-              Save Visit Note
-            </Button>
-          </Stack>
-        </Card>
+            <Stack gap="sm">
+              <Textarea
+                id="visit-note-textarea"
+                label="What should the team know?"
+                placeholder="Add anything helpful from this visit."
+                minRows={4}
+                value={visitNote}
+                onChange={(e) => setVisitNote(e.currentTarget.value)}
+                radius="lg"
+                disabled={visitNoteLimitReached}
+              />
+
+              {uploadedVisitImages.length ? (
+                <Group gap="xs">
+                  {uploadedVisitImages.map((img) => (
+                    <ImageViewer
+                      key={img.fileKey}
+                      src={img.url}
+                      alt="Visit image"
+                      modalTitle="Visit Image"
+                      thumbWidth={76}
+                      thumbHeight={76}
+                      thumbRadius="lg"
+                    />
+                  ))}
+                </Group>
+              ) : null}
+
+              <Dropzone
+                accept={["image/png", "image/jpeg", "image/webp"]}
+                maxFiles={10}
+                className="staff-task-detail__dropzone"
+                disabled={visitNoteLimitReached || isUploading}
+                onDrop={async (files) => {
+                  const uploaded = await startUpload(files);
+
+                  const imgs = (uploaded ?? []).map((u) => ({
+                    url: u.url,
+                    fileKey: u.key,
+                  }));
+
+                  setVisitImages((prev) => [...prev, ...files].slice(0, 10));
+                  setUploadedVisitImages((prev) =>
+                    [...prev, ...imgs].slice(0, 10),
+                  );
+                }}
+              >
+                <Flex direction="column" align="center" py="xs">
+                  <IoDocumentText size={24} />
+                  <Text mt="xs" size="xs">
+                    Drag visit images here or click to upload (4MB Max, up to 10
+                    images)
+                  </Text>
+                  {isUploading ? (
+                    <Text mt="xs" size="xs" c="dimmed">
+                      Uploading...
+                    </Text>
+                  ) : null}
+                </Flex>
+              </Dropzone>
+
+              <Button
+                radius="xl"
+                color="orange"
+                loading={saveVisitNoteMutation.isPending}
+                disabled={
+                  visitNoteLimitReached ||
+                  isUploading ||
+                  (!visitNote.trim() && !uploadedVisitImages.length)
+                }
+                onClick={() => saveVisitNoteMutation.mutate()}
+              >
+                Save Visit Note
+              </Button>
+            </Stack>
+          </Card>
+        )}
       </Stack>
     </Container>
   );

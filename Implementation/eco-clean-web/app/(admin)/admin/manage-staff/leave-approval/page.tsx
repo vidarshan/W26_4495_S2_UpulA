@@ -4,9 +4,9 @@ import {
   Alert,
   Badge,
   Button,
+  Card,
   Center,
   Group,
-  Loader,
   Paper,
   ScrollArea,
   SimpleGrid,
@@ -20,8 +20,9 @@ import {
   IoCheckmarkCircle,
   IoCloseCircle,
   IoTime,
-} from "react-icons/io5";
+} from "@/lib/icons";
 import AdminPageFrame from "@/app/components/admin/AdminPageFrame";
+import Loader from "@/app/components/UI/Loader";
 
 type Leave = {
   id: string;
@@ -181,89 +182,92 @@ export default function LeaveApprovalPage() {
 
               {loading ? (
                 <Center py="xl">
-                  <Loader color="lime" />
+                  <Loader />
                 </Center>
               ) : (
                 <ScrollArea type="auto">
-                  <Table.ScrollContainer minWidth={900}>
-                    <Table withTableBorder highlightOnHover striped>
-                      <Table.Thead>
-                        <Table.Tr>
-                          <Table.Th>Employee</Table.Th>
-                          <Table.Th>Leave type</Table.Th>
-                          <Table.Th>Dates</Table.Th>
-                          <Table.Th>Reason</Table.Th>
-                          <Table.Th>Status</Table.Th>
-                          <Table.Th ta="right">Actions</Table.Th>
-                        </Table.Tr>
-                      </Table.Thead>
-                      <Table.Tbody>
-                        {leaveRequests.length ? (
-                          leaveRequests.map((leave) => (
-                            <Table.Tr key={leave.id}>
-                              <Table.Td>
-                                <Text fw={600} c="#0f172a">
-                                  {leave.staff?.name || "Unknown staff member"}
-                                </Text>
-                              </Table.Td>
-                              <Table.Td>
-                                {leave.type.replaceAll("_", " ")}
-                              </Table.Td>
-                              <Table.Td>
-                                {formatDate(leave.startAt)} to{" "}
-                                {formatDate(leave.endAt)}
-                              </Table.Td>
-                              <Table.Td>
-                                {leave.reason || "No reason provided"}
-                              </Table.Td>
-                              <Table.Td>
-                                <Badge
-                                  color={getBadgeColor(leave.status)}
-                                  variant="light"
-                                >
-                                  {leave.status}
-                                </Badge>
-                              </Table.Td>
-                              <Table.Td ta="right">
-                                <Group gap="xs" justify="flex-end">
-                                  <Button
-                                    size="xs"
-                                    color="lime"
+                  <Card p={0} radius="lg" withBorder>
+                    <Table.ScrollContainer minWidth={900}>
+                      <Table highlightOnHover striped>
+                        <Table.Thead>
+                          <Table.Tr>
+                            <Table.Th>Employee</Table.Th>
+                            <Table.Th>Leave type</Table.Th>
+                            <Table.Th>Dates</Table.Th>
+                            <Table.Th>Reason</Table.Th>
+                            <Table.Th>Status</Table.Th>
+                            <Table.Th ta="right">Actions</Table.Th>
+                          </Table.Tr>
+                        </Table.Thead>
+                        <Table.Tbody>
+                          {leaveRequests.length ? (
+                            leaveRequests.map((leave) => (
+                              <Table.Tr key={leave.id}>
+                                <Table.Td>
+                                  <Text fw={600} c="#0f172a">
+                                    {leave.staff?.name ||
+                                      "Unknown staff member"}
+                                  </Text>
+                                </Table.Td>
+                                <Table.Td>
+                                  {leave.type.replaceAll("_", " ")}
+                                </Table.Td>
+                                <Table.Td>
+                                  {formatDate(leave.startAt)} to{" "}
+                                  {formatDate(leave.endAt)}
+                                </Table.Td>
+                                <Table.Td>
+                                  {leave.reason || "No reason provided"}
+                                </Table.Td>
+                                <Table.Td>
+                                  <Badge
+                                    color={getBadgeColor(leave.status)}
                                     variant="light"
-                                    disabled={leave.status !== "PENDING"}
-                                    loading={updatingId === leave.id}
-                                    onClick={() =>
-                                      updateStatus(leave.id, "APPROVED")
-                                    }
                                   >
-                                    Approve
-                                  </Button>
-                                  <Button
-                                    size="xs"
-                                    color="red"
-                                    variant="light"
-                                    disabled={leave.status !== "PENDING"}
-                                    loading={updatingId === leave.id}
-                                    onClick={() =>
-                                      updateStatus(leave.id, "REJECTED")
-                                    }
-                                  >
-                                    Reject
-                                  </Button>
-                                </Group>
+                                    {leave.status}
+                                  </Badge>
+                                </Table.Td>
+                                <Table.Td ta="right">
+                                  <Group gap="xs" justify="flex-end">
+                                    <Button
+                                      size="xs"
+                                      color="lime"
+                                      variant="light"
+                                      disabled={leave.status !== "PENDING"}
+                                      loading={updatingId === leave.id}
+                                      onClick={() =>
+                                        updateStatus(leave.id, "APPROVED")
+                                      }
+                                    >
+                                      Approve
+                                    </Button>
+                                    <Button
+                                      size="xs"
+                                      color="red"
+                                      variant="light"
+                                      disabled={leave.status !== "PENDING"}
+                                      loading={updatingId === leave.id}
+                                      onClick={() =>
+                                        updateStatus(leave.id, "REJECTED")
+                                      }
+                                    >
+                                      Reject
+                                    </Button>
+                                  </Group>
+                                </Table.Td>
+                              </Table.Tr>
+                            ))
+                          ) : (
+                            <Table.Tr>
+                              <Table.Td colSpan={6} ta="center" py="xl">
+                                <Text c="dimmed">No leave requests found.</Text>
                               </Table.Td>
                             </Table.Tr>
-                          ))
-                        ) : (
-                          <Table.Tr>
-                            <Table.Td colSpan={6} ta="center" py="xl">
-                              <Text c="dimmed">No leave requests found.</Text>
-                            </Table.Td>
-                          </Table.Tr>
-                        )}
-                      </Table.Tbody>
-                    </Table>
-                  </Table.ScrollContainer>
+                          )}
+                        </Table.Tbody>
+                      </Table>
+                    </Table.ScrollContainer>
+                  </Card>
                 </ScrollArea>
               )}
             </Stack>

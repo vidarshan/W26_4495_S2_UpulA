@@ -30,7 +30,7 @@ import {
   IoLogOut,
   IoPeople,
   IoTime,
-} from "react-icons/io5";
+} from "@/lib/icons";
 import ClientPropertyModal from "../../components/popups/ClientModal";
 import NewJobModal from "../../components/popups/JobModal";
 import UserUpsertModal from "../../components/popups/UserModal";

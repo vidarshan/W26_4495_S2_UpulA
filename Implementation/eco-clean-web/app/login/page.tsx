@@ -14,13 +14,11 @@ import {
   Title,
 } from "@mantine/core";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
-import { getSession, signIn } from "next-auth/react";
+import { signIn } from "next-auth/react";
 import { useState } from "react";
-import { IoCloseCircle } from "react-icons/io5";
+import { IoCloseCircle } from "@/lib/icons";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -34,6 +32,7 @@ export default function LoginPage() {
       email,
       password,
       redirect: false,
+      callbackUrl: "/",
     });
 
     if (res?.error) {
@@ -42,15 +41,7 @@ export default function LoginPage() {
       return;
     }
 
-    const session = await getSession();
-
-    if (session?.user?.role === "ADMIN") {
-      router.push("/admin");
-    } else {
-      router.push("/staff/tasks");
-    }
-
-    setLoading(false);
+    window.location.assign(res?.url || "/");
   }
 
   return (

@@ -33,6 +33,8 @@ function normalizeVisitNoteBody(body: SaveVisitNoteBody) {
   return { content, images };
 }
 
+const MAX_INTERNAL_VISIT_NOTES = 10;
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -73,44 +75,40 @@ export async function POST(
         throw new Error("Appointment not found");
       }
 
-      const existing = await tx.visitNote.findFirst({
+      const existingNotes = await tx.visitNote.findMany({
         where: {
           appointmentId,
           isClientVisible: false,
         },
         orderBy: { createdAt: "desc" },
+        select: { id: true },
       });
 
-      if (content) {
-        if (existing) {
-          await tx.visitNote.update({
-            where: { id: existing.id },
-            data: {
-              content,
-              isClientVisible: false,
-              // createdById: sessionUserId ?? null
-            },
-          });
-        } else {
-          await tx.visitNote.create({
-            data: {
-              appointmentId,
-              content,
-              isClientVisible: false,
-              // createdById: sessionUserId ?? null
-            },
-          });
-        }
+      if (existingNotes.length >= MAX_INTERNAL_VISIT_NOTES) {
+        throw new Error(
+          `A maximum of ${MAX_INTERNAL_VISIT_NOTES} visit notes is allowed for each appointment`,
+        );
       }
 
-      if (images.length > 0) {
-        await tx.appointmentImage.createMany({
-          data: images.map((img) => ({
+      if (content) {
+        const createdNote = await tx.visitNote.create({
+          data: {
             appointmentId,
-            url: img.url,
-            fileKey: img.fileKey,
-          })),
+            content,
+            isClientVisible: false,
+            // createdById: sessionUserId ?? null
+          },
         });
+
+        if (images.length > 0) {
+          await tx.visitNoteImage.createMany({
+            data: images.map((img) => ({
+              noteId: createdNote.id,
+              url: img.url,
+              fileKey: img.fileKey,
+            })),
+          });
+        }
       }
 
       const fullAppointment = await tx.appointment.findUnique({
@@ -126,8 +124,18 @@ export async function POST(
           },
           notes: {
             orderBy: { createdAt: "desc" },
+            select: {
+              id: true,
+              content: true,
+              createdAt: true,
+              isClientVisible: true,
+              images: true,
+            },
           },
           images: true,
+          checklistItems: {
+            orderBy: { sortOrder: "asc" },
+          },
           workSessions: {
             orderBy: { startedAt: "asc" },
           },
