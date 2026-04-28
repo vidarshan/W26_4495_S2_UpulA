@@ -17,20 +17,15 @@ import {
   Text,
   TextInput,
   ThemeIcon,
-  Loader,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import {
-  IoLockClosed,
-  IoPeople,
-  IoPersonCircle,
-  IoText,
-} from "@/lib/icons";
+import { IoLockClosed, IoPeople, IoPersonCircle, IoText } from "@/lib/icons";
 import AdminStaffDetailsModal from "@/app/components/popups/AdminStaffDetailsModal";
 import { StaffRole } from "@/types";
+import Loader from "../UI/Loader";
 type Mode = "create" | "edit";
 type Role = StaffRole;
 
@@ -320,11 +315,22 @@ export default function UserUpsertModal({
           <Paper withBorder radius="md" p="lg" className="app-modal__hero">
             <Group justify="space-between" align="flex-start" wrap="wrap">
               <Group align="flex-start" wrap="nowrap" gap="md">
-                <ThemeIcon size={48} radius="md" color="lime" variant="light" className="app-modal__icon">
+                <ThemeIcon
+                  size={48}
+                  radius="md"
+                  color="lime"
+                  variant="light"
+                  className="app-modal__icon"
+                >
                   <IoPersonCircle size={22} />
                 </ThemeIcon>
                 <Stack gap={4}>
-                  <Text size="xs" fw={800} c="dimmed" className="app-modal__eyebrow">
+                  <Text
+                    size="xs"
+                    fw={800}
+                    c="dimmed"
+                    className="app-modal__eyebrow"
+                  >
                     User Access
                   </Text>
                   <Text fw={800} size="lg">
@@ -352,7 +358,7 @@ export default function UserUpsertModal({
           {isBusyAny && (
             <Alert color="gray" className="app-modal__banner">
               <Group gap="xs">
-                <Loader size="sm" />
+                <Loader />
                 <Text size="sm">
                   {isDeleting
                     ? "Deleting user..."
@@ -450,7 +456,12 @@ export default function UserUpsertModal({
           )}
 
           {mode === "edit" && form.values.role === "STAFF" && (
-            <Paper withBorder radius="md" p="md" className="app-modal__subsection">
+            <Paper
+              withBorder
+              radius="md"
+              p="md"
+              className="app-modal__subsection"
+            >
               <Group justify="space-between" align="center" wrap="wrap">
                 <Stack gap={2}>
                   <Text fw={700}>Staff workspace</Text>

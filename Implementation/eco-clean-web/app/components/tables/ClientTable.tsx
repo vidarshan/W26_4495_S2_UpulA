@@ -16,7 +16,7 @@ import {
 } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 
-import { IoAdd, IoFilter, IoSearch } from "@/lib/icons";
+import { IoFilter, IoSearch } from "@/lib/icons";
 import Loader from "../UI/Loader";
 import { useClients } from "@/hooks/useClient";
 import { useState } from "react";

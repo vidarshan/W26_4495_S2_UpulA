@@ -7,7 +7,6 @@ import {
   Button,
   Grid,
   Group,
-  Loader,
   Modal,
   NumberInput,
   Paper,
@@ -34,6 +33,7 @@ import {
 import { notifications } from "@mantine/notifications";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import Loader from "../UI/Loader";
 
 type Props = {
   opened: boolean;
@@ -278,7 +278,13 @@ export default function AdminStaffDetailsModal({
         <Paper withBorder radius="md" p="lg" className="app-modal__hero">
           <Group justify="space-between" align="flex-start" wrap="wrap">
             <Group align="flex-start" wrap="nowrap" gap="md">
-              <ThemeIcon size={48} radius="md" color="lime" variant="light" className="app-modal__icon">
+              <ThemeIcon
+                size={48}
+                radius="md"
+                color="lime"
+                variant="light"
+                className="app-modal__icon"
+              >
                 <IoPerson size={22} />
               </ThemeIcon>
               <Stack gap={4}>
@@ -318,7 +324,13 @@ export default function AdminStaffDetailsModal({
             <Paper withBorder radius="md" p="lg" className="app-modal__section">
               <Stack gap="md">
                 <Group gap="sm">
-                  <ThemeIcon radius="md" size="lg" variant="light" color="blue" className="app-modal__icon">
+                  <ThemeIcon
+                    radius="md"
+                    size="lg"
+                    variant="light"
+                    color="blue"
+                    className="app-modal__icon"
+                  >
                     <IoShield size={18} />
                   </ThemeIcon>
                   <Stack gap={2}>
@@ -385,7 +397,12 @@ export default function AdminStaffDetailsModal({
 
             <Grid>
               <Grid.Col span={{ base: 12, md: 12 }}>
-                <Paper withBorder radius="md" p="lg" className="app-modal__section">
+                <Paper
+                  withBorder
+                  radius="md"
+                  p="lg"
+                  className="app-modal__section"
+                >
                   <Stack gap="md">
                     <Group gap="sm">
                       <ThemeIcon
@@ -429,7 +446,12 @@ export default function AdminStaffDetailsModal({
               </Grid.Col>
 
               <Grid.Col span={{ base: 12, md: 12 }}>
-                <Paper withBorder radius="md" p="lg" className="app-modal__section">
+                <Paper
+                  withBorder
+                  radius="md"
+                  p="lg"
+                  className="app-modal__section"
+                >
                   <Stack gap="md">
                     <Group gap="sm">
                       <ThemeIcon
@@ -483,7 +505,13 @@ export default function AdminStaffDetailsModal({
           <Paper withBorder radius="md" p="lg" className="app-modal__section">
             <Stack gap="md">
               <Group gap="sm">
-                <ThemeIcon radius="md" size="lg" variant="light" color="teal" className="app-modal__icon">
+                <ThemeIcon
+                  radius="md"
+                  size="lg"
+                  variant="light"
+                  color="teal"
+                  className="app-modal__icon"
+                >
                   <IoCard size={18} />
                 </ThemeIcon>
                 <Stack gap={2}>
@@ -498,13 +526,18 @@ export default function AdminStaffDetailsModal({
               {financialsLoading ? (
                 <Alert color="gray">
                   <Group gap="xs">
-                    <Loader size="sm" />
+                    <Loader />
                     <Text size="sm">Loading financial details...</Text>
                   </Group>
                 </Alert>
               ) : null}
 
-              <Paper withBorder radius="md" p="md" className="app-modal__subsection">
+              <Paper
+                withBorder
+                radius="md"
+                p="md"
+                className="app-modal__subsection"
+              >
                 <Stack gap="md">
                   <Text fw={700}>Bank details</Text>
                   <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
@@ -553,7 +586,12 @@ export default function AdminStaffDetailsModal({
                 </Stack>
               </Paper>
 
-              <Paper withBorder radius="md" p="md" className="app-modal__subsection">
+              <Paper
+                withBorder
+                radius="md"
+                p="md"
+                className="app-modal__subsection"
+              >
                 <Stack gap="md">
                   <Text fw={700}>TD1 tax details</Text>
                   <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
@@ -642,7 +680,13 @@ function SimpleStatGrid({
         <Grid.Col key={item.label} span={{ base: 12, sm: 6 }}>
           <Paper withBorder radius="md" p="md" className="app-modal__footer">
             <Group align="flex-start" wrap="nowrap">
-              <ThemeIcon radius="md" size="lg" variant="light" color="gray" className="app-modal__icon">
+              <ThemeIcon
+                radius="md"
+                size="lg"
+                variant="light"
+                color="gray"
+                className="app-modal__icon"
+              >
                 {item.icon}
               </ThemeIcon>
               <Stack gap={2}>

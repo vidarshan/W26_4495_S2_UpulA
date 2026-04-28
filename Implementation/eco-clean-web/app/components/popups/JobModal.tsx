@@ -18,7 +18,6 @@ import {
   Radio,
   Text,
   Checkbox,
-  Loader,
   ActionIcon,
   ScrollArea,
 } from "@mantine/core";
@@ -57,6 +56,7 @@ import ChecklistEditor, {
 } from "../appointments/ChecklistEditor";
 import ImageViewer from "../media/ImageViewer";
 import classes from "./JobModal.module.css";
+import Loader from "../UI/Loader";
 
 interface Props {
   opened: boolean;
@@ -895,12 +895,12 @@ export default function NewJobModal({
                   ? values.recurrence.endsAfter
                   : null,
               endsOn:
-                values.recurrence.endType === "on"
-                && toRecurrenceEndsOnDate(values.recurrence.endsOn)
+                values.recurrence.endType === "on" &&
+                toRecurrenceEndsOnDate(values.recurrence.endsOn)
                   ? DateTime.fromJSDate(
                       toRecurrenceEndsOnDate(values.recurrence.endsOn)!,
                       {
-                      zone: APP_TZ,
+                        zone: APP_TZ,
                       },
                     ).toFormat("yyyy-LL-dd")
                   : null,
@@ -1238,7 +1238,7 @@ export default function NewJobModal({
                 }
                 rightSection={
                   candidateQuery?.isFetching || staffFetching ? (
-                    <Loader size="xs" />
+                    <Loader />
                   ) : undefined
                 }
                 data={multiSelectData}
@@ -1324,7 +1324,7 @@ export default function NewJobModal({
                 className={classes.statusBanner}
               >
                 <Group gap="xs">
-                  <Loader size="sm" />
+                  <Loader />
                   <Text size="sm">
                     {isUploading
                       ? "Uploading images. Please wait..."
@@ -1450,9 +1450,7 @@ export default function NewJobModal({
                             ? "Failed to load clients"
                             : "Select client"
                       }
-                      rightSection={
-                        clientsFetching ? <Loader size="xs" /> : undefined
-                      }
+                      rightSection={clientsFetching ? <Loader /> : undefined}
                       {...form.getInputProps("clientId")}
                       data={
                         clientsData?.data?.map((c: Client) => ({
@@ -1480,9 +1478,7 @@ export default function NewJobModal({
                               ? "Failed to load addresses"
                               : "Select address"
                       }
-                      rightSection={
-                        addressesFetching ? <Loader size="xs" /> : undefined
-                      }
+                      rightSection={addressesFetching ? <Loader /> : undefined}
                       {...form.getInputProps("addressId")}
                       data={
                         addressesData?.data?.map((a) => ({
@@ -1721,7 +1717,9 @@ export default function NewJobModal({
                           label="End date"
                           placeholder="End date"
                           disabled={isBusy}
-                          value={toRecurrenceEndsOnDate(form.values.recurrence.endsOn)}
+                          value={toRecurrenceEndsOnDate(
+                            form.values.recurrence.endsOn,
+                          )}
                           onChange={(d) =>
                             form.setFieldValue(
                               "recurrence.endsOn",
@@ -1730,7 +1728,9 @@ export default function NewJobModal({
                           }
                           minDate={
                             form.values.appointments?.[0]?.startDate
-                              ? appDateKeyToDate(form.values.appointments[0].startDate)
+                              ? appDateKeyToDate(
+                                  form.values.appointments[0].startDate,
+                                )
                               : undefined
                           }
                         />

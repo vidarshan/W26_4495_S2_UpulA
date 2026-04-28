@@ -8,7 +8,6 @@ import {
   Container,
   Flex,
   Group,
-  Loader,
   Paper,
   SegmentedControl,
   Stack,
@@ -34,6 +33,7 @@ import { useAppointmentDetails } from "@/hooks/useAppointmentDetails";
 import { WorkSession } from "@/types";
 import { formatSeconds, getElapsedSeconds } from "./taskTime";
 import { useDocumentVisibility } from "@mantine/hooks";
+import Loader from "@/app/components/UI/Loader";
 
 function toAppDateKey(date: Date | string): string {
   const value =
@@ -50,15 +50,11 @@ function toAppMonthKey(date: Date | string): string {
       ? DateTime.fromISO(date, { zone: APP_TZ })
       : DateTime.fromJSDate(date, { zone: APP_TZ });
 
-  return (
-    value.startOf("month").toISODate() ?? ""
-  );
+  return value.startOf("month").toISODate() ?? "";
 }
 
 function toCalendarDate(dateKey: string): Date {
-  return (
-    DateTime.fromISO(dateKey, { zone: APP_TZ }).startOf("day").toJSDate()
-  );
+  return DateTime.fromISO(dateKey, { zone: APP_TZ }).startOf("day").toJSDate();
 }
 
 type Appointment = {
@@ -104,7 +100,8 @@ function CurrentlyWorkingCard({
 
   const allSessions = appointmentData.workSessions ?? [];
   const mySessions = allSessions.filter(
-    (session: WorkSession & { staffId?: string }) => session.staffId === myStaffId,
+    (session: WorkSession & { staffId?: string }) =>
+      session.staffId === myStaffId,
   );
   const isRunning = mySessions.some((session: WorkSession) => !session.endedAt);
 
@@ -138,7 +135,7 @@ function CurrentlyWorkingCard({
             variant="light"
             className="staff-currently-working-card__icon"
           >
-            <Loader size="xs" color="lime" />
+            <Loader />
           </ThemeIcon>
 
           <Stack gap={4}>
@@ -240,7 +237,12 @@ const Page = () => {
     refetchOnWindowFocus: true,
   });
   const { data: currentDayData } = useQuery({
-    queryKey: ["staff-current-day-tasks", staffId, currentDayRange.start, currentDayRange.end],
+    queryKey: [
+      "staff-current-day-tasks",
+      staffId,
+      currentDayRange.start,
+      currentDayRange.end,
+    ],
     queryFn: () =>
       getStaffAppointments({
         staffId: staffId!,
@@ -248,7 +250,7 @@ const Page = () => {
         end: currentDayRange.end,
       }),
     enabled: !!staffId && selectedDate !== today,
-    refetchInterval: visibility === "visible" ? 5000 : false,
+    staleTime: 60 * 1000,
     refetchOnWindowFocus: true,
   });
   const { data: markerData } = useQuery({
@@ -389,7 +391,9 @@ const Page = () => {
                 appointment={t}
                 myStaffId={staffId}
                 nowMs={nowMs}
-                onOpen={(appointmentId) => router.push(`/staff/tasks/${appointmentId}`)}
+                onOpen={(appointmentId) =>
+                  router.push(`/staff/tasks/${appointmentId}`)
+                }
               />
             ),
         )}
@@ -442,7 +446,9 @@ const Page = () => {
                   date={toCalendarDate(calendarMonth)}
                   onDateChange={(date) => setCalendarMonth(toAppMonthKey(date))}
                   onNextMonth={(date) => setCalendarMonth(toAppMonthKey(date))}
-                  onPreviousMonth={(date) => setCalendarMonth(toAppMonthKey(date))}
+                  onPreviousMonth={(date) =>
+                    setCalendarMonth(toAppMonthKey(date))
+                  }
                   renderDay={(date) => {
                     const hasAppointments = markedDates.has(toAppDateKey(date));
                     return (
@@ -490,7 +496,7 @@ const Page = () => {
           {isLoading ? (
             <Card radius="lg" withBorder p="lg" className="staff-app-surface">
               <Flex direction="column" align="center" justify="center" py="md">
-                <Loader size="sm" color="lime" />
+                <Loader />
                 <Text size="sm" fw={600} mt="sm">
                   Loading tasks...
                 </Text>

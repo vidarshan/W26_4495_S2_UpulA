@@ -42,7 +42,6 @@ import {
   IoArrowBack,
   IoArrowForward,
   IoPerson,
-  IoRefresh,
   IoSearch,
   IoToggle,
 } from "@/lib/icons";
@@ -299,6 +298,14 @@ export default function DashboardClient() {
     () => `${debounced}|${status ?? ""}|${assignee ?? ""}`,
     [debounced, status, assignee],
   );
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      calendarRef.current?.getApi().updateSize();
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [view, isNarrow, calendarLoading]);
 
   const activeFilterCount = [status, assignee, debounced.trim()].filter(
     Boolean,
@@ -588,6 +595,7 @@ export default function DashboardClient() {
               nowIndicator
               weekends={weekends}
               allDaySlot={false}
+              slotEventOverlap={false}
               eventDisplay={view === "month" ? "list-item" : "block"}
               stickyHeaderDates
               expandRows
@@ -674,20 +682,23 @@ export default function DashboardClient() {
                 }
 
                 return (
-                  <div className="calendar-event-card" style={{ fontSize: 12 }}>
-                    <div className="calendar-event-card__top">
-                      <div className="calendar-event-card__title">{title}</div>
+                  <div
+                    className="calendar-event-card calendar-event-card--timegrid"
+                    style={{ fontSize: 12 }}
+                  >
+                    <div className="calendar-event-card__title">{title}</div>
+                    <div className="calendar-event-card__meta">
+                      {timeLabel && (
+                        <div className="calendar-event-card__time calendar-event-card__time--inline">
+                          {timeLabel}
+                        </div>
+                      )}
                       {statusValue && (
                         <span className="calendar-event-card__status">
                           {STATUS_LABELS[statusValue]}
                         </span>
                       )}
                     </div>
-                    {timeLabel && (
-                      <div className="calendar-event-card__time">
-                        {timeLabel}
-                      </div>
-                    )}
                     {staffNames && (
                       <div className="calendar-event-card__staff">
                         {staffNames}

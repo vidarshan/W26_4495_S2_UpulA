@@ -16,7 +16,7 @@ import {
 } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { useCallback, useState } from "react";
-import { IoAdd, IoFilter, IoSearch } from "@/lib/icons";
+import { IoFilter, IoSearch } from "@/lib/icons";
 import Loader from "../UI/Loader";
 import UserUpsertModal from "../popups/UserModal";
 import { Staff } from "@/types";

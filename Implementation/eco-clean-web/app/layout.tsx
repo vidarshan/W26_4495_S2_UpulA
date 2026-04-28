@@ -46,10 +46,17 @@ const comicNeue = Comic_Neue({
   variable: "--font-comic-neue",
 });
 
-const SHARED_RADIUS = "lg";
+const SHARED_RADIUS = "xl";
 
 const theme = createTheme({
   defaultRadius: SHARED_RADIUS,
+  radius: {
+    xs: "8px",
+    sm: "10px",
+    md: "14px",
+    lg: "18px",
+    xl: "22px",
+  },
   primaryColor: "lime",
   fontFamily: "Comic Neue, sans-serif",
   headings: {

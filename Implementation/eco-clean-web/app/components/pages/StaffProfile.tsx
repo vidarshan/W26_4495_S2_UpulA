@@ -7,7 +7,6 @@ import {
   Divider,
   Grid,
   Group,
-  Loader,
   Paper,
   SimpleGrid,
   Stack,
@@ -31,6 +30,7 @@ import {
 } from "@/lib/icons";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import Loader from "../UI/Loader";
 
 type StaffMeResponse = {
   id: string;

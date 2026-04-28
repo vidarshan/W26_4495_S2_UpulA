@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 import {
   Badge,
   Box,
@@ -8,16 +8,16 @@ import {
   Card,
   Container,
   Group,
-  Loader,
   ScrollArea,
   Stack,
   Table,
   Text,
   Title,
-} from '@mantine/core';
-import { useMediaQuery } from '@mantine/hooks';
-import { useSession } from 'next-auth/react';
-import Link from 'next/link';
+} from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
+import { useSession } from "next-auth/react";
+import Link from "next/link";
+import Loader from "@/app/components/UI/Loader";
 
 type PayStatement = {
   id: string;
@@ -32,8 +32,11 @@ export default function PayHistoryPage() {
   const [statements, setStatements] = useState<PayStatement[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const isMobile = useMediaQuery('(max-width: 768px)');
-  const totalNet = statements.reduce((sum, statement) => sum + statement.netEarnings, 0);
+  const isMobile = useMediaQuery("(max-width: 768px)");
+  const totalNet = statements.reduce(
+    (sum, statement) => sum + statement.netEarnings,
+    0,
+  );
 
   useEffect(() => {
     async function fetchHistory() {
@@ -44,7 +47,7 @@ export default function PayHistoryPage() {
         const data = await res.json();
         setStatements(data);
       } catch (error) {
-        console.error('Error loading history:', error);
+        console.error("Error loading history:", error);
       } finally {
         setLoading(false);
       }
@@ -57,7 +60,7 @@ export default function PayHistoryPage() {
     return (
       <Container fluid py="xl">
         <Box ta="center" py="xl">
-          <Loader size="xl" />
+          <Loader />
         </Box>
       </Container>
     );

@@ -12,7 +12,6 @@ import {
   Grid,
   Group,
   Center,
-  Loader,
   Select,
   Stack,
   Text,
@@ -21,6 +20,7 @@ import {
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Loader from "@/app/components/UI/Loader";
 
 const COLORS = ["#82c91e", "#607b3a", "#1ec99b"];
 
@@ -116,7 +116,7 @@ export default function YourPayPage() {
   if (loading) {
     return (
       <Center h="100vh">
-        <Loader size="xl" />
+        <Loader />
       </Center>
     );
   }

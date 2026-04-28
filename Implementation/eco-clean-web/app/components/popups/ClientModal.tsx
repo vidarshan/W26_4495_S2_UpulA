@@ -23,12 +23,12 @@ import {
   Divider,
   Textarea,
   Radio,
-  Loader,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { notifications } from "@mantine/notifications";
+import Loader from "../UI/Loader";
 
 type AddressForm = {
   id?: string;
@@ -354,7 +354,7 @@ export default function ClientPropertyModal({
             {(clientLoading || mutation.isPending) && (
               <Paper withBorder p="sm" radius="md" className="app-modal__banner">
                 <Group gap="xs">
-                  <Loader size="sm" />
+                  <Loader />
                   <Text size="sm">
                     {clientLoading
                       ? "Loading client details..."

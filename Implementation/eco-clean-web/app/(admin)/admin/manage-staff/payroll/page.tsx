@@ -7,7 +7,6 @@ import {
   Button,
   Center,
   Group,
-  Loader,
   Modal,
   SimpleGrid,
   Stack,
@@ -24,6 +23,7 @@ import {
 } from '@/lib/icons';
 import { useRouter } from 'next/navigation';
 import AdminPageFrame from '@/app/components/admin/AdminPageFrame';
+import Loader from '@/app/components/UI/Loader';
 
 type TimesheetPeriod = {
   id: string;
@@ -212,7 +212,7 @@ export default function ManagePayPeriodsPage() {
 
               {fetching ? (
                 <Center py="xl">
-                  <Loader color="lime" />
+                  <Loader />
                 </Center>
               ) : (
                 <Table.ScrollContainer minWidth={760}>

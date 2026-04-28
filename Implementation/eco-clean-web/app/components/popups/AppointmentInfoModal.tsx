@@ -17,7 +17,6 @@ import {
   Text,
   Textarea,
   ThemeIcon,
-  Loader,
 } from "@mantine/core";
 import { DateInput, TimeInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
@@ -61,6 +60,7 @@ import ChecklistEditor, {
 import ImageViewer from "../media/ImageViewer";
 
 import classes from "./AppointmentInfoModal.module.css";
+import Loader from "../UI/Loader";
 
 type AppointmentCache = AppointmentWithRelations;
 
@@ -247,7 +247,7 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
   >({
     queryKey: ["staff", "all"],
     queryFn: () => getStaff(),
-    staleTime: 60_000,
+    staleTime: 10 * 60 * 1000,
   });
 
   const form = useForm<FormValues>({
@@ -297,7 +297,9 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
       !!appointment?.job?.address?.id &&
       !!appointmentStartIso &&
       !!appointmentEndIso,
-    staleTime: 60_000,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 
   const recommendedMembers = useMemo(

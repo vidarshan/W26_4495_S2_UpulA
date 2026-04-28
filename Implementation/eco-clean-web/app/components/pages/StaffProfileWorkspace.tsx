@@ -9,7 +9,6 @@ import {
   Divider,
   Grid,
   Group,
-  Loader,
   Modal,
   Paper,
   SimpleGrid,
@@ -23,6 +22,7 @@ import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { IoCall, IoDocumentText, IoMail, IoPerson } from "@/lib/icons";
+import Loader from "../UI/Loader";
 
 type EmergencyContact = {
   name: string;
@@ -604,7 +604,7 @@ function CenterPage() {
         justify="center"
         mih="50vh"
       >
-        <Loader size="lg" color="lime" />
+        <Loader />
       </Stack>
     </Container>
   );

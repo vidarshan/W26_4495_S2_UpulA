@@ -1,9 +1,6 @@
 "use client";
 
-import dayGridPlugin from "@fullcalendar/daygrid";
-import interactionPlugin, { DateClickArg } from "@fullcalendar/interaction";
-import FullCalendar from "@fullcalendar/react";
-import timeGridPlugin from "@fullcalendar/timegrid";
+import { DateClickArg } from "@fullcalendar/interaction";
 import { useEffect, useMemo, useState } from "react";
 import { DateTime } from "luxon";
 import {
@@ -15,7 +12,6 @@ import {
   Container,
   Divider,
   Group,
-  Loader,
   Paper,
   Select,
   SimpleGrid,
@@ -46,6 +42,7 @@ import {
   formatAppTime,
   toAppDateKey,
 } from "@/lib/dateTime";
+import Loader from "@/app/components/UI/Loader";
 
 type Mode = "balances" | "request";
 type Balance = { policy: string; hours: number };
@@ -296,7 +293,7 @@ export default function ApplyLeavePage() {
     return (
       <Container size="sm" py="xl">
         <Stack align="center" py="xl">
-          <Loader size="lg" />
+          <Loader />
           <Text c="dimmed">Loading your profile...</Text>
         </Stack>
       </Container>
@@ -315,7 +312,7 @@ export default function ApplyLeavePage() {
     return (
       <Container size="sm" py="xl">
         <Stack align="center" py="xl">
-          <Loader size="lg" />
+          <Loader />
           <Text c="dimmed">Loading your leave data...</Text>
         </Stack>
       </Container>

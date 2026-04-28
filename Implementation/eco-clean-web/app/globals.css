@@ -13,10 +13,10 @@ body {
 
 :root {
   --font-sans: var(--font-comic-neue);
-  --radius-panel: 14px;
-  --radius-control: 12px;
-  --radius-soft: 10px;
-  --radius-icon: 10px;
+  --radius-panel: 16px;
+  --radius-control: 14px;
+  --radius-soft: 12px;
+  --radius-icon: 12px;
   --eco-accent: #84cc16;
   --eco-accent-deep: #4d7c0f;
   --eco-accent-soft: rgba(247, 254, 231, 0.92);
@@ -95,6 +95,8 @@ body {
 
 .admin-calendar-shell {
   overflow-x: auto;
+  width: 100%;
+  min-width: 0;
 }
 
 .admin-page-frame__surface,
@@ -614,6 +616,20 @@ body {
 .professional-calendar .fc {
   font-family: inherit !important;
   color: #1e293b;
+  width: 100%;
+  min-width: 0;
+}
+
+.professional-calendar .fc-media-screen,
+.professional-calendar .fc-view-harness,
+.professional-calendar .fc-scrollgrid {
+  width: 100% !important;
+  min-width: 0;
+}
+
+.professional-calendar .fc-scroller,
+.professional-calendar .fc-scroller-liquid-absolute {
+  overflow-x: hidden !important;
 }
 
 .professional-calendar .fc-toolbar {
@@ -712,7 +728,13 @@ body {
 }
 
 .professional-calendar .fc-timegrid-event-harness {
-  margin-inline: 2px;
+  margin-inline: 1px;
+  max-width: calc(100% - 2px);
+}
+
+.professional-calendar .fc-timegrid-event {
+  width: 100%;
+  inset-inline: 0 !important;
 }
 
 .professional-calendar .fc-daygrid-event-dot {
@@ -736,6 +758,9 @@ body {
   position: relative;
   padding: 0.75rem 0.85rem 0.75rem 1rem;
   line-height: 1.4;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
 }
 
 .calendar-event-card--month {
@@ -769,15 +794,35 @@ body {
   gap: 0.5rem;
 }
 
+.calendar-event-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
 .calendar-event-card__title {
   font-weight: 700;
   font-size: 0.78rem;
   color: #0f172a;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.calendar-event-card--timegrid .calendar-event-card__title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  white-space: normal;
 }
 
 .calendar-event-card__status {
   flex-shrink: 0;
-  padding: 0.1rem 0.45rem;
+  max-width: 100%;
+  padding: 0.12rem 0.45rem;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.65);
   color: #334155;
@@ -785,6 +830,9 @@ body {
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .calendar-event-card__time {
@@ -794,10 +842,53 @@ body {
   font-weight: 600;
 }
 
+.calendar-event-card__time--inline {
+  margin-top: 0;
+}
+
 .calendar-event-card__staff {
   margin-top: 0.25rem;
   color: #475569;
   font-size: 0.7rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendar-event-card--timegrid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+  padding: 0.38rem 0.55rem 0.38rem 0.78rem;
+}
+
+.calendar-event-card--timegrid .calendar-event-card__status {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.calendar-event-card--timegrid .calendar-event-card__meta {
+  gap: 0.3rem;
+}
+
+.calendar-event-card--timegrid .calendar-event-card__staff {
+  margin-top: 0;
+}
+
+.professional-calendar .fc-timegrid-event-short .calendar-event-card--timegrid {
+  justify-content: center;
+  padding-block: 0.2rem;
+}
+
+.professional-calendar .fc-timegrid-event-short .calendar-event-card--timegrid .calendar-event-card__meta,
+.professional-calendar .fc-timegrid-event-short .calendar-event-card--timegrid .calendar-event-card__staff {
+  display: none;
+}
+
+.professional-calendar .fc-timegrid-event-short .calendar-event-card--timegrid .calendar-event-card__title {
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+  white-space: nowrap;
 }
 
 .professional-calendar--leave .fc-toolbar {

@@ -27,7 +27,6 @@ import {
   Divider,
   Flex,
   Group,
-  Loader,
   Progress,
   SimpleGrid,
   Stack,
@@ -44,6 +43,7 @@ import { useSession } from "next-auth/react";
 import { IoDocumentText, IoLocation, IoPerson, IoTime } from "@/lib/icons";
 import { useStaffUiStore } from "@/stores/store";
 import ImageViewer from "@/app/components/media/ImageViewer";
+import Loader from "@/app/components/UI/Loader";
 
 const CARD_RADIUS = "md";
 const HERO_PADDING = "lg";
@@ -746,7 +746,7 @@ const Page = () => {
         {aiFeaturesEnabled && isAssistantLoading ? (
           <Card radius={CARD_RADIUS} withBorder p={CARD_PADDING}>
             <Group gap="sm">
-              <Loader size="sm" />
+              <Loader />
               <Text size="sm" c="dimmed">
                 Loading AI task assistant...
               </Text>
