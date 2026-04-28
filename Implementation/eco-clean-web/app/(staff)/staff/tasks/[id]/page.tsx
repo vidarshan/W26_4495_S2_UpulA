@@ -44,6 +44,7 @@ import { IoDocumentText, IoLocation, IoPerson, IoTime } from "@/lib/icons";
 import { useStaffUiStore } from "@/stores/store";
 import ImageViewer from "@/app/components/media/ImageViewer";
 import Loader from "@/app/components/UI/Loader";
+import { useLastUpdated } from "@/hooks/useLastUpdated";
 
 const CARD_RADIUS = "md";
 const HERO_PADDING = "lg";
@@ -146,6 +147,7 @@ const Page = () => {
 
   const { data: session, status: sessionStatus } = useSession();
   const myStaffId = session?.user?.id;
+  const [now, setNow] = useState(() => Date.now());
 
   const [visitNote, setVisitNote] = useState("");
   const [, setVisitImages] = useState<File[]>([]);
@@ -171,6 +173,21 @@ const Page = () => {
     error,
   } = useAppointmentDetails(appointmentId);
 
+  const lastUpdated = useLastUpdated(
+    queryKeys.appointments.detail(appointmentId),
+  );
+
+  function formatLastUpdated(value: string | number | Date) {
+    const date = new Date(value);
+
+    return date.toLocaleString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
   const { data: aiTaskAssistant, isLoading: isAssistantLoading } =
     useQuery<TaskAssistantResponse>({
       queryKey: ["ai-task-assistant", appointmentId],
@@ -200,6 +217,14 @@ const Page = () => {
     const interval = setInterval(() => {
       setNowMs(Date.now());
     }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNow(Date.now());
+    }, 60_000);
 
     return () => clearInterval(interval);
   }, []);
@@ -615,18 +640,13 @@ const Page = () => {
                 {start.toFormat("cccc, LLL d")}
               </Text>
             </Box>
-
-            <Badge
-              size="lg"
-              radius="lg"
-              color={job?.type === "ONE_OFF" ? "lime" : "blue"}
-              variant="light"
-            >
-              {job?.type === "ONE_OFF" ? "ONE OFF" : "RECURRING"}
-            </Badge>
           </Group>
-
-          <Text size="sm" c={isRunning ? "green" : "dimmed"} fw={600}>
+          <Badge
+            size="sm"
+            radius="lg"
+            color={appointment?.status === "COMPLETED" ? "lime" : "blue"}
+            variant="light"
+          >
             {appointment.status === "COMPLETED"
               ? "Completed"
               : appointment.status === "CANCELLED"
@@ -636,14 +656,13 @@ const Page = () => {
                   : isAnyoneRunning
                     ? "Someone else has already started"
                     : "Not started"}
-          </Text>
-
+          </Badge>
           <Stack gap={4} align="center" my="md">
             <Box ta="center">
               <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
                 Remaining
               </Text>
-              <Text fw={800} fz={44} lh={1}>
+              <Text c={isOvertime ? "red" : "dark"} fw={800} fz={44} lh={1}>
                 {formatSeconds(remainingSeconds)}
               </Text>
             </Box>
@@ -657,7 +676,7 @@ const Page = () => {
           <Progress
             value={progressPct}
             animated={isRunning}
-            color="lime"
+            color={isOvertime ? "red" : "lime"}
             radius="lg"
           />
 
@@ -671,41 +690,47 @@ const Page = () => {
                   : `${progressPct}% of your planned time used`}
           </Text>
 
-          <Flex
-            justify="space-between"
-            align="center"
-            mt="md"
-            p="sm"
-            className="staff-task-detail__timeband"
-          >
-            <Group gap="xs" align="center">
-              <ThemeIcon variant="light" radius="lg" color="lime">
-                <IoTime size={16} />
-              </ThemeIcon>
-              <Box>
-                <Text size="xs" c="dimmed">
-                  Start
-                </Text>
-                <Text fw={600} size="sm">
-                  {start.toFormat("h:mm a")}
-                </Text>
-              </Box>
-            </Group>
+          <Card p={0} my="xs" shadow="0" withBorder>
+            <Flex direction="column" gap="xs" p="sm">
+              {/* Start */}
+              <Group gap="xs" align="center">
+                <ThemeIcon variant="light" radius="lg" color="lime">
+                  <IoTime size={16} />
+                </ThemeIcon>
 
-            <Group gap="xs" align="flex-start">
-              <ThemeIcon variant="light" radius="lg" color="lime">
-                <IoTime size={16} />
-              </ThemeIcon>
-              <Box>
-                <Text size="xs" c="dimmed">
-                  End
-                </Text>
-                <Text fw={600} size="sm">
-                  {end.toFormat("h:mm a")}
-                </Text>
-              </Box>
-            </Group>
-          </Flex>
+                <Box>
+                  <Text size="xs" c="dimmed">
+                    Start
+                  </Text>
+                  <Text fw={600} size="sm">
+                    {start.toFormat("h:mm a")}
+                  </Text>
+                </Box>
+              </Group>
+
+              {/* End */}
+              <Group gap="xs" align="center">
+                <ThemeIcon variant="light" radius="lg" color="gray">
+                  <IoTime size={16} />
+                </ThemeIcon>
+
+                <Box>
+                  <Text size="xs" c="dimmed">
+                    End
+                  </Text>
+                  <Text fw={600} size="sm">
+                    {end.toFormat("h:mm a")}
+                  </Text>
+                </Box>
+              </Group>
+            </Flex>
+          </Card>
+
+          <Text mt={6} fw={600} size="xs" c="dimmed">
+            {lastUpdated
+              ? `Last updated • ${formatLastUpdated(lastUpdated)}`
+              : null}
+          </Text>
         </Card>
 
         <SimpleGrid cols={2} spacing="sm">
