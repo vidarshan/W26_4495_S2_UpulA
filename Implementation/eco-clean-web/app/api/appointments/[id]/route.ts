@@ -391,6 +391,16 @@ export async function PATCH(
         }
       }
 
+      if (parsedStartTime && parsedEndTime && !Array.isArray(staffIds)) {
+        await tx.assignment.updateMany({
+          where: { appointmentId: id },
+          data: {
+            plannedStart: parsedStartTime,
+            plannedEnd: parsedEndTime,
+          },
+        });
+      }
+
       // 3) Sync checklist items
       if (normalizedChecklist !== undefined) {
         const existingIds = new Set(

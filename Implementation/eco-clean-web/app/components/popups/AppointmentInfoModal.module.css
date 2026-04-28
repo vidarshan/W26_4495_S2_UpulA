@@ -56,3 +56,15 @@
 .inlineRow {
   padding: 0.3rem 0;
 }
+
+.timeAdjustments {
+  align-items: flex-end;
+}
+
+.timeAdjustmentRow {
+  justify-content: flex-end;
+}
+
+.timeAdjustmentLabel {
+  min-width: 4.75rem;
+}

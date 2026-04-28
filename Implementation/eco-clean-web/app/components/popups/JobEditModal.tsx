@@ -13,6 +13,7 @@ import {
   Paper,
   Select,
   SegmentedControl,
+  ScrollArea,
   Stack,
   Text,
   TextInput,
@@ -391,10 +392,11 @@ export default function JobEditModal({ onSuccess }: Props) {
       {isLoading ? (
         <Loader />
       ) : !job ? null : (
-        <form
-          onSubmit={form.onSubmit((values) => updateMutation.mutate(values))}
-        >
-          <Stack gap="md">
+        <ScrollArea.Autosize mah="75dvh" offsetScrollbars>
+          <form
+            onSubmit={form.onSubmit((values) => updateMutation.mutate(values))}
+          >
+            <Stack gap="md" pb="xs">
             <Paper withBorder radius="md" p="lg" styles={sectionPaperStyles} className="app-modal__section">
               <Stack gap="md">
                 <Group justify="space-between" align="flex-start" wrap="wrap">
@@ -680,8 +682,9 @@ export default function JobEditModal({ onSuccess }: Props) {
                 Save Job Changes
               </Button>
             </Group>
-          </Stack>
-        </form>
+            </Stack>
+          </form>
+        </ScrollArea.Autosize>
       )}
     </Modal>
   );

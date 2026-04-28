@@ -148,8 +148,8 @@ type AppointmentApiPayload = {
   images?: Array<{ url: string; fileKey?: string | null }>;
 };
 
-const SUPPORTED_SHIFT_START = "07:00";
-const SUPPORTED_SHIFT_END = "17:00";
+const SUPPORTED_SHIFT_START = "03:00";
+const SUPPORTED_SHIFT_END = "22:00";
 
 function toTotalMinutes(value: string) {
   const [hour, minute] = value.split(":").map(Number);

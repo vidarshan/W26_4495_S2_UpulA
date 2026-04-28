@@ -112,6 +112,27 @@ function formatDurationMinutes(totalMinutes: number) {
   return `${hours}h ${minutes}m`;
 }
 
+function hhmmToMinutes(value: string) {
+  if (!isValidHHmm(value)) return null;
+
+  const [hours, minutes] = value.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+function minutesToHHmm(totalMinutes: number) {
+  const normalized = ((totalMinutes % 1440) + 1440) % 1440;
+  const hours = Math.floor(normalized / 60);
+  const minutes = normalized % 60;
+
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+const TIME_ADJUSTMENTS = [-10, -5, 5, 10] as const;
+
+function formatTimeAdjustmentLabel(deltaMinutes: number) {
+  return `${deltaMinutes > 0 ? "+" : ""}${deltaMinutes} min`;
+}
+
 function buildClientName(client?: JobClient | null) {
   if (!client) return "—";
 
@@ -454,6 +475,23 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
   };
 
   const apptKey = queryKeys.appointments.detail(selectedApptId);
+  const editedDurationMinutes =
+    isValidHHmm(form.values.startTime) && isValidHHmm(form.values.endTime)
+      ? hhmmToMinutes(form.values.endTime)! -
+        hhmmToMinutes(form.values.startTime)!
+      : null;
+
+  const adjustTimeField = (
+    field: "startTime" | "endTime",
+    deltaMinutes: number,
+  ) => {
+    const baseValue = form.values[field];
+    const baseMinutes = hhmmToMinutes(baseValue);
+    if (baseMinutes === null) return;
+
+    form.setFieldValue(field, minutesToHHmm(baseMinutes + deltaMinutes));
+  };
+
   const selectedLeadOptions = form.values.staff
     .map((staffId) => {
       const staffMember = staffMembers.find((staff) => staff.id === staffId);
@@ -758,6 +796,80 @@ export default function AppointmentInfoModal({ onSuccess }: Props) {
                             error={form.errors.endTime}
                           />
                         </SimpleGrid>
+
+                        <Paper
+                          withBorder
+                          radius="md"
+                          p="sm"
+                          className={classes.infoCard}
+                        >
+                          <Group
+                            justify="space-between"
+                            align="center"
+                            gap="sm"
+                          >
+                            <Box>
+                              <Text
+                                size="xs"
+                                fw={700}
+                                tt="uppercase"
+                                c="dimmed"
+                              >
+                                Time Period
+                              </Text>
+                              <Text size="sm" fw={600} mt={4}>
+                                {editedDurationMinutes !== null &&
+                                editedDurationMinutes > 0
+                                  ? formatDurationMinutes(editedDurationMinutes)
+                                  : "Enter a valid start and end time"}
+                              </Text>
+                            </Box>
+
+                            <Stack gap="xs" className={classes.timeAdjustments}>
+                              {[
+                                {
+                                  field: "startTime" as const,
+                                  label: "Start Time",
+                                  value: form.values.startTime,
+                                },
+                                {
+                                  field: "endTime" as const,
+                                  label: "End Time",
+                                  value: form.values.endTime,
+                                },
+                              ].map(({ field, label, value }) => (
+                                <Group
+                                  key={field}
+                                  gap="xs"
+                                  wrap="wrap"
+                                  className={classes.timeAdjustmentRow}
+                                >
+                                  <Text
+                                    size="xs"
+                                    fw={700}
+                                    c="dimmed"
+                                    className={classes.timeAdjustmentLabel}
+                                  >
+                                    {label}
+                                  </Text>
+                                  {TIME_ADJUSTMENTS.map((deltaMinutes) => (
+                                    <Button
+                                      key={`${field}-${deltaMinutes}`}
+                                      size="xs"
+                                      variant="light"
+                                      onClick={() =>
+                                        adjustTimeField(field, deltaMinutes)
+                                      }
+                                      disabled={!isValidHHmm(value)}
+                                    >
+                                      {formatTimeAdjustmentLabel(deltaMinutes)}
+                                    </Button>
+                                  ))}
+                                </Group>
+                              ))}
+                            </Stack>
+                          </Group>
+                        </Paper>
 
                         <MultiSelect
                           label="Assigned Staff"

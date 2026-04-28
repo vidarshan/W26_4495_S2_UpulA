@@ -65,14 +65,14 @@ export async function GET(req: Request) {
       );
     }
 
-    const SHIFT_1_START = 7 * 60;
+    const SHIFT_1_START = 3 * 60;
     const SHIFT_1_END = 12 * 60;
     const SHIFT_2_START = 12 * 60;
-    const SHIFT_2_END = 17 * 60;
+    const SHIFT_2_END = 22 * 60;
 
     if (startMinutes < SHIFT_1_START || endMinutes > SHIFT_2_END) {
       return NextResponse.json(
-        { error: "Time outside supported shifts (07:00–17:00)" },
+        { error: "Time outside supported shifts (03:00–22:00)" },
         { status: 400 }
       );
     }
@@ -89,7 +89,7 @@ export async function GET(req: Request) {
 
     if (!requiredShifts.length) {
       return NextResponse.json(
-        { error: "Time outside supported shifts (07:00–17:00)" },
+        { error: "Time outside supported shifts (03:00–22:00)" },
         { status: 400 }
       );
     }

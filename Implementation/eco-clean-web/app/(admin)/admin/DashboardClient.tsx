@@ -607,8 +607,8 @@ export default function DashboardClient() {
               dayMaxEvents={3}
               businessHours={{
                 daysOfWeek: [1, 2, 3, 4, 5, 6],
-                startTime: "08:00",
-                endTime: "18:00",
+                startTime: "03:00",
+                endTime: "22:00",
               }}
               loading={setCalendarLoading}
               events={loadEvents}
