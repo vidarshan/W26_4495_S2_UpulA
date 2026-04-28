@@ -14,7 +14,7 @@ import formatPrettyDate from "@/lib/utils/formatPrettyDate";
 import { TaskAssistantResponse } from "@/lib/ai/schemas";
 import { AI_FEATURES_ENABLED } from "@/lib/config/ai";
 import { APP_TZ } from "@/lib/dateTime";
-import { Address, AppointmentWithRelations, JobNote, WorkSession } from "@/types";
+import { AppointmentWithRelations, JobNote, WorkSession } from "@/types";
 import { queryKeys } from "@/lib/queryKeys";
 import {
   Badge,
@@ -70,6 +70,15 @@ function formatAddress(address?: {
     .filter(Boolean)
     .join(", ");
 }
+
+export type Address = {
+  street1?: string | null;
+  street2?: string | null;
+  city?: string | null;
+  province?: string | null;
+  postalCode?: string | null;
+  country?: string | null;
+};
 
 export type NoteImage = {
   id: string;
