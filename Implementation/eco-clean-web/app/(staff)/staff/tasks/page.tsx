@@ -23,9 +23,7 @@ import { getMarkedDates, getStaffAppointments } from "@/lib/api/appointments";
 import { useRouter } from "next/navigation";
 import { IoLocation, IoPerson, IoTime } from "@/lib/icons";
 import { useSession } from "next-auth/react";
-import { AppointmentReminderWatcher } from "@/app/components/AppointmentReminderWatcher";
 import { LocalNotificationDemo } from "@/app/components/LocalNotificationDemo";
-import { requestPermission } from "@/lib/notifications/showNotification";
 import { Calendar } from "@mantine/dates";
 import dayjs from "dayjs";
 import { useStaffUiStore } from "@/stores/store";
@@ -300,10 +298,6 @@ const Page = () => {
   }, [refetch, setOnRefresh, setRefreshing]);
 
   useEffect(() => {
-    requestPermission();
-  }, []);
-
-  useEffect(() => {
     const interval = setInterval(() => {
       setNowMs(Date.now());
     }, 1000);
@@ -381,7 +375,6 @@ const Page = () => {
 
   return (
     <Container p={0} className="staff-app-page">
-      <AppointmentReminderWatcher appointments={tasks} />
       <LocalNotificationDemo />
       <Stack gap="lg" p="md">
         {currentDayTasks.map(

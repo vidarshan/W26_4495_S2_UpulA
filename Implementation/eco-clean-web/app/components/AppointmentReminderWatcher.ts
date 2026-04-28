@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import { showLocalNotification } from "@/lib/localNotififcations";
+import { useEffect, useRef } from "react";
 
 type Appointment = {
   id: string;

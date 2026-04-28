@@ -9,13 +9,12 @@ import {
   startAppointment,
   updateAppointmentChecklistItem,
 } from "@/lib/api/appointments";
-import { showLocalNotification } from "@/lib/notifications/showNotification";
 import { useUploadThing } from "@/lib/uploadthing";
 import formatPrettyDate from "@/lib/utils/formatPrettyDate";
 import { TaskAssistantResponse } from "@/lib/ai/schemas";
 import { AI_FEATURES_ENABLED } from "@/lib/config/ai";
 import { APP_TZ } from "@/lib/dateTime";
-import { AppointmentWithRelations, JobNote, WorkSession } from "@/types";
+import { Address, AppointmentWithRelations, JobNote, WorkSession } from "@/types";
 import { queryKeys } from "@/lib/queryKeys";
 import {
   Badge,
@@ -89,32 +88,29 @@ export type Note = {
   images?: NoteImage[];
 };
 
-function buildDirectionsUrl(address?: {
-  street1?: string | null;
-  street2?: string | null;
-  city?: string | null;
-  province?: string | null;
-  postalCode?: string | null;
-  country?: string | null;
-}) {
+function buildDirectionsUrl(address?: Address) {
   const fullAddress = formatAddress(address);
-  if (!fullAddress) return "";
 
-  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(fullAddress)}`;
+  if (!fullAddress || fullAddress.trim().length < 5) {
+    return null;
+  }
+
+  const encoded = encodeURIComponent(fullAddress.trim());
+
+  const isIOS =
+    typeof navigator !== "undefined" &&
+    /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+  return isIOS
+    ? `maps://?daddr=${encoded}` // Apple Maps (iOS)
+    : `https://www.google.com/maps/dir/?api=1&destination=${encoded}`; // Google Maps (others)
 }
 
-function openDirections(address?: {
-  street1?: string | null;
-  street2?: string | null;
-  city?: string | null;
-  province?: string | null;
-  postalCode?: string | null;
-  country?: string | null;
-}) {
+function openDirections(address?: Address) {
   const url = buildDirectionsUrl(address);
   if (!url) return;
 
-  window.location.assign(url);
+  window.location.href = url;
 }
 
 function getElapsedSeconds(
@@ -268,13 +264,6 @@ const Page = () => {
       setVisitNote("");
       setVisitImages([]);
       setUploadedVisitImages([]);
-      showLocalNotification("Visit note saved", "/staff/tasks");
-    },
-    onError: (error: unknown) => {
-      showLocalNotification(
-        getErrorMessage(error) || "Failed to save note",
-        "/staff/tasks",
-      );
     },
   });
 
@@ -312,16 +301,11 @@ const Page = () => {
     },
     onSuccess: (updated) => {
       refreshAppointment(updated);
-      showLocalNotification("Job started", `/staff/tasks/${appointment!.id}`);
     },
     onError: (error: unknown, _vars, context) => {
       if (context?.previous) {
         qc.setQueryData(appointmentQueryKey, context.previous);
       }
-      showLocalNotification(
-        getErrorMessage(error) || "Failed to start job",
-        "/staff/tasks",
-      );
     },
   });
 
@@ -369,16 +353,11 @@ const Page = () => {
     },
     onSuccess: (updated) => {
       refreshAppointment(updated);
-      showLocalNotification("Job paused", `/staff/tasks/${appointment!.id}`);
     },
     onError: (error: unknown, _vars, context) => {
       if (context?.previous) {
         qc.setQueryData(appointmentQueryKey, context.previous);
       }
-      showLocalNotification(
-        getErrorMessage(error) || "Job pause failed",
-        `/staff/tasks/${appointment!.id}`,
-      );
     },
   });
 
@@ -413,19 +392,11 @@ const Page = () => {
     },
     onSuccess: (updated) => {
       refreshAppointment(updated);
-      showLocalNotification(
-        "Job marked as completed",
-        `/staff/tasks/${appointment!.id}`,
-      );
     },
     onError: (error: unknown, _vars, context) => {
       if (context?.previous) {
         qc.setQueryData(appointmentQueryKey, context.previous);
       }
-      showLocalNotification(
-        getErrorMessage(error) || "Job completion failed",
-        `/staff/tasks/${appointment!.id}`,
-      );
     },
   });
 
@@ -475,10 +446,6 @@ const Page = () => {
       if (context?.previous) {
         qc.setQueryData(appointmentQueryKey, context.previous);
       }
-      showLocalNotification(
-        getErrorMessage(error) || "Failed to update checklist",
-        `/staff/tasks/${appointment?.id}`,
-      );
     },
   });
 
