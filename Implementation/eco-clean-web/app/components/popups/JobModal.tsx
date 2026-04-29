@@ -662,7 +662,7 @@ export default function NewJobModal({
   const isBusy = isSubmitting || isUploading;
 
   const addLineItem = () => {
-    form.setFieldValue("lineItems", [
+    form.setFieldValue("lineItems", [ 
       ...form.values.lineItems,
       {
         id: crypto.randomUUID(),
